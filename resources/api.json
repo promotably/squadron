@@ -1,0 +1,477 @@
+{
+    "AWSTemplateFormatVersion" : "2010-09-09",
+
+    "Description" : "API cluster",
+    
+    "Parameters" : {
+	"GitHubRef" : {
+	    "Description" : "Github tag or branch name to fetch for API repo",
+	    "Type" : "String",
+	    "Default" : "master"
+	},
+	"DBSubnetIDs" : {
+	    "Description" : "List of VPC subnets on which DB instance may reside.",
+	    "Type" : "List<AWS::EC2::Subnet::Id>"
+	},
+	"CacheSubnetIDs" : {
+	    "Description" : "List of VPC subnets on which cache may reside.",
+	    "Type" : "List<AWS::EC2::Subnet::Id>"
+	},
+	"GitHubUser" : {
+	    "Description" : "Github username",
+	    "Type" : "String"
+	},
+	"GitHubPW" : {
+	    "Description" : "Github password",
+	    "Type" : "String"
+	},
+	"PublicSubnets" : {
+	    "Description" : "List of VPC public subnet IDs for the cluster. Note: must match up with the passed AvailabilityZones.",
+	    "Type" : "List<AWS::EC2::Subnet::Id>"
+	},
+	"PrivateSubnets" : {
+	    "Description" : "List of VPC private subnet IDs for the cluster. Note: must match up with the passed AvailabilityZones.",
+	    "Type" : "List<AWS::EC2::Subnet::Id>"
+	},
+	"VpcId" : {
+	    "Description" : "VPC associated with the provided subnets",
+	    "Type" : "AWS::EC2::VPC::Id"
+	},
+	"Environment" : {
+	    "Description" : "Environment tag",
+	    "Type" : "String",
+	    "Default" : "test-env"
+	},
+	"Role" : {
+	    "Description" : "Role tag",
+	    "Type" : "String",
+	    "Default" : "test-role"
+	},
+	"BastionSecurityGroup" : {
+	    "Description" : "Security Group associated with bastion host",
+	    "Type" : "AWS::EC2::SecurityGroup::Id"
+	},
+	"NATSecurityGroup" : {
+	    "Description" : "Security Group associated with NAT host",
+	    "Type" : "AWS::EC2::SecurityGroup::Id"
+	},
+	"KeyPair": {
+	    "Description": "Name of the keypair to use for SSH access",
+	    "Type": "AWS::EC2::KeyPair::KeyName"
+	},
+	"AvailabilityZones": {
+	    "Description" : "(Optional) If passed, only launch nodes in these AZs (e.g., 'us-east-1a,us-east-1b'). Note: these must match up with the passed Subnets.",
+	    "Type" : "CommaDelimitedList",
+	    "Default" : ""
+	},
+	"DBName": {
+	    "Description": "Database name",
+	    "Type": "String"
+	},
+	"DBUsername": {
+	    "Description": "Database username",
+	    "Type": "String"
+	},
+	"DBPassword": {
+	    "Description": "Database password",
+	    "Type": "String"
+	},
+	"DBClass": {
+	    "Description": "Database instance class",
+	    "Type": "String"
+	},
+	"DBAllocatedStorage": {
+	    "Description": "Database allocated storage",
+	    "Type": "String"
+	}
+    },
+
+    "Conditions" : {
+	"UseAllAvailabilityZones" : {"Fn::Equals" : [{ "Fn::Join" : ["", {"Ref" : "AvailabilityZones"} ]}, ""]}
+    },
+
+    "Resources" : {
+
+	"ElasticacheSubnetGroup" : {
+	    "Type" : "AWS::ElastiCache::SubnetGroup",
+	    "Properties" : {
+		"Description" : "Cache Subnet Group",
+		"SubnetIds" : { "Ref" : "CacheSubnetIDs" }
+	    }
+	},
+
+	"ElasticacheSecurityGroup": {
+	    "Type": "AWS::EC2::SecurityGroup",
+	    "Properties": {
+		"GroupDescription": "Elasticache Security Group",
+		"VpcId" : { "Ref" : "VpcId" },
+		"SecurityGroupIngress": [ {
+		    "IpProtocol": "tcp",
+		    "FromPort": "11211",
+		    "ToPort": "11211",
+		    "SourceSecurityGroupId": {"Ref": "APIServerSecurityGroup"}
+		} ]
+	    }
+	},
+
+	"RedisCluster": {
+	    "Type": "AWS::ElastiCache::CacheCluster",
+	    "Properties": {
+		"AutoMinorVersionUpgrade": "true",
+		"Engine": "redis",
+		"CacheNodeType": "cache.m1.small",
+		"NumCacheNodes": "1",
+		"CacheSubnetGroupName": { "Ref": "ElasticacheSubnetGroup" },
+		"VpcSecurityGroupIds": [{"Fn::GetAtt": [ "ElasticacheSecurityGroup", "GroupId"]}]
+	    }
+	},
+	
+	"DBSubnetGroup" : {
+	    "Type" : "AWS::RDS::DBSubnetGroup",
+	    "Properties" : {
+		"DBSubnetGroupDescription" : "description",
+		"SubnetIds" : { "Ref" : "DBSubnetIDs" },
+		"Tags": [
+		    { "Key": "Name", "Value": "DBSubnetGroup" }
+		]
+	    }
+	},
+
+	"DBInstance" : {
+	    "Type": "AWS::RDS::DBInstance",
+	    "Properties": {
+		"DBName"            : { "Ref" : "DBName" },
+		"Engine"            : "postgres",
+		"MasterUsername"    : { "Ref" : "DBUsername" },
+		"MasterUserPassword": { "Ref" : "DBPassword" },
+		"DBInstanceClass"   : { "Ref" : "DBClass" },
+		"DBSecurityGroups"  : [ { "Ref" : "DBSecurityGroup" } ],
+		"AllocatedStorage"  : { "Ref" : "DBAllocatedStorage" },
+		"DBSubnetGroupName" : { "Ref" : "DBSubnetGroup" }
+	    }
+	},
+
+	"DBSecurityGroup": {
+	    "Type": "AWS::RDS::DBSecurityGroup",
+	    "Properties": {
+		"EC2VpcId" : { "Ref" : "VpcId" },
+		"DBSecurityGroupIngress": { 
+		    "EC2SecurityGroupId": { "Ref": "APIServerSecurityGroup" } 
+		},
+		"GroupDescription"      : "Access to API instances"
+	    }
+	},
+
+	"KinesisStreamA" : {
+	    "Type" : "AWS::Kinesis::Stream",
+	    "Properties" : {
+		"ShardCount" : "2"
+	    }
+	},
+
+
+	"KinesisStreamB" : {
+	    "Type" : "AWS::Kinesis::Stream",
+	    "Properties" : {
+		"ShardCount" : "2"
+	    }
+	},
+
+
+	"RootRole": {
+	    "Type" : "AWS::IAM::Role",
+	    "Properties" : {
+		"AssumeRolePolicyDocument": {
+		    "Version" : "2012-10-17",
+		    "Statement" : [ {
+			"Effect" : "Allow",
+			"Principal" : {
+			    "Service" : [ "ec2.amazonaws.com" ]
+			},
+			"Action" : [ "sts:AssumeRole" ]
+		    } ]
+		},
+		"Path" : "/"
+	    }
+	},
+
+	"RolePolicies" : {
+	    "Type" : "AWS::IAM::Policy",
+	    "Properties" : {
+		"PolicyName" : "root",
+		"PolicyDocument" : {
+		    "Version" : "2012-10-17",
+		    "Statement" : [ {
+			"Effect" : "Allow",
+			"Action" : "kinesis:*",
+			"Resource" : { "Fn::Join" : [ "", [ "arn:aws:kinesis:", { "Ref" : "AWS::Region" }, ":", { "Ref" : "AWS::AccountId" }, ":stream/", { "Ref" : "KinesisStreamA" } ]]}
+		    }, {
+			"Effect" : "Allow",
+			"Action" : "kinesis:*",
+			"Resource" : { "Fn::Join" : [ "", [ "arn:aws:kinesis:", { "Ref" : "AWS::Region" }, ":", { "Ref" : "AWS::AccountId" }, ":stream/", { "Ref" : "KinesisStreamB" } ]]}
+		    }, {
+			"Effect" : "Allow",
+			"Action" : "cloudwatch:*",
+			"Resource" : "*"
+		    }, {
+			"Effect" : "Allow",
+			"Action" : [ "elasticache:DescribeCacheClusters" ],
+			"Resource" : "*"
+		    } ]
+		},
+		"Roles" : [ { "Ref": "RootRole" } ]
+	    }
+	},
+	
+	"RootInstanceProfile" : {
+	    "Type" : "AWS::IAM::InstanceProfile",
+	    "Properties" : {
+		"Path" : "/",
+		"Roles" : [ { "Ref": "RootRole" } ]
+	    }
+	},
+	
+	"ClientSecurityGroup" : {
+	    "Type" : "AWS::EC2::SecurityGroup",
+	    "Properties" : {
+		"GroupDescription" : "For clients. Grants access to the associated load balancer.",
+		"VpcId" : { "Ref" : "VpcId" }
+	    }
+	},
+
+	"LbSecurityGroup" : {
+	    "Type" : "AWS::EC2::SecurityGroup",
+	    "Properties" : {
+		"GroupDescription" : "Controls who can connect to the load balancer for this service",
+		"VpcId" : { "Ref" : "VpcId" },
+		"SecurityGroupIngress" :
+		[ { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "SourceSecurityGroupId" : { "Ref" : "ClientSecurityGroup"} },
+		  { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "CidrIp": "0.0.0.0/0" },
+		  { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "SourceSecurityGroupId" : { "Ref" : "BastionSecurityGroup"} } ]
+	    }
+	},
+
+	"APIServerSecurityGroup" : {
+	    "Type" : "AWS::EC2::SecurityGroup",
+	    "Properties" : {
+		"GroupDescription" : "Enable SSH access",
+		"VpcId" : { "Ref" : "VpcId" },
+		"SecurityGroupIngress" : [ 
+		    { "IpProtocol" : "tcp", "FromPort" : "22", "ToPort" : "22", 
+		      "SourceSecurityGroupId" : { "Ref" : "BastionSecurityGroup" } 
+		    },
+		    { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80",
+		      "SourceSecurityGroupId" : { "Ref" : "LbSecurityGroup" }
+		    },
+		    { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80",
+		      "SourceSecurityGroupId" : { "Ref" : "BastionSecurityGroup" }
+		    }
+		]
+	    }
+	},
+
+	"APILoadBalancer" : {
+	    "Type" : "AWS::ElasticLoadBalancing::LoadBalancer",
+	    "Properties" : {
+		"Subnets": { "Ref": "PublicSubnets" },
+		"SecurityGroups": [{ "Ref": "LbSecurityGroup" }],
+		"Listeners" : [ {
+		    "LoadBalancerPort" : "80",
+		    "InstancePort" : "80",
+		    "Protocol" : "HTTP"
+		} ]
+	    }
+	},
+
+	"APILaunchConfig" : {
+	    "Type" : "AWS::AutoScaling::LaunchConfiguration",
+	    "Metadata" : {
+		"AWS::CloudFormation::Init" : {
+		    "config" : {
+			"packages" : {
+			    "yum" : {
+				"java-1.7.0-openjdk" : [],
+				"git" : []
+			    }
+			},
+			"files" : {
+			    "/etc/cron.d/get_cluster_config" : {
+			        "content" : "*/5 * * * * root /usr/local/bin/get_cluster_config",
+			        "mode"    : "000644",
+			        "owner"   : "root",
+			        "group"   : "root"
+			    },
+			    "/usr/local/bin/get_cluster_config" : {
+			        "content" : { "Fn::Join" : ["", [
+				    "#! /bin/bash\n",
+				    "aws elasticache describe-cache-clusters ",
+				    "         --cache-cluster-id ", {"Ref" : "RedisCluster"},
+				    "         --show-cache-node-info --region ", { "Ref" : "AWS::Region" }, " > /tmp/cacheclusterconfig\n"
+				]]},
+			        "mode"    : "000755",
+			        "owner"   : "root",
+			        "group"   : "root"
+			    },
+			    "/etc/cfn/cfn-hup.conf" : {
+				"content" : { "Fn::Join" : ["", [
+				    "[main]\n",
+				    "stack=", { "Ref" : "AWS::StackId" }, "\n",
+				    "region=", { "Ref" : "AWS::Region" }, "\n"
+				]]},
+				"mode"    : "000400",
+				"owner"   : "root",
+				"group"   : "root"
+			    },
+			    "/etc/cfn/hooks.d/cfn-auto-reloader.conf" : {
+				"content": { "Fn::Join" : ["", [
+				    "[cfn-auto-reloader-hook]\n",
+				    "triggers=post.update\n",
+				    "path=Resources.APILaunchConfig.Metadata.AWS::CloudFormation::Init\n",
+				    "action=/opt/aws/bin/cfn-init -v ",
+				    "         --stack ", { "Ref" : "AWS::StackName" },
+				    "         --resource APILaunchConfig ",
+				    "         --region ", { "Ref" : "AWS::Region" }, "\n",
+				    "runas=root\n"
+				]]}
+			    }
+			},
+			"commands" : {
+			    "01-get-cluster-config" : {
+				"command" : "/usr/local/bin/get_cluster_config"
+			    }
+			},
+			"services" : {
+			    "sysvinit" : {
+				"cfn-hup" : { "enabled" : "true", "ensureRunning" : "true",
+					      "files" : ["/etc/cfn/cfn-hup.conf", "/etc/cfn/hooks.d/cfn-auto-reloader.conf"]}
+			    }
+			}
+		    }
+		}
+	    },
+	    "Properties" : {
+		"ImageId" : "ami-b66ed3de",
+		"SecurityGroups" : [ { "Ref" : "APIServerSecurityGroup" } ],
+		"InstanceType" : "t2.micro",
+		"KeyName": { "Ref": "KeyPair" },
+		"IamInstanceProfile": { "Ref": "RootInstanceProfile" },
+		"UserData": {
+		    "Fn::Base64": {
+			"Fn::Join": [
+			    "",
+			    [
+				"#!/bin/bash -ex\n",
+				"yum update -y\n",
+				"yum update -y aws-cfn-bootstrap\n",
+				"yum update -y curl\n",
+
+			        "# Setup tasks\n",
+				"/opt/aws/bin/cfn-init -s ", { "Ref" : "AWS::StackId" }, " -r APILaunchConfig ",
+				"         --region ", { "Ref" : "AWS::Region" }, "\n",
+
+			        "# Get API tarball\n",
+				"curl -sL --user '", { "Ref" : "GitHubUser" }, ":", { "Ref" : "GitHubPW" }, "'", 
+				" https://api.github.com/repos/promotably/api/tarball/",
+				{ "Ref" : "GitHubRef" }, " > /tmp/api.tar\n",
+				"mkdir -p /opt/promotably\n",
+				"tar -xf /tmp/api.tar -C /opt/promotably\n",
+				"ln -s /opt/promotably/* /opt/promotably/api\n",
+
+				"# Install lein\n",
+				"curl https://raw.githubusercontent.com/technomancy/leiningen/stable/bin/lein > /usr/local/bin/lein\n",
+				"chmod a+x /usr/local/bin/lein\n",
+
+				"# Run API\n",
+				"while : ; do\n",
+				"    [[ -f /tmp/cacheclusterconfig ]] && break\n",
+				"sleep 1\n",
+				"done\n",
+				"export KINESIS_A=", {"Ref": "KinesisStreamA"}, "\n",
+				"export KINESIS_B=", {"Ref": "KinesisStreamB"}, "\n",
+				"export REDIS_HOST=$(grep Address /tmp/cacheclusterconfig  | cut -d: -f2 | cut -d\\\" -f2)\n",
+				"export REDIS_PORT=$(grep Port /tmp/cacheclusterconfig | cut -d: -f 2 | cut -d, -f1 | cut -d ' ' -f 2)\n",
+				"export RDS_HOST=", {"Fn::GetAtt": [ "DBInstance", "Endpoint.Address"]}, "\n",
+				"export RDS_PORT=", {"Fn::GetAtt": [ "DBInstance", "Endpoint.Port"]}, "\n",
+				"cd /opt/promotably/api && /usr/local/bin/lein ring server-headless 2>&1 > /var/log/api.log &\n",
+				
+			        "# Signal the status of cfn-init\n",
+			        "/opt/aws/bin/cfn-signal -e $? ",
+			        "         --stack ", { "Ref" : "AWS::StackName" },
+			        "         --resource APILaunchConfig ",
+			        "         --region ", { "Ref" : "AWS::Region" }, "\n"
+			    ]
+			]
+		    }
+		}
+	    }
+	},
+
+	"APIInstanceGroup" : {
+	    "Type" : "AWS::AutoScaling::AutoScalingGroup",
+	    "Properties" : {
+		"Tags": [
+		    {
+			"Key": "Name",
+			"PropagateAtLaunch": "true",
+			"Value": "API Server Instance"
+		    }
+		],
+		"AvailabilityZones" : {
+		    "Fn::If" : [
+			"UseAllAvailabilityZones",
+			{ "Fn::GetAZs": "AWS::Region" },
+			{ "Ref" : "AvailabilityZones" }
+		    ]
+		},
+		"LaunchConfigurationName" : { "Ref" : "APILaunchConfig" },
+		"MinSize" : "1",
+		"MaxSize" : "1",
+		"DesiredCapacity" : 1,
+		"VPCZoneIdentifier" : { "Ref" : "PrivateSubnets" },
+		"LoadBalancerNames" : [ { "Ref" : "APILoadBalancer" } ]
+	    }
+	}
+
+    },
+    
+    "Outputs" : {
+
+	"DBInstance" : {
+	    "Description" : "Main Postgres Database",
+	    "Value" : { "Ref" : "DBInstance" }
+	},
+
+	"RedisCluster" : {
+	    "Description" : "Redis Cluster",
+	    "Value" : { "Ref" : "RedisCluster" }
+	},
+
+	"KinesisStreamA" : {
+	    "Description" : "The name of the Kinesis Stream. This was autogenerated by the Kinesis Resource named 'KinesisStreamA'",
+	    "Value" : { "Ref" : "KinesisStreamA" }
+	},
+
+	"KinesisStreamB" : {
+	    "Description" : "The name of the Kinesis Stream. This was autogenerated by the Kinesis Resource named 'KinesisStreamB'",
+	    "Value" : { "Ref" : "KinesisStreamB" }
+	},
+
+	"APIInstanceGroup" : {
+	    "Description" : "ASG of the API servers",
+	    "Value" : { "Ref" : "APIInstanceGroup" }
+	},
+
+	"URL": {
+	    "Description": "URL for testing",
+	    "Value": {
+		"Fn::Join": [
+		    "",
+		    [
+			"http://", { "Fn::GetAtt": [ "APILoadBalancer", "DNSName" ] }
+		    ]
+		]
+	    }
+	}
+    }
+}
+

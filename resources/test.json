@@ -1,0 +1,200 @@
+{
+    "AWSTemplateFormatVersion" : "2010-09-09",
+
+    "Description" : "XXX cluster",
+    
+    "Parameters" : {
+	"PublicSubnets" : {
+	    "Description" : "List of VPC public subnet IDs for the cluster. Note: must match up with the passed AvailabilityZones.",
+	    "Type" : "CommaDelimitedList"
+	},
+	"PrivateSubnets" : {
+	    "Description" : "List of VPC private subnet IDs for the cluster. Note: must match up with the passed AvailabilityZones.",
+	    "Type" : "CommaDelimitedList"
+	},
+	"VpcId" : {
+	    "Description" : "VPC associated with the provided subnets",
+	    "Type" : "String"
+	},
+	"Environment" : {
+	    "Description" : "Environment tag",
+	    "Type" : "String",
+	    "Default" : "test-env"
+	},
+	"Role" : {
+	    "Description" : "Role tag",
+	    "Type" : "String",
+	    "Default" : "test-role"
+	},
+	"BastionSecurityGroup" : {
+	    "Description" : "Security Group associated with bastion host",
+	    "Type" : "String"
+	},
+	"NATSecurityGroup" : {
+	    "Description" : "Security Group associated with NAT host",
+	    "Type" : "String"
+	},
+	"KeyPair": {
+	    "Description": "Name of the keypair to use for SSH access",
+	    "Type": "String"
+	},
+	"AvailabilityZones": {
+	    "Description" : "(Optional) If passed, only launch nodes in these AZs (e.g., 'us-east-1a,us-east-1b'). Note: these must match up with the passed Subnets.",
+	    "Type" : "CommaDelimitedList",
+	    "Default" : ""
+	}
+    },
+
+    "Conditions" : {
+	"UseAllAvailabilityZones" : {"Fn::Equals" : [{ "Fn::Join" : ["", {"Ref" : "AvailabilityZones"} ]}, ""]}
+    },
+
+    "Resources" : {
+
+	"KinesisStream" : {
+	    "Type" : "AWS::Kinesis::Stream",
+	    "Properties" : {
+		"ShardCount" : "2"
+	    }
+	},
+	
+	"ClientSecurityGroup" : {
+	    "Type" : "AWS::EC2::SecurityGroup",
+	    "Properties" : {
+		"GroupDescription" : "For clients. Grants access to the associated load balancer.",
+		"VpcId" : { "Ref" : "VpcId" }
+	    }
+	},
+
+	"LbSecurityGroup" : {
+	    "Type" : "AWS::EC2::SecurityGroup",
+	    "Properties" : {
+		"GroupDescription" : "Controls who can connect to the load balancer for this service",
+		"VpcId" : { "Ref" : "VpcId" },
+		"SecurityGroupIngress" :
+		[ { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "SourceSecurityGroupId" : { "Ref" : "ClientSecurityGroup"} },
+		  { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "CidrIp": "0.0.0.0/0" },
+		  { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "SourceSecurityGroupId" : { "Ref" : "BastionSecurityGroup"} } ]
+	    }
+	},
+
+	"XXXServerSecurityGroup" : {
+	    "Type" : "AWS::EC2::SecurityGroup",
+	    "Properties" : {
+		"GroupDescription" : "Enable SSH access",
+		"VpcId" : { "Ref" : "VpcId" },
+		"SecurityGroupIngress" : [ 
+		    { "IpProtocol" : "tcp", "FromPort" : "22", "ToPort" : "22", 
+		      "SourceSecurityGroupId" : { "Ref" : "BastionSecurityGroup" } 
+		    },
+		    { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80",
+		      "SourceSecurityGroupId" : { "Ref" : "LbSecurityGroup" }
+		    },
+		    { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80",
+		      "SourceSecurityGroupId" : { "Ref" : "BastionSecurityGroup" }
+		    }
+		]
+	    }
+	},
+
+	"XXXLoadBalancer" : {
+	    "Type" : "AWS::ElasticLoadBalancing::LoadBalancer",
+	    "Properties" : {
+		"Subnets": { "Ref": "PublicSubnets" },
+		"SecurityGroups": [{ "Ref": "LbSecurityGroup" }],
+		"Listeners" : [ {
+		    "LoadBalancerPort" : "80",
+		    "InstancePort" : "80",
+		    "Protocol" : "HTTP"
+		} ]
+	    }
+	},
+
+	"XXXLaunchConfig" : {
+	    "Type" : "AWS::AutoScaling::LaunchConfiguration",
+	    "Properties" : {
+		"ImageId" : "ami-b66ed3de",
+		"SecurityGroups" : [ { "Ref" : "XXXServerSecurityGroup" } ],
+		"InstanceType" : "t2.micro",
+		"KeyName": { "Ref": "KeyPair" },
+		"UserData": {
+		    "Fn::Base64": {
+			"Fn::Join": [
+			    "",
+			    [
+				"#!/bin/bash -ex\n",
+				"yum update -y\n",
+				"yum install -y php-mysql\n",
+				"yum install -y httpd\n",
+				"service httpd start\n",
+				"chkconfig httpd on\n",
+				"groupadd www\n",
+				"usermod -a -G www ec2-user\n",
+				"chown -R root:www /var/www\n",
+				"chmod 2775 /var/www\n",
+				"echo '<html><body><h1>Welcome</h1>' > /var/www/html/index.html\n",
+				"echo '<h2>ENV: ", { "Ref": "Environment" }, "</h2>' >> /var/www/html/index.html\n",
+				"echo '<h2>ROLE: ", { "Ref": "Role" }, "</h2>' >> /var/www/html/index.html\n",
+				"echo '</body></html>' >> /var/www/html/index.html\n",
+				"find /var/www -type d -exec chmod 2775 {} +\n",
+				"find /var/www -type f -exec chmod 0664 {} +\n"
+			    ]
+			]
+		    }
+		}
+	    }
+	},
+
+	"XXXServerGroup" : {
+	    "Type" : "AWS::AutoScaling::AutoScalingGroup",
+	    "Properties" : {
+		"Tags": [
+		    {
+			"Key": "Name",
+			"PropagateAtLaunch": "true",
+			"Value": "XXX Server Instance"
+		    }
+		],
+		"AvailabilityZones" : {
+		    "Fn::If" : [
+			"UseAllAvailabilityZones",
+			{ "Fn::GetAZs": "AWS::Region" },
+			{ "Ref" : "AvailabilityZones" }
+		    ]
+		},
+		"LaunchConfigurationName" : { "Ref" : "XXXLaunchConfig" },
+		"MinSize" : "1",
+		"MaxSize" : "1",
+		"DesiredCapacity" : 1,
+		"VPCZoneIdentifier" : { "Ref" : "PrivateSubnets" },
+		"LoadBalancerNames" : [ { "Ref" : "XXXLoadBalancer" } ]
+	    }
+	}
+
+    },
+    
+    "Outputs" : {
+
+	"KinesisStream" : {
+	    "Description" : "The name of the Kinesis Stream. This was autogenerated by the Kinesis Resource named 'KinesisStream'",
+	    "Value" : { "Ref" : "KinesisStream" }
+	},
+
+	"XXXServerGroup" : {
+	    "Description" : "ASG of the XXX servers",
+	    "Value" : { "Ref" : "XXXServerGroup" }
+	},
+	"URL": {
+	    "Description": "URL for testing",
+	    "Value": {
+		"Fn::Join": [
+		    "",
+		    [
+			"http://", { "Fn::GetAtt": [ "XXXLoadBalancer", "DNSName" ] }
+		    ]
+		]
+	    }
+	}
+    }
+}
+
