@@ -226,50 +226,38 @@
                     :availability-zones (str region "a")})))
 
 (def cli-options
-  ;; An option with a required argument
-  [["-p" "--port PORT" "Port number"
-    :default 80
-    :parse-fn #(Integer/parseInt %)
-    :validate [#(< 0 % 0x10000) "Must be a number between 0 and 65536"]]
-   [nil "--github-user USER" "Github username"]
+  [[nil "--github-user USER" "Github username"]
    [nil "--github-password PW" "Github password"]
-   [nil "--api-ref REF" "Git reference (tag, branch, commit id) for API repo."]
-   [nil "--squadron-ref REF" "Git reference (tag, branch, commit id) for squadron repo."]
+   [nil "--api-ref REF" "Git reference (tag, branch, commit id) for API repo."
+    :default "master"]
+   [nil "--squadron-ref REF" "Git reference (tag, branch, commit id) for squadron repo."
+    :default "master"]
+   [nil "--keyvault-bucket BUCKET-NAME" "Existing S3 bucket where keys should be stored."
+    :default "promotably-keyvault"]
+   [nil "--db-name DB-NAME" "Name of database" :default "promotably"]
+   [nil "--db-username DB-USERNAME" "Name of database user" :default "promotably"]
+   [nil "--db-password DB-PW" "DB user's password" :default "promotably"]
+   [nil "--db-instance-type DB-INSTANCE" "DB user's password" :default "db.m1.small"]
    ;; A non-idempotent option
    ["-v" nil "Verbosity level"
     :id :verbosity
     :default 0
     :assoc-fn (fn [m k _] (update-in m [k] inc))]
    ;; A boolean option defaulting to nil
-      ["-h" "--help"]])
+   ["-h" "--help"]])
 
 (defn -main
   "stuff"
   [& args]
-  (prn (parse-opts args cli-options))
-  (shutdown-agents))
+  (let [{:keys [options summary errors]} (parse-opts args cli-options)]
+    (build {:gh-user (:github-user options)
+            :gh-pw (:github-password options)
+            :api-ref (:api-ref options)
+            :db-instance-type (:db-instance-type options)
+            :db-name (:db-name options)
+            :db-username (:db-username options)
+            :db-password (:db-password options)
+            :keyvault-bucket (:keyvault-bucket options)
+            :squadron-ref (:squadron-ref options)})
+    (shutdown-agents)))
 
-(comment
-
-  (build {:gh-user "cvillecsteele"
-          :gh-pw "githubfib0112358!"
-          :api-ref "master"
-          :db-instance-type "db.m1.small"
-          :db-name "promotably"
-          :db-username "promotably"
-          :db-password "promotably"
-          :keyvault-bucket "promotably-keyvault"
-          :squadron-ref "master"})
-
-  (cf-create-kommissar {:region "us-east-1"
-                        :stack-name "squadron-0VYW8A-kommissar"
-                        :bastion-sg "sg-7c2a3219"
-                        :pub-subnet-id "subnet-1834e541"
-                        :priv-subnet-id "subnet-1934e540"
-                        :github-user "cvillecsteele"
-                        :github-pw "githubfib0112358!"
-                        :github-ref "master"
-                        :keypair "squadron-0VYW8A-devops"
-                        :vpcid "vpc-0d58cc68"})
-
-)
