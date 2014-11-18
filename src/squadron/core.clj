@@ -1,16 +1,12 @@
 (ns squadron.core
   (:require
    [clojure.string :refer [split]]
+   [clojure.tools.cli :refer [parse-opts]]
    [clojure.java.shell :as shell :refer [sh]]
    [clojure.tools.logging :as log]
    [clojure.data.json :refer [read-str write-str]]
-   [slingshot.slingshot :refer [throw+ try+]]))
-
-(defn -main
-  "stuff"
-  [& args]
-  (prn (sh "ls"))
-  (shutdown-agents))
+   [slingshot.slingshot :refer [throw+ try+]])
+  (:gen-class))
 
 (def base-command "aws --profile promotably-ops ")
 
@@ -99,6 +95,36 @@
       (read-str (:out result) :key-fn (comp keyword clojure.string/lower-case))
       (throw+ {:type ::cf-create-api-error :result result}))))
 
+(defn cf-create-kommissar
+  [{:keys [region stack-name] :as options}]
+  (let [mappings [[:pub-subnet-id "PublicSubnetId"]
+                  [:priv-subnet-id "PrivateSubnetId"]
+                  [:vpcid "VpcId"]
+                  [:github-user "GitHubUser"]
+                  [:github-pw "GitHubPW"]
+                  [:github-ref "GitHubRef"]
+                  [:bastion-sg "BastionSecurityGroup"]
+                  [:keypair "KeyPair"]]
+        cmd (str base-command " "
+                 "cloudformation create-stack --output json "
+                 "--region " region  " "
+                 "--template-body file://resources/kommissar.json "
+                 "--stack-name " stack-name " "
+                 "--capabilities CAPABILITY_IAM "
+                 "--parameters "
+                 (apply str (interpose
+                             " "
+                             (map
+                              #(format "ParameterKey=%s,ParameterValue=%s"
+                                       (second %)
+                                       ((first %) options))
+                              mappings))))
+        _ (prn cmd)
+        {:keys [exit out err] :as result} (apply sh (split cmd #"\s+"))]
+    (if (= 0 exit)
+      (read-str (:out result) :key-fn (comp keyword clojure.string/lower-case))
+      (throw+ {:type ::cf-create-api-error :result result}))))
+
 (defn cf-describe-stack
   [region stack-name]
   (let [cmd (format "%s cloudformation describe-stacks --output json --region %s --stack-name %s"
@@ -145,78 +171,105 @@
   [how-long]
   (apply str (take how-long (repeatedly #(rand-nth "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ")))))
 
+(defn build
+  [{:keys [keyvault-bucket gh-user gh-pw
+           db-username db-name db-password db-instance-type
+           squadron-ref api-ref] :as options}]
+  (let [region "us-east-1"
+        super-stack-name (str "squadron-" (get-random-hex-string 6))
+        keyname (str super-stack-name "-devops")
+        keyvault-bucket-name keyvault-bucket
+        network-stack-name (str super-stack-name "-network")
+        create-result (deploy-network region
+                                      keyname
+                                      keyvault-bucket-name
+                                      network-stack-name)
+        _ (wait-for-stack-complete region network-stack-name)
+        description (cf-describe-stack region network-stack-name)
+        outputs (:outputs description)
+        private-subnets (apply str (concat ["'"]
+                                           (interpose ","
+                                                      [(:privatesubneta outputs)
+                                                       (:privatesubnetb outputs)
+                                                       (:privatesubnetc outputs)
+                                                       ])
+                                           ["'"]))]
+    (def x outputs)
+    (cf-create-kommissar {:region region
+                          :stack-name (str super-stack-name "-kommissar")
+                          :bastion-sg (:bastionsecuritygroup outputs)
+                          :pub-subnet-id (:publicsubneta outputs)
+                          :priv-subnet-id (:privatesubneta outputs)
+                          :github-user gh-user
+                          :github-pw gh-pw
+                          :github-ref squadron-ref
+                          :keypair keyname
+                          :vpcid (:vpcid outputs)})
+    (cf-create-api {:region region
+                    :stack-name (str super-stack-name "-api")
+                    :bastion-sg (:bastionsecuritygroup outputs)
+                    :nat-sg (:natsecuritygroup outputs)
+                    :priv-subnets (:privatesubneta outputs)
+                    :pub-subnets (:publicsubneta outputs)
+                    :github-user gh-user
+                    :github-pw gh-pw
+                    :github-ref api-ref
+                    :keypair keyname
+                    :db-name db-name
+                    :db-username db-username
+                    :db-password db-password
+                    :db-class db-instance-type
+                    :db-storage 5
+                    :db-subnets private-subnets
+                    :cache-subnets private-subnets
+                    :vpcid (:vpcid outputs)
+                    :availability-zones (str region "a")})))
+
+(def cli-options
+  ;; An option with a required argument
+  [["-p" "--port PORT" "Port number"
+    :default 80
+    :parse-fn #(Integer/parseInt %)
+    :validate [#(< 0 % 0x10000) "Must be a number between 0 and 65536"]]
+   [nil "--github-user USER" "Github username"]
+   [nil "--github-password PW" "Github password"]
+   [nil "--api-ref REF" "Git reference (tag, branch, commit id) for API repo."]
+   [nil "--squadron-ref REF" "Git reference (tag, branch, commit id) for squadron repo."]
+   ;; A non-idempotent option
+   ["-v" nil "Verbosity level"
+    :id :verbosity
+    :default 0
+    :assoc-fn (fn [m k _] (update-in m [k] inc))]
+   ;; A boolean option defaulting to nil
+      ["-h" "--help"]])
+
+(defn -main
+  "stuff"
+  [& args]
+  (prn (parse-opts args cli-options))
+  (shutdown-agents))
+
 (comment
 
-(let [region "us-east-1"
-      super-stack-name (str "squadron-" (get-random-hex-string 6))
-      keyname (str super-stack-name "-devops")
-      keyvault-bucket-name "promotably-keyvault"
-      network-stack-name (str super-stack-name "-network")
-      create-result (deploy-network region
-                                    keyname
-                                    keyvault-bucket-name
-                                    network-stack-name)
-      _ (wait-for-stack-complete region network-stack-name)
-      description (cf-describe-stack region network-stack-name)
-      outputs (:outputs description)
-      private-subnets (apply str (concat ["'"]
-                                         (interpose ","
-                                                    [(:privatesubneta outputs)
-                                                     (:privatesubnetb outputs)
-                                                     (:privatesubnetc outputs)
-                                                     ])
-                                         ["'"]))]
-  (def x outputs)
-  (def y (cf-create-api {:region region
-                         :stack-name (str super-stack-name "-api")
-                         :bastion-sg (:bastionsecuritygroup outputs)
-                         :nat-sg (:natsecuritygroup outputs)
-                         :priv-subnets (:privatesubneta outputs)
-                         :pub-subnets (:publicsubneta outputs)
-                         :github-user "cvillecsteele"
-                         :github-pw "githubfib0112358!"
-                         :github-ref "master"
-                         :keypair keyname
-                         :db-name "promotably"
-                         :db-username "promotably"
-                         :db-password "promotably"
-                         :db-class "db.m1.small"
-                         :db-storage 5
-                         :db-subnets private-subnets
-                         :cache-subnets private-subnets
-                         :vpcid (:vpcid outputs)
-                         :availability-zones (str region "a")})))
+  (build {:gh-user "cvillecsteele"
+          :gh-pw "githubfib0112358!"
+          :api-ref "master"
+          :db-instance-type "db.m1.small"
+          :db-name "promotably"
+          :db-username "promotably"
+          :db-password "promotably"
+          :keyvault-bucket "promotably-keyvault"
+          :squadron-ref "master"})
 
-(let [region "us-east-1"
-      super-stack-name (str "squadron-NO42GV")
-      keyname (str super-stack-name "-devops")
-      keyvault-bucket-name "promotably-keyvault"
-      outputs x
-      private-subnets (apply str (concat ["'"]
-                                         (interpose ","
-                                                    [(:privatesubneta outputs)
-                                                     (:privatesubnetb outputs)
-                                                     (:privatesubnetc outputs)
-                                                     ])
-                                         ["'"]))]
-  (def y (cf-create-api {:region region
-                         :stack-name (str super-stack-name "-api")
-                         :bastion-sg (:bastionsecuritygroup outputs)
-                         :nat-sg (:natsecuritygroup outputs)
-                         :priv-subnets (:privatesubneta outputs)
-                         :pub-subnets (:publicsubneta outputs)
-                         :github-user "cvillecsteele"
-                         :github-pw "githubfib0112358!"
-                         :github-ref "master"
-                         :keypair keyname
-                         :db-name "promotably"
-                         :db-username "promotably"
-                         :db-password "promotably"
-                         :db-class "db.m1.small"
-                         :db-storage 5
-                         :db-subnets private-subnets
-                         :cache-subnets private-subnets
-                         :vpcid (:vpcid outputs)
-                         :availability-zones (str region "a")})))
+  (cf-create-kommissar {:region "us-east-1"
+                        :stack-name "squadron-0VYW8A-kommissar"
+                        :bastion-sg "sg-7c2a3219"
+                        :pub-subnet-id "subnet-1834e541"
+                        :priv-subnet-id "subnet-1934e540"
+                        :github-user "cvillecsteele"
+                        :github-pw "githubfib0112358!"
+                        :github-ref "master"
+                        :keypair "squadron-0VYW8A-devops"
+                        :vpcid "vpc-0d58cc68"})
 
 )

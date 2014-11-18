@@ -301,12 +301,28 @@
 			        "owner"   : "root",
 			        "group"   : "root"
 			    },
+			    "/etc/cron.d/get_iam_config" : {
+			        "content" : "*/5 * * * * root /usr/local/bin/get_iam_config",
+			        "mode"    : "000644",
+			        "owner"   : "root",
+			        "group"   : "root"
+			    },
 			    "/usr/local/bin/get_cluster_config" : {
 			        "content" : { "Fn::Join" : ["", [
 				    "#! /bin/bash\n",
 				    "aws elasticache describe-cache-clusters ",
 				    "         --cache-cluster-id ", {"Ref" : "RedisCluster"},
 				    "         --show-cache-node-info --region ", { "Ref" : "AWS::Region" }, " > /tmp/cacheclusterconfig\n"
+				]]},
+			        "mode"    : "000755",
+			        "owner"   : "root",
+			        "group"   : "root"
+			    },
+			    "/usr/local/bin/get_iam_config" : {
+			        "content" : { "Fn::Join" : ["", [
+				    "#! /bin/bash\n",
+				    "export ROLE=$(curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/)\n",
+				    "curl http://169.254.169.254/latest/meta-data/iam/security-credentials/$ROLE > /tmp/iamconfig\n"
 				]]},
 			        "mode"    : "000755",
 			        "owner"   : "root",
@@ -338,6 +354,9 @@
 			"commands" : {
 			    "01-get-cluster-config" : {
 				"command" : "/usr/local/bin/get_cluster_config"
+			    },
+			    "02-get-iam-config" : {
+				"command" : "/usr/local/bin/get_iam_config"
 			    }
 			},
 			"services" : {
@@ -386,12 +405,18 @@
 				"    [[ -f /tmp/cacheclusterconfig ]] && break\n",
 				"sleep 1\n",
 				"done\n",
+				"export AWS_ACCESS_KEY_ID=$(grep AccessKeyId /tmp/iamconfig | cut -d\\\" -f 4)\n",
+				"export AWS_SECRET_KEY=$(grep SecretAccessKey /tmp/iamconfig | cut -d\\\" -f 4)\n",
 				"export KINESIS_A=", {"Ref": "KinesisStreamA"}, "\n",
 				"export KINESIS_B=", {"Ref": "KinesisStreamB"}, "\n",
 				"export REDIS_HOST=$(grep Address /tmp/cacheclusterconfig  | cut -d: -f2 | cut -d\\\" -f2)\n",
 				"export REDIS_PORT=$(grep Port /tmp/cacheclusterconfig | cut -d: -f 2 | cut -d, -f1 | cut -d ' ' -f 2)\n",
 				"export RDS_HOST=", {"Fn::GetAtt": [ "DBInstance", "Endpoint.Address"]}, "\n",
 				"export RDS_PORT=", {"Fn::GetAtt": [ "DBInstance", "Endpoint.Port"]}, "\n",
+				"export RDS_USER=", {"Ref": "DBUsername"}, "\n",
+				"export RDS_PW=", {"Ref": "DBPassword"}, "\n",
+				"export RDS_DB_NAME=", {"Ref": "DBName"}, "\n",
+				"export LEIN_ROOT=yes\n",
 				"cd /opt/promotably/api && /usr/local/bin/lein ring server-headless 2>&1 > /var/log/api.log &\n",
 				
 			        "# Signal the status of cfn-init\n",

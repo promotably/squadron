@@ -7,4 +7,5 @@
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [clj-logging-config "1.9.12"]
                  [org.clojure/data.json "0.2.5"]
+                 [org.clojure/tools.cli "0.3.1"]
                  [slingshot "0.12.1"]])

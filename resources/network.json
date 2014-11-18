@@ -638,12 +638,15 @@
           { "IpProtocol" : "tcp", "FromPort" : "22",  "ToPort" : "22",  "CidrIp" : { "Ref" : "SSHFrom" }} 
         ],
         "SecurityGroupEgress"  : [ 
-          { "IpProtocol" : "tcp", "FromPort" : "22",  "ToPort" : "22",  "CidrIp" : { "Fn::FindInMap" : [ "SubnetConfig", "PrivateSubnetA", "CIDR" ]}},
-          { "IpProtocol" : "tcp", "FromPort" : "22",  "ToPort" : "22",  "CidrIp" : { "Fn::FindInMap" : [ "SubnetConfig", "PrivateSubnetB", "CIDR" ]}},
-          { "IpProtocol" : "tcp", "FromPort" : "22",  "ToPort" : "22",  "CidrIp" : { "Fn::FindInMap" : [ "SubnetConfig", "PrivateSubnetC", "CIDR" ]}},
-          { "IpProtocol" : "tcp", "FromPort" : "80",  "ToPort" : "80",  "CidrIp" : "0.0.0.0/0" },
-          { "IpProtocol" : "tcp", "FromPort" : "443",  "ToPort" : "443",  "CidrIp" : "0.0.0.0/0" },
-          { "IpProtocol" : "tcp", "FromPort" : "11371",  "ToPort" : "11371",  "CidrIp" : "0.0.0.0/0" } 
+            { "IpProtocol" : "tcp", "FromPort" : "22",  "ToPort" : "22",  "CidrIp" : { "Fn::FindInMap" : [ "SubnetConfig", "PrivateSubnetA", "CIDR" ]}},
+            { "IpProtocol" : "tcp", "FromPort" : "22",  "ToPort" : "22",  "CidrIp" : { "Fn::FindInMap" : [ "SubnetConfig", "PrivateSubnetB", "CIDR" ]}},
+            { "IpProtocol" : "tcp", "FromPort" : "22",  "ToPort" : "22",  "CidrIp" : { "Fn::FindInMap" : [ "SubnetConfig", "PrivateSubnetC", "CIDR" ]}},
+            { "IpProtocol" : "tcp", "FromPort" : "22",  "ToPort" : "22",  "CidrIp" : { "Fn::FindInMap" : [ "SubnetConfig", "PublicSubnetA", "CIDR" ]}},
+            { "IpProtocol" : "tcp", "FromPort" : "22",  "ToPort" : "22",  "CidrIp" : { "Fn::FindInMap" : [ "SubnetConfig", "PublicSubnetB", "CIDR" ]}},
+            { "IpProtocol" : "tcp", "FromPort" : "22",  "ToPort" : "22",  "CidrIp" : { "Fn::FindInMap" : [ "SubnetConfig", "PublicSubnetC", "CIDR" ]}},
+            { "IpProtocol" : "tcp", "FromPort" : "80",  "ToPort" : "80",  "CidrIp" : "0.0.0.0/0" },
+            { "IpProtocol" : "tcp", "FromPort" : "443",  "ToPort" : "443",  "CidrIp" : "0.0.0.0/0" },
+            { "IpProtocol" : "tcp", "FromPort" : "11371",  "ToPort" : "11371",  "CidrIp" : "0.0.0.0/0" } 
         ]
       }
     }
