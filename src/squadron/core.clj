@@ -249,7 +249,7 @@
 (defn -main
   "stuff"
   [& args]
-  (alter-var-root base-command (constantly "aws "))
+  (alter-var-root #'base-command (constantly "aws "))
   (let [{:keys [options summary errors]} (parse-opts args cli-options)]
     (build {:gh-user (:github-user options)
             :gh-pw (:github-password options)
