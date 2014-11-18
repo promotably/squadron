@@ -194,17 +194,17 @@
                                                        (:privatesubnetc outputs)
                                                        ])
                                            ["'"]))]
-    (def x outputs)
-    (cf-create-kommissar {:region region
-                          :stack-name (str super-stack-name "-kommissar")
-                          :bastion-sg (:bastionsecuritygroup outputs)
-                          :pub-subnet-id (:publicsubneta outputs)
-                          :priv-subnet-id (:privatesubneta outputs)
-                          :github-user gh-user
-                          :github-pw gh-pw
-                          :github-ref squadron-ref
-                          :keypair keyname
-                          :vpcid (:vpcid outputs)})
+    ;; Not used, currently
+    (comment cf-create-kommissar {:region region
+                                  :stack-name (str super-stack-name "-kommissar")
+                                  :bastion-sg (:bastionsecuritygroup outputs)
+                                  :pub-subnet-id (:publicsubneta outputs)
+                                  :priv-subnet-id (:privatesubneta outputs)
+                                  :github-user gh-user
+                                  :github-pw gh-pw
+                                  :github-ref squadron-ref
+                                  :keypair keyname
+                                  :vpcid (:vpcid outputs)})
     (cf-create-api {:region region
                     :stack-name (str super-stack-name "-api")
                     :bastion-sg (:bastionsecuritygroup outputs)
@@ -249,6 +249,7 @@
 (defn -main
   "stuff"
   [& args]
+  (alter-var-root base-command (constantly "aws "))
   (let [{:keys [options summary errors]} (parse-opts args cli-options)]
     (build {:gh-user (:github-user options)
             :gh-pw (:github-password options)
