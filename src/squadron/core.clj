@@ -20,7 +20,7 @@
       (throw+ {:type ::create-key-error
                :result result
                :cmd cmd
-x               :key-name key-name}))))
+               :key-name key-name}))))
 
 (defn delete-key
   [region key-name]
