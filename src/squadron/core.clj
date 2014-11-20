@@ -20,7 +20,7 @@
       (throw+ {:type ::create-key-error
                :result result
                :cmd cmd
-               :key-name key-name}))))
+x               :key-name key-name}))))
 
 (defn delete-key
   [region key-name]
@@ -43,7 +43,7 @@
       (throw+ {:type ::keyvault-error
                :result result
                :cmd cmd
-               :key-name key-name}))))
+               :key-file-name key-file-name}))))
 
 (defn cf-create-network
   [{:keys [region
@@ -65,8 +65,7 @@
       (read-str (:out result) :key-fn (comp keyword clojure.string/lower-case))
       (throw+ {:type ::cf-create-network-error
                :result result
-               :cmd cmd
-               :key-name key-name}))))
+               :cmd cmd}))))
 
 (defn cf-create-api
   [{:keys [region stack-name] :as options}]
@@ -107,8 +106,7 @@
       (read-str (:out result) :key-fn (comp keyword clojure.string/lower-case))
       (throw+ {:type ::cf-create-api-error
                :result result
-               :cmd cmd
-               :key-name key-name}))))
+               :cmd cmd}))))
 
 (defn cf-create-kommissar
   [{:keys [region stack-name] :as options}]
@@ -140,8 +138,7 @@
       (read-str (:out result) :key-fn (comp keyword clojure.string/lower-case))
       (throw+ {:type ::cf-create-api-error
                :result result
-               :cmd cmd
-               :key-name key-name}))))
+               :cmd cmd}))))
 
 (defn cf-describe-stack
   [region stack-name]
@@ -163,8 +160,7 @@
         (assoc res :outputs outputs))
       (throw+ {:type ::cf-describe-stack-error
                :result result
-               :cmd cmd
-               :key-name key-name}))))
+               :cmd cmd}))))
 
 (defn deploy-network
   [region keyname keyvault-bucket-name network-stack-name]
