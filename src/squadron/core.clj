@@ -23,7 +23,6 @@
   [region key-name]
   (let [cmd (str base-command "ec2 delete-key-pair --output text --region "
                  region " --key-name " key-name)
-        _ (prn cmd)
         {:keys [exit out err] :as result} (apply sh (split cmd #" "))]
     (if (= 0 exit)
       nil
@@ -151,7 +150,6 @@
 
 (defn deploy-network
   [region keyname keyvault-bucket-name network-stack-name]
-  (delete-key region keyname)
   (let [res (create-key region keyname)]
     (when res
       (spit (str keyname ".pem") (second res))
