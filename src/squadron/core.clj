@@ -12,7 +12,7 @@
 
 (defn create-key
   [region key-name]
-  (let [cmd (str base-command "ec2 create-key-pair --output text --region "
+  (let [cmd (str base-command "ec2 create-key-pair --region "
                  region " --key-name " key-name)
         {:keys [exit out err] :as result} (apply sh (split cmd #" "))]
     (if (= 0 exit)
@@ -24,7 +24,7 @@
 
 (defn delete-key
   [region key-name]
-  (let [cmd (str base-command "ec2 delete-key-pair --output text --region "
+  (let [cmd (str base-command "ec2 delete-key-pair --region "
                  region " --key-name " key-name)
         {:keys [exit out err] :as result} (apply sh (split cmd #" "))]
     (if (= 0 exit)
@@ -36,7 +36,7 @@
 
 (defn upload-key-to-keyvault
   [key-file-name bucket-name region]
-  (let [cmd (str base-command "s3 --output text --region " region
+  (let [cmd (str base-command "s3 --region " region
                  " cp " key-file-name " s3://" bucket-name)
         {:keys [exit out err] :as result} (apply sh (split cmd #" "))]
     (if-not (= 0 exit)
