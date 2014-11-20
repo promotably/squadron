@@ -17,7 +17,10 @@
         {:keys [exit out err] :as result} (apply sh (split cmd #" "))]
     (if (= 0 exit)
       (split out #"\t")
-      (throw+ {:type ::create-error :result result}))))
+      (throw+ {:type ::create-key-error
+               :result result
+               :cmd cmd
+               :key-name key-name}))))
 
 (defn delete-key
   [region key-name]
@@ -37,7 +40,10 @@
                  " cp " key-file-name " s3://" bucket-name)
         {:keys [exit out err] :as result} (apply sh (split cmd #" "))]
     (if-not (= 0 exit)
-      (throw+ {:type ::keyvault-error :result result}))))
+      (throw+ {:type ::keyvault-error
+               :result result
+               :cmd cmd
+               :key-name key-name}))))
 
 (defn cf-create-network
   [{:keys [region
@@ -57,7 +63,10 @@
         {:keys [exit out err] :as result} (apply sh (split cmd #"\s+"))]
     (if (= 0 exit)
       (read-str (:out result) :key-fn (comp keyword clojure.string/lower-case))
-      (throw+ {:type ::cf-create-network-error :result result}))))
+      (throw+ {:type ::cf-create-network-error
+               :result result
+               :cmd cmd
+               :key-name key-name}))))
 
 (defn cf-create-api
   [{:keys [region stack-name] :as options}]
@@ -96,7 +105,10 @@
         {:keys [exit out err] :as result} (apply sh (split cmd #"\s+"))]
     (if (= 0 exit)
       (read-str (:out result) :key-fn (comp keyword clojure.string/lower-case))
-      (throw+ {:type ::cf-create-api-error :result result}))))
+      (throw+ {:type ::cf-create-api-error
+               :result result
+               :cmd cmd
+               :key-name key-name}))))
 
 (defn cf-create-kommissar
   [{:keys [region stack-name] :as options}]
@@ -126,7 +138,10 @@
         {:keys [exit out err] :as result} (apply sh (split cmd #"\s+"))]
     (if (= 0 exit)
       (read-str (:out result) :key-fn (comp keyword clojure.string/lower-case))
-      (throw+ {:type ::cf-create-api-error :result result}))))
+      (throw+ {:type ::cf-create-api-error
+               :result result
+               :cmd cmd
+               :key-name key-name}))))
 
 (defn cf-describe-stack
   [region stack-name]
@@ -146,7 +161,10 @@
                      {}
                      (-> res :outputs))]
         (assoc res :outputs outputs))
-      (throw+ {:type ::cf-describe-stack-error :result result}))))
+      (throw+ {:type ::cf-describe-stack-error
+               :result result
+               :cmd cmd
+               :key-name key-name}))))
 
 (defn deploy-network
   [region keyname keyvault-bucket-name network-stack-name]
