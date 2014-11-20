@@ -188,11 +188,13 @@
   (apply str (take how-long (repeatedly #(rand-nth "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ")))))
 
 (defn build
-  [{:keys [keyvault-bucket gh-user gh-pw
+  [{:keys [super-stack-name
+           keyvault-bucket gh-user gh-pw
            db-username db-name db-password db-instance-type
            squadron-ref api-ref] :as options}]
   (let [region "us-east-1"
-        super-stack-name (str "squadron-" (get-random-hex-string 6))
+        super-stack-name (or super-stack-name
+                             (str "squadron-" (get-random-hex-string 6)))
         keyname (str super-stack-name "-devops")
         keyvault-bucket-name keyvault-bucket
         network-stack-name (str super-stack-name "-network")
@@ -254,6 +256,7 @@
    [nil "--db-username DB-USERNAME" "Name of database user" :default "promotably"]
    [nil "--db-password DB-PW" "DB user's password" :default "promotably"]
    [nil "--db-instance-type DB-INSTANCE" "DB user's password" :default "db.m1.small"]
+   [nil "--super-stack-name SSN" "A name for the stacks on AWS" :default nil]
    ;; A non-idempotent option
    ["-v" nil "Verbosity level"
     :id :verbosity
@@ -267,14 +270,6 @@
   [& args]
   (alter-var-root #'base-command (constantly "aws "))
   (let [{:keys [options summary errors]} (parse-opts args cli-options)]
-    (build {:gh-user (:github-user options)
-            :gh-pw (:github-password options)
-            :api-ref (:api-ref options)
-            :db-instance-type (:db-instance-type options)
-            :db-name (:db-name options)
-            :db-username (:db-username options)
-            :db-password (:db-password options)
-            :keyvault-bucket (:keyvault-bucket options)
-            :squadron-ref (:squadron-ref options)})
+    (build options)
     (shutdown-agents)))
 
