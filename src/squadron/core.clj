@@ -248,7 +248,7 @@
                     :nat-sg (:natsecuritygroup outputs)
                     :priv-subnets (:privatesubneta outputs)
                     :pub-subnets (:publicsubneta outputs)
-                    :github-user gihub-user
+                    :github-user github-user
                     :github-pw github-pw
                     :github-ref api-ref
                     :keypair keyname
