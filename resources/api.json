@@ -4,6 +4,10 @@
     "Description" : "API cluster",
     
     "Parameters" : {
+	"TestResultsSNSTopicARN" : {
+	    "Description" : "SNS Topic ARN for reporting test results",
+	    "Type" : "String"
+	},
 	"GitHubRef" : {
 	    "Description" : "Github tag or branch name to fetch for API repo",
 	    "Type" : "String",
@@ -40,12 +44,12 @@
 	"Environment" : {
 	    "Description" : "Environment tag",
 	    "Type" : "String",
-	    "Default" : "test-env"
+	    "Default" : "integration"
 	},
 	"Role" : {
 	    "Description" : "Role tag",
 	    "Type" : "String",
-	    "Default" : "test-role"
+	    "Default" : "api"
 	},
 	"BastionSecurityGroup" : {
 	    "Description" : "Security Group associated with bastion host",
@@ -291,6 +295,7 @@
 			"packages" : {
 			    "yum" : {
 				"java-1.7.0-openjdk" : [],
+				"postgresql93" : [],
 				"git" : []
 			    }
 			},
@@ -303,6 +308,22 @@
 			    },
 			    "/etc/cron.d/get_iam_config" : {
 			        "content" : "*/5 * * * * root /usr/local/bin/get_iam_config",
+			        "mode"    : "000644",
+			        "owner"   : "root",
+			        "group"   : "root"
+			    },
+			    "/tmp/postgres_setup.sql" : {
+				"content" : { 
+				    "Fn::Join" : ["", 
+						  [ "CREATE USER ", {"Ref": "DBUsername"}, " WITH PASSWORD '", {"Ref": "DBPassword"}, "';\n",
+						    "CREATE DATABASE ", {"Ref": "DBName"}, ";\n",
+						    "GRANT ALL PRIVILEGES ON DATABASE ", {"Ref": "DBName"}, " to ", {"Ref": "DBUsername"}, ";\n",
+						    "\\c ", {"Ref": "DBName"}, "\n",
+						    "CREATE EXTENSION \"uuid-ossp\";\n",
+						    "CREATE TABLE IF NOT EXISTS migrations(version varchar(255));\n",
+						    "GRANT ALL PRIVILEGES ON TABLE migrations TO ", {"Ref": "DBUsername"}, ";\n"]
+						 ]
+				},
 			        "mode"    : "000644",
 			        "owner"   : "root",
 			        "group"   : "root"
@@ -357,6 +378,20 @@
 			    },
 			    "02-get-iam-config" : {
 				"command" : "/usr/local/bin/get_iam_config"
+			    },
+			    "03-postgres-setup" : {
+				"command" : { 
+				    "Fn::Join": [
+					"",
+					[
+					    "export PGPASSWORD='", {"Ref": "DBPassword"}, "' && psql -f /tmp/postgres_setup.sql -h ", 
+					    {"Fn::GetAtt": [ "DBInstance", "Endpoint.Address"]},
+					    " -p ",
+					    {"Fn::GetAtt": [ "DBInstance", "Endpoint.Port"]},
+					    " -U ", {"Ref": "DBUsername"}, "\n"
+					]
+				    ]
+				}
 			    }
 			},
 			"services" : {
@@ -416,14 +451,10 @@
 				"export RDS_USER=", {"Ref": "DBUsername"}, "\n",
 				"export RDS_PW=", {"Ref": "DBPassword"}, "\n",
 				"export RDS_DB_NAME=", {"Ref": "DBName"}, "\n",
+				"export TEST_RESULTS_SNS_TOPIC_ARN=", {"Ref": "TestResultsSNSTopicARN"}, "\n",
+				"export ENV=", {"Ref": "Environment"}, "\n",
 				"export LEIN_ROOT=yes\n",
-				"cd /opt/promotably/api && /usr/local/bin/lein ring server-headless 2>&1 > /var/log/api.log &\n",
-				
-			        "# Signal the status of cfn-init\n",
-			        "/opt/aws/bin/cfn-signal -e $? ",
-			        "         --stack ", { "Ref" : "AWS::StackName" },
-			        "         --resource APILaunchConfig ",
-			        "         --region ", { "Ref" : "AWS::Region" }, "\n"
+				"cd /opt/promotably/api && /usr/local/bin/lein ring server-headless 2>&1 > /var/log/api.log &\n"
 			    ]
 			]
 		    }

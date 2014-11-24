@@ -10,9 +10,27 @@
 
 (def base-command "aws --profile promotably-ops ")
 
+(defn list-topics
+  [region]
+  (let [cmd (str base-command "sns list-topics --output json --region " region)
+        {:keys [exit out err] :as result} (apply sh (split cmd #"\s+"))]
+    (if (= 0 exit)
+      (read-str (:out result) :key-fn (comp keyword clojure.string/lower-case))
+      (throw+ {:type ::list-topics-error
+               :result result
+               :cmd cmd}))))
+
+(defn find-topic-arn
+  [topic-name region]
+  (->> (list-topics region)
+       :topics
+       (map :topicarn)
+       (filter #(re-find (re-pattern topic-name) %))
+       first))
+
 (defn create-key
   [region key-name]
-  (let [cmd (str base-command "ec2 create-key-pair --region "
+  (let [cmd (str base-command "ec2 create-key-pair --output text --region "
                  region " --key-name " key-name)
         {:keys [exit out err] :as result} (apply sh (split cmd #" "))]
     (if (= 0 exit)
@@ -24,7 +42,7 @@
 
 (defn delete-key
   [region key-name]
-  (let [cmd (str base-command "ec2 delete-key-pair --region "
+  (let [cmd (str base-command "ec2 delete-key-pair --output text --region "
                  region " --key-name " key-name)
         {:keys [exit out err] :as result} (apply sh (split cmd #" "))]
     (if (= 0 exit)
@@ -85,6 +103,7 @@
                   [:db-class "DBClass"]
                   [:db-storage "DBAllocatedStorage"]
                   [:db-subnets "DBSubnetIDs"]
+                  [:test-results-topic-arn "TestResultsSNSTopicARN"]
                   [:cache-subnets "CacheSubnetIDs"]]
         cmd (str base-command " "
                  "cloudformation create-stack --output json "
@@ -100,7 +119,6 @@
                                        (second %)
                                        ((first %) options))
                               mappings))))
-        _ (prn cmd)
         {:keys [exit out err] :as result} (apply sh (split cmd #"\s+"))]
     (if (= 0 exit)
       (read-str (:out result) :key-fn (comp keyword clojure.string/lower-case))
@@ -132,7 +150,6 @@
                                        (second %)
                                        ((first %) options))
                               mappings))))
-        _ (prn cmd)
         {:keys [exit out err] :as result} (apply sh (split cmd #"\s+"))]
     (if (= 0 exit)
       (read-str (:out result) :key-fn (comp keyword clojure.string/lower-case))
@@ -189,12 +206,14 @@
 
 (defn build
   [{:keys [super-stack-name
+           test-results-topic
            keyvault-bucket gh-user gh-pw
            db-username db-name db-password db-instance-type
            squadron-ref api-ref] :as options}]
   (let [region "us-east-1"
         super-stack-name (or super-stack-name
                              (str "squadron-" (get-random-hex-string 6)))
+        topic-arn (find-topic-arn test-results-topic region)
         keyname (str super-stack-name "-devops")
         keyvault-bucket-name keyvault-bucket
         network-stack-name (str super-stack-name "-network")
@@ -241,10 +260,13 @@
                     :db-subnets private-subnets
                     :cache-subnets private-subnets
                     :vpcid (:vpcid outputs)
-                    :availability-zones (str region "a")})))
+                    :availability-zones (str region "a")
+                    :test-results-topic-arn topic-arn})))
 
 (def cli-options
-  [[nil "--github-user USER" "Github username"]
+  [[nil "--test-results-topic TOPIC" "Topic for test results notification."
+    :default "api-integration-tests"]
+   [nil "--github-user USER" "Github username"]
    [nil "--github-password PW" "Github password"]
    [nil "--api-ref REF" "Git reference (tag, branch, commit id) for API repo."
     :default "master"]
@@ -272,4 +294,3 @@
   (let [{:keys [options summary errors]} (parse-opts args cli-options)]
     (build options)
     (shutdown-agents)))
-
