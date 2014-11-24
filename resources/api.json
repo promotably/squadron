@@ -492,6 +492,17 @@
     
     "Outputs" : {
 
+
+	"DBHost" : {
+	    "Description" : "RDS Host",
+	    "Value" : {"Fn::GetAtt": [ "DBInstance", "Endpoint.Address"]}
+	},
+
+	"DBPort" : {
+	    "Description" : "RDS Port",
+	    "Value" : {"Fn::GetAtt": [ "DBInstance", "Endpoint.Port"]}
+	},
+
 	"DBInstance" : {
 	    "Description" : "Main Postgres Database",
 	    "Value" : { "Ref" : "DBInstance" }

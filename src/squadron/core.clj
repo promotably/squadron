@@ -207,7 +207,7 @@
 (defn build
   [{:keys [super-stack-name
            test-results-topic
-           keyvault-bucket gh-user gh-pw
+           keyvault-bucket github-user github-pw
            db-username db-name db-password db-instance-type
            squadron-ref api-ref] :as options}]
   (let [region "us-east-1"
@@ -237,8 +237,8 @@
                                   :bastion-sg (:bastionsecuritygroup outputs)
                                   :pub-subnet-id (:publicsubneta outputs)
                                   :priv-subnet-id (:privatesubneta outputs)
-                                  :github-user gh-user
-                                  :github-pw gh-pw
+                                  :github-user github-user
+                                  :github-pw github-pw
                                   :github-ref squadron-ref
                                   :keypair keyname
                                   :vpcid (:vpcid outputs)})
@@ -248,8 +248,8 @@
                     :nat-sg (:natsecuritygroup outputs)
                     :priv-subnets (:privatesubneta outputs)
                     :pub-subnets (:publicsubneta outputs)
-                    :github-user gh-user
-                    :github-pw gh-pw
+                    :github-user gihub-user
+                    :github-pw github-pw
                     :github-ref api-ref
                     :keypair keyname
                     :db-name db-name
