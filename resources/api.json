@@ -9,11 +9,6 @@
 	    "Type" : "String",
 	    "Default" : "api-integration-tests"
 	},
-	"GitHubRef" : {
-	    "Description" : "Github tag or branch name to fetch for API repo",
-	    "Type" : "String",
-	    "Default" : "master"
-	},
 	"DBSubnetIDs" : {
 	    "Description" : "List of VPC subnets on which DB instance may reside.",
 	    "Type" : "List<AWS::EC2::Subnet::Id>"
@@ -21,6 +16,11 @@
 	"CacheSubnetIDs" : {
 	    "Description" : "List of VPC subnets on which cache may reside.",
 	    "Type" : "List<AWS::EC2::Subnet::Id>"
+	},
+	"GitHubRef" : {
+	    "Description" : "Github tag or branch name to fetch for API repo",
+	    "Type" : "String",
+	    "Default" : "master"
 	},
 	"GitHubUser" : {
 	    "Description" : "Github username",

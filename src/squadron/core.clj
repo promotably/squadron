@@ -191,9 +191,13 @@
   [{:keys [super-stack-name
            stage
            test-results-topic
-           keyvault-bucket github-user github-pw
+           keyvault-bucket github-user github-password
            db-username db-name db-password db-instance-type
            squadron-ref api-ref] :as options}]
+  (if-not github-password
+    (throw+ {:type ::missing-parameter :parameter :github-password}))
+  (if-not github-user
+    (throw+ {:type ::missing-parameter :parameter :github-user}))
   (let [region "us-east-1"
         super-stack-name (or super-stack-name
                              (str "squadron-" (get-random-hex-string 6)))
@@ -221,7 +225,7 @@
                                   :pub-subnet-id (:publicsubneta outputs)
                                   :priv-subnet-id (:privatesubneta outputs)
                                   :github-user github-user
-                                  :github-pw github-pw
+                                  :github-pw github-password
                                   :github-ref squadron-ref
                                   :keypair keyname
                                   :vpcid (:vpcid outputs)})
@@ -232,7 +236,7 @@
                     :priv-subnets (:privatesubneta outputs)
                     :pub-subnets (:publicsubneta outputs)
                     :github-user github-user
-                    :github-pw github-pw
+                    :github-pw github-password
                     :github-ref api-ref
                     :keypair keyname
                     :db-name db-name
