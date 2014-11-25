@@ -280,6 +280,15 @@
 	    "Properties" : {
 		"Subnets": { "Ref": "PublicSubnets" },
 		"SecurityGroups": [{ "Ref": "LbSecurityGroup" }],
+		"Policies" : [{
+		    "PolicyName" : "EnableProxyProtocol",
+		    "PolicyType" : "ProxyProtocolPolicyType",
+		    "Attributes" : [{
+			"Name"  : "ProxyProtocol",
+			"Value" : "true"
+		    }],
+		    "InstancePorts" : ["80"]
+		}],
 		"Listeners" : [ {
 		    "LoadBalancerPort" : "80",
 		    "InstancePort" : "80",
@@ -297,10 +306,45 @@
 			    "yum" : {
 				"java-1.7.0-openjdk" : [],
 				"postgresql93" : [],
-				"git" : []
+				"git" : [],
+				"nginx" : []
 			    }
 			},
 			"files" : {
+			    "/tmp/nginx/default.conf" : {
+				"content" : { "Fn::Join" : ["", [
+
+				    "log_format elb_log '$proxy_protocol_addr - $remote_user [$time_local] ' '\"$request\" $status $body_bytes_sent \"$http_referer\" ' '\"$http_user_agent\"';\n",
+				    "\n\n",
+
+				    "upstream api {\n",
+				    "  server 127.0.0.1:3000 fail_timeout=0;\n",
+				    "}\n\n",
+
+				    "server {\n",
+				    "  listen 80 proxy_protocol;\n",
+				    "  listen [::]:80 default proxy_protocol ipv6only=on;\n",
+				    "  charset utf-8;\n",
+				    "  access_log /var/log/nginx/elb-access.log elb_log;\n",
+				    "  # set_real_ip_from 172.31.0.0/20;\n",
+				    "  # real_ip_header proxy_protocol;\n",
+
+				    "  location / {\n",
+				    "    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n",
+				    "    proxy_set_header Host $http_host;\n",
+				    "    proxy_redirect off;\n\n",
+
+				    "    if (!-f $request_filename) {\n",
+				    "      proxy_pass http://api;\n",
+				    "      break;\n",
+				    "    }\n",
+				    "  }\n",
+				    "}\n"
+				]]},
+				"mode"   : "000644",
+				"owner"  : "root",
+				"group"  : "root"
+			    },
 			    "/etc/cron.d/get_cluster_config" : {
 			        "content" : "*/5 * * * * root /usr/local/bin/get_cluster_config",
 			        "mode"    : "000644",
@@ -397,6 +441,12 @@
 			},
 			"services" : {
 			    "sysvinit" : {
+				"nginx" : {
+				    "enabled" : "true",
+				    "ensureRunning" : "true",
+				    "files" : ["/etc/nginx/conf.d/default.conf"],
+				    "sources" : ["/var/www/html"]
+				},
 				"cfn-hup" : { "enabled" : "true", "ensureRunning" : "true",
 					      "files" : ["/etc/cfn/cfn-hup.conf", "/etc/cfn/hooks.d/cfn-auto-reloader.conf"]}
 			    }
@@ -431,6 +481,10 @@
 				"mkdir -p /opt/promotably\n",
 				"tar -xf /tmp/api.tar -C /opt/promotably\n",
 				"ln -s /opt/promotably/* /opt/promotably/api\n",
+
+				"# Nginx setup\n",
+				"cp /tmp/nginx/default.conf /etc/nginx/conf.d/default.conf\n",
+				"service nginx restart\n",
 
 				"# Install lein\n",
 				"curl https://raw.githubusercontent.com/technomancy/leiningen/stable/bin/lein > /usr/local/bin/lein\n",
