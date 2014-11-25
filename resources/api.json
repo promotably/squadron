@@ -4,9 +4,10 @@
     "Description" : "API cluster",
     
     "Parameters" : {
-	"TestResultsSNSTopicARN" : {
-	    "Description" : "SNS Topic ARN for reporting test results",
-	    "Type" : "String"
+	"TestResultsSNSTopicName" : {
+	    "Description" : "SNS Topic name for reporting test results",
+	    "Type" : "String",
+	    "Default" : "api-integration-tests"
 	},
 	"GitHubRef" : {
 	    "Description" : "Github tag or branch name to fetch for API repo",
@@ -451,10 +452,10 @@
 				"export RDS_USER=", {"Ref": "DBUsername"}, "\n",
 				"export RDS_PW=", {"Ref": "DBPassword"}, "\n",
 				"export RDS_DB_NAME=", {"Ref": "DBName"}, "\n",
-				"export TEST_RESULTS_SNS_TOPIC_ARN=", {"Ref": "TestResultsSNSTopicARN"}, "\n",
+				"export TEST_RESULTS_SNS_TOPIC_NAME=", {"Ref": "TestResultsSNSTopicName"}, "\n",
 				"export ENV=", {"Ref": "Environment"}, "\n",
 				"export LEIN_ROOT=yes\n",
-				"cd /opt/promotably/api && /usr/local/bin/lein ring server-headless 2>&1 > /var/log/api.log &\n"
+				"cd /opt/promotably/api && /usr/local/bin/lein run 2>&1 > /var/log/api.log &\n"
 			    ]
 			]
 		    }
