@@ -1,10 +1,10 @@
-(defproject squadron "0.1.0-SNAPSHOT"
+(defproject squadron "placeholder"
   :description "FIXME: write description"
   :url "http://example.com/FIXME"
-  :license {:name "Eclipse Public License"
-            :url "http://www.eclipse.org/legal/epl-v10.html"}
+  ;; :license {:name "Eclipse Public License"
+  ;; :url "http://www.eclipse.org/legal/epl-v10.html"}
   :main squadron.core
-  :plugins [[org.clojars.cvillecsteele/lein-git-version "1.0.1"]
+  :plugins [[org.clojars.cvillecsteele/lein-git-version "1.0.2"]
             [cider/cider-nrepl "0.8.0"]]
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [clj-logging-config "1.9.12"]
