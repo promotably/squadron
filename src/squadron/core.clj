@@ -86,6 +86,7 @@
                   [:db-storage "DBAllocatedStorage"]
                   [:db-subnets "DBSubnetIDs"]
                   [:test-results-topic-name "TestResultsSNSTopicName"]
+                  [:stage "Environment"]
                   [:cache-subnets "CacheSubnetIDs"]]
         cmd (str base-command " "
                  "cloudformation create-stack --output json "
@@ -188,6 +189,7 @@
 
 (defn build
   [{:keys [super-stack-name
+           stage
            test-results-topic
            keyvault-bucket github-user github-pw
            db-username db-name db-password db-instance-type
@@ -242,7 +244,8 @@
                     :cache-subnets private-subnets
                     :vpcid (:vpcid outputs)
                     :availability-zones (str region "a")
-                    :test-results-topic-name test-results-topic})))
+                    :test-results-topic-name test-results-topic
+                    :stage stage})))
 
 (def cli-options
   [[nil "--test-results-topic TOPIC" "Topic for test results notification."
@@ -260,6 +263,7 @@
    [nil "--db-password DB-PW" "DB user's password" :default "promotably"]
    [nil "--db-instance-type DB-INSTANCE" "DB user's password" :default "db.m1.small"]
    [nil "--super-stack-name SSN" "A name for the stacks on AWS" :default nil]
+   [nil "--stage ENV" "A name for stage/environment for API" :default "integration"]
    ;; A non-idempotent option
    ["-v" nil "Verbosity level"
     :id :verbosity
