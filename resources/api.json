@@ -516,6 +516,7 @@
 				"export TEST_RESULTS_SNS_TOPIC_NAME=", {"Ref": "TestResultsSNSTopicName"}, "\n",
 				"export ENV=", {"Ref": "Environment"}, "\n",
 				"export LEIN_ROOT=yes\n",
+				"export STACKNAME=", { "Ref": "AWS::StackName" }, "\n",
 				"cd /opt/promotably/api && /usr/local/bin/lein run 2>&1 > /var/log/api.log &\n"
 			    ]
 			]
