@@ -95,6 +95,10 @@
 			"Effect" : "Allow",
 			"Action" : "cloudwatch:*",
 			"Resource" : "*"
+		    }, {
+			"Effect" : "Allow",
+			"Action" : "dynamodb:*",
+			"Resource" : "*"
 		    } ]
 		},
 		"Roles" : [ { "Ref": "RootRole" } ]
