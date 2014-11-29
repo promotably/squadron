@@ -502,8 +502,6 @@
 				"    [[ -f /tmp/cacheclusterconfig ]] && break\n",
 				"sleep 1\n",
 				"done\n",
-				"# export AWS_ACCESS_KEY_ID=$(grep AccessKeyId /tmp/iamconfig | cut -d\\\" -f 4)\n",
-				"# export AWS_SECRET_KEY=$(grep SecretAccessKey /tmp/iamconfig | cut -d\\\" -f 4)\n",
 				"export KINESIS_A=", {"Ref": "KinesisStreamA"}, "\n",
 				"export KINESIS_B=", {"Ref": "KinesisStreamB"}, "\n",
 				"export REDIS_HOST=$(grep Address /tmp/cacheclusterconfig  | cut -d: -f2 | cut -d\\\" -f2)\n",
@@ -555,6 +553,15 @@
     
     "Outputs" : {
 
+	"KinesisStreamA" : {
+	    "Description" : "Kinesis Stream A",
+	    "Value" : { "Ref" : "KinesisStreamA" }
+	},
+
+	"KinesisStreamB" : {
+	    "Description" : "Kinesis Stream B",
+	    "Value" : { "Ref" : "KinesisStreamB" }
+	},
 
 	"DBHost" : {
 	    "Description" : "RDS Host",

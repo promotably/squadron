@@ -109,20 +109,23 @@
                :result result
                :cmd cmd}))))
 
-(defn cf-create-kommissar
+(defn cf-create-pagify
   [{:keys [region stack-name] :as options}]
   (let [mappings [[:pub-subnet-id "PublicSubnetId"]
                   [:priv-subnet-id "PrivateSubnetId"]
                   [:vpcid "VpcId"]
+                  [:kinesis-stream-a "KinesisStreamA"]
+                  [:kinesis-stream-b "KinesisStreamB"]
                   [:github-user "GitHubUser"]
                   [:github-pw "GitHubPW"]
                   [:github-ref "GitHubRef"]
                   [:bastion-sg "BastionSecurityGroup"]
+                  [:stage "Environment"]
                   [:keypair "KeyPair"]]
         cmd (str base-command " "
                  "cloudformation create-stack --output json "
                  "--region " region  " "
-                 "--template-body file://resources/kommissar.json "
+                 "--template-body file://resources/pagify.json "
                  "--stack-name " stack-name " "
                  "--capabilities CAPABILITY_IAM "
                  "--parameters "
@@ -193,7 +196,7 @@
            test-results-topic
            keyvault-bucket github-user github-password
            db-username db-name db-password db-instance-type
-           squadron-ref api-ref] :as options}]
+           pagify-ref api-ref] :as options}]
   (if-not github-password
     (throw+ {:type ::missing-parameter :parameter :github-password}))
   (if-not github-user
@@ -217,20 +220,10 @@
                                                        (:privatesubnetb outputs)
                                                        (:privatesubnetc outputs)
                                                        ])
-                                           ["'"]))]
-    ;; Not used, currently
-    (comment cf-create-kommissar {:region region
-                                  :stack-name (str super-stack-name "-kommissar")
-                                  :bastion-sg (:bastionsecuritygroup outputs)
-                                  :pub-subnet-id (:publicsubneta outputs)
-                                  :priv-subnet-id (:privatesubneta outputs)
-                                  :github-user github-user
-                                  :github-pw github-password
-                                  :github-ref squadron-ref
-                                  :keypair keyname
-                                  :vpcid (:vpcid outputs)})
+                                           ["'"]))
+        api-stack-name (str super-stack-name "-api")]
     (cf-create-api {:region region
-                    :stack-name (str super-stack-name "-api")
+                    :stack-name api-stack-name
                     :bastion-sg (:bastionsecuritygroup outputs)
                     :nat-sg (:natsecuritygroup outputs)
                     :priv-subnets (:privatesubneta outputs)
@@ -249,7 +242,23 @@
                     :vpcid (:vpcid outputs)
                     :availability-zones (str region "a")
                     :test-results-topic-name test-results-topic
-                    :stage stage})))
+                    :stage stage})
+    (wait-for-stack-complete region api-stack-name)
+    (let [description (cf-describe-stack region api-stack-name)
+          api-outputs (:outputs description)]
+      (cf-create-pagify {:region region
+                         :stack-name (str super-stack-name "-pagify")
+                         :bastion-sg (:bastionsecuritygroup outputs)
+                         :pub-subnet-id (:publicsubneta outputs)
+                         :priv-subnet-id (:privatesubneta outputs)
+                         :github-user github-user
+                         :github-pw github-password
+                         :github-ref pagify-ref
+                         :keypair keyname
+                         :kinesis-stream-a (:kinesisstreama api-outputs)
+                         :kinesis-stream-b (:kinesisstreamb api-outputs)
+                         :vpcid (:vpcid outputs)
+                         :stage stage}))))
 
 (def cli-options
   [[nil "--test-results-topic TOPIC" "Topic for test results notification."
@@ -260,6 +269,8 @@
     :default "master"]
    [nil "--squadron-ref REF" "Git reference (tag, branch, commit id) for squadron repo."
     :default "master"]
+   [nil "--pagify-ref REF" "Git reference (tag, branch, commit id) for pagify repo."
+    :default "master"]
    [nil "--keyvault-bucket BUCKET-NAME" "Existing S3 bucket where keys should be stored."
     :default "promotably-keyvault"]
    [nil "--db-name DB-NAME" "Name of database" :default "promotably"]
@@ -267,7 +278,8 @@
    [nil "--db-password DB-PW" "DB user's password" :default "promotably"]
    [nil "--db-instance-type DB-INSTANCE" "DB user's password" :default "db.m1.small"]
    [nil "--super-stack-name SSN" "A name for the stacks on AWS" :default nil]
-   [nil "--stage ENV" "A name for stage/environment for API" :default "integration"]
+   [nil "--stage ENV" "A name for stage/environment for the squadron"
+    :default "integration"]
    ;; A non-idempotent option
    ["-v" nil "Verbosity level"
     :id :verbosity
