@@ -109,6 +109,38 @@
                :result result
                :cmd cmd}))))
 
+(defn cf-create-zk
+  [{:keys [region stack-name] :as options}]
+  (let [mappings [[:priv-subnets "PrivateSubnets"]
+                  [:pub-subnets "PublicSubnets"]
+                  [:vpcid "VpcId"]
+                  [:availability-zones "AvailabilityZones"]
+                  [:bastion-sg "BastionSecurityGroup"]
+                  [:keypair "KeyName"]
+                  [:zk-backup-bucket "ExhibitorS3Bucket"]
+                  [:region "ExhibitorS3Region"]
+                  [:stack-name "ExhibitorS3Prefix"]]
+        cmd (str base-command " "
+                 "cloudformation create-stack --output json "
+                 "--region " region  " "
+                 "--template-body file://resources/zk.json "
+                 "--stack-name " stack-name " "
+                 "--capabilities CAPABILITY_IAM "
+                 "--parameters "
+                 (apply str (interpose
+                             " "
+                             (map
+                              #(format "ParameterKey=%s,ParameterValue=%s"
+                                       (second %)
+                                       ((first %) options))
+                              mappings))))
+        {:keys [exit out err] :as result} (apply sh (split cmd #"\s+"))]
+    (if (= 0 exit)
+      (read-str (:out result) :key-fn (comp keyword clojure.string/lower-case))
+      (throw+ {:type ::cf-create-api-error
+               :result result
+               :cmd cmd}))))
+
 (defn cf-create-pagify
   [{:keys [region stack-name] :as options}]
   (let [mappings [[:pub-subnet-id "PublicSubnetId"]
@@ -139,7 +171,7 @@
         {:keys [exit out err] :as result} (apply sh (split cmd #"\s+"))]
     (if (= 0 exit)
       (read-str (:out result) :key-fn (comp keyword clojure.string/lower-case))
-      (throw+ {:type ::cf-create-api-error
+      (throw+ {:type ::cf-create-pagify-error
                :result result
                :cmd cmd}))))
 
@@ -221,7 +253,8 @@
                                                        (:privatesubnetc outputs)
                                                        ])
                                            ["'"]))
-        api-stack-name (str super-stack-name "-api")]
+        api-stack-name (str super-stack-name "-api")
+        zk-stack-name (str super-stack-name "-zk")]
     (cf-create-api {:region region
                     :stack-name api-stack-name
                     :bastion-sg (:bastionsecuritygroup outputs)
@@ -243,6 +276,15 @@
                     :availability-zones (str region "a")
                     :test-results-topic-name test-results-topic
                     :stage stage})
+    (cf-create-zk {:region region
+                   :stack-name zk-stack-name
+                   :zk-backup-bucket (:zk-backup-bucket options)
+                   :bastion-sg (:bastionsecuritygroup outputs)
+                   :priv-subnets (:privatesubneta outputs)
+                   :pub-subnets (:publicsubneta outputs)
+                   :keypair keyname
+                   :vpcid (:vpcid outputs)
+                   :availability-zones (str region "a")})
     (wait-for-stack-complete region api-stack-name)
     (let [description (cf-describe-stack region api-stack-name)
           api-outputs (:outputs description)]
@@ -278,6 +320,8 @@
    [nil "--db-password DB-PW" "DB user's password" :default "promotably"]
    [nil "--db-instance-type DB-INSTANCE" "DB user's password" :default "db.m1.small"]
    [nil "--super-stack-name SSN" "A name for the stacks on AWS" :default nil]
+   [nil "--zk-backup-bucket BUCKETNAME" "A name for zk backup bucket"
+    :default "promotably-zk-backups"]
    [nil "--stage ENV" "A name for stage/environment for the squadron"
     :default "integration"]
    ;; A non-idempotent option
