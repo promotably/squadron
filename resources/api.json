@@ -4,6 +4,11 @@
     "Description" : "API cluster",
     
     "Parameters" : {
+	"DeployBucket" : {
+	    "Description" : "S3 Bucket where CodeDeploy revisions are stored",
+	    "Type" : "String",
+	    "Default" : "PromotablyCodeDeploy"
+	},
 	"TestResultsSNSTopicName" : {
 	    "Description" : "SNS Topic name for reporting test results",
 	    "Type" : "String",
@@ -183,6 +188,50 @@
 	},
 
 
+	"DeployServiceRole": {
+	    "Type" : "AWS::IAM::Role",
+	    "Properties" : {
+		"AssumeRolePolicyDocument": {
+		    "Version" : "2012-10-17",
+		    "Statement" : [ {
+			"Effect" : "Allow",
+			"Principal" : {
+			    "Service" : [ 
+				"codedeploy.us-east-1.amazonaws.com",
+				"codedeploy.us-west-2.amazonaws.com"
+			    ]
+			},
+			"Action" : [ "sts:AssumeRole" ]
+		    } ]
+		}
+	    }
+	},
+
+	"DeployRolePolicies" : {
+	    "Type" : "AWS::IAM::Policy",
+	    "Properties" : {
+		"PolicyName" : "root",
+		"PolicyDocument" : {
+		    "Version" : "2012-10-17",
+		    "Statement" : [ {
+			"Action": [
+			    "autoscaling:PutLifecycleHook",
+			    "autoscaling:DeleteLifecycleHook",
+			    "autoscaling:RecordLifecycleActionHeartbeat",
+			    "autoscaling:CompleteLifecycleAction",
+			    "autoscaling:DescribeAutoscalingGroups",
+			    "autoscaling:PutInstanceInStandby",
+			    "autoscaling:PutInstanceInService",
+			    "ec2:Describe*"
+			],
+			"Effect": "Allow",
+			"Resource": "*"
+		    } ]
+		},
+		"Roles" : [ { "Ref": "DeployServiceRole" } ]
+	    }
+	},
+
 	"RootRole": {
 	    "Type" : "AWS::IAM::Role",
 	    "Properties" : {
@@ -221,6 +270,23 @@
 			    "sns:Publish"
 			],
 			"Resource": "*"
+		    }, {
+			"Effect": "Allow",
+			"Action": [
+			    "s3:Get*",
+			    "s3:List*"
+			],
+			"Resource": [
+			    { "Fn::Join" : [ "", 
+					     [ "arn:aws:s3:::", 
+					       { "Ref" : "DeployBucket" }, 
+					       "/*" 
+					     ] 
+					   ]
+			    },
+			    "arn:aws:s3:::aws-codedeploy-us-east-1/*",
+			    "arn:aws:s3:::aws-codedeploy-us-west-2/*"
+			]
 		    }, {
 			"Effect" : "Allow",
 			"Action" : "cloudwatch:*",
@@ -299,7 +365,8 @@
 		"Listeners" : [ {
 		    "LoadBalancerPort" : "80",
 		    "InstancePort" : "80",
-		    "Protocol" : "HTTP"
+		    "Protocol" : "TCP",
+		    "InstanceProtocol" : "TCP"
 		} ]
 	    }
 	},
@@ -448,14 +515,20 @@
 			},
 			"services" : {
 			    "sysvinit" : {
+				"codedeploy-agent": {
+				    "enabled": "true",
+				    "ensureRunning": "true"
+				},
 				"nginx" : {
 				    "enabled" : "true",
 				    "ensureRunning" : "true",
 				    "files" : ["/etc/nginx/conf.d/default.conf"],
 				    "sources" : ["/var/www/html"]
 				},
-				"cfn-hup" : { "enabled" : "true", "ensureRunning" : "true",
-					      "files" : ["/etc/cfn/cfn-hup.conf", "/etc/cfn/hooks.d/cfn-auto-reloader.conf"]}
+				"cfn-hup" : { "enabled" : "true", 
+					      "ensureRunning" : "true",
+					      "files" : ["/etc/cfn/cfn-hup.conf", 
+							 "/etc/cfn/hooks.d/cfn-auto-reloader.conf"]}
 			    }
 			}
 		    }
@@ -475,11 +548,33 @@
 				"#!/bin/bash -ex\n",
 				"yum update -y\n",
 				"yum update -y aws-cfn-bootstrap\n",
+				"yum update -y aws-cli\n",
 				"yum update -y curl\n",
 
-			        "# Setup tasks\n",
-				"/opt/aws/bin/cfn-init -s ", { "Ref" : "AWS::StackId" }, " -r APILaunchConfig ",
+				"# Helper function.\n",
+				"function error_exit\n",
+				"{\n",
+				"  /opt/aws/bin/cfn-signal -e 1 -r \"$1\"",
+				"         --stack ", { "Ref" : "AWS::StackName" },
+				"         --resource APILaunchConfig ",
 				"         --region ", { "Ref" : "AWS::Region" }, "\n",
+				"  exit 1\n",
+				"}\n",
+
+				"# Install the AWS CodeDeploy Agent.\n",
+				"cd /home/ec2-user/\n",
+				"aws s3 cp 's3://aws-codedeploy-us-east-1/latest/codedeploy-agent.noarch.rpm' . || error_exit 'Failed to download AWS CodeDeploy Agent.'\n",
+				"yum -y install codedeploy-agent.noarch.rpm || error_exit 'Failed to install AWS CodeDeploy Agent.' \n",
+				"/opt/aws/bin/cfn-init -s ",
+				{
+				    "Ref": "AWS::StackId"
+				},
+				" -r APILaunchConfig --region ",
+				{
+				    "Ref": "AWS::Region"
+				},
+				" || error_exit 'Failed to run cfn-init.'\n",
+
 
 			        "# Get API tarball\n",
 				"curl -sL --user '", { "Ref" : "GitHubUser" }, ":", { "Ref" : "GitHubPW" }, "'", 
@@ -515,7 +610,13 @@
 				"export ENV=", {"Ref": "Environment"}, "\n",
 				"export LEIN_ROOT=yes\n",
 				"export STACKNAME=", { "Ref": "AWS::StackName" }, "\n",
-				"cd /opt/promotably/api && /usr/local/bin/lein run 2>&1 > /var/log/api.log &\n"
+				"cd /opt/promotably/api && /usr/local/bin/lein run 2>&1 > /var/log/api.log &\n",
+				
+				"# All is well, so signal success.\n",
+				"/opt/aws/bin/cfn-signal -e 0 ",
+				"         --stack ", { "Ref" : "AWS::StackName" },
+				"         --resource APILaunchConfig ",
+				"         --region ", { "Ref" : "AWS::Region" }, "\n"
 			    ]
 			]
 		    }
@@ -596,6 +697,11 @@
 	"APIInstanceGroup" : {
 	    "Description" : "ASG of the API servers",
 	    "Value" : { "Ref" : "APIInstanceGroup" }
+	},
+
+	"DeployServiceRole" : {
+	    "Description" : "CodeDeploy Service Role",
+	    "Value" : { "Ref" : "DeployServiceRole" }
 	},
 
 	"URL": {

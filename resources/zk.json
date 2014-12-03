@@ -148,6 +148,11 @@
 		"VPCZoneIdentifier" : { "Ref" : "PrivateSubnets" },
 		"Tags" : [
 		    {
+			"Key": "Name",
+			"PropagateAtLaunch": "true",
+			"Value": "ZK Instance"
+		    },
+		    {
 			"Key" : "role",
 			"Value" : "zookeeper",
 			"PropagateAtLaunch" : "true"

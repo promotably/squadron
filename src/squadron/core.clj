@@ -336,6 +336,8 @@
   "stuff"
   [& args]
   (alter-var-root #'base-command (constantly "aws "))
-  (let [{:keys [options summary errors]} (parse-opts args cli-options)]
+  (let [{:keys [options summary errors] :as parsed} (parse-opts args cli-options)]
+    ;; (clojure.pprint/pprint parsed)
+    ;; (System/exit 0)
     (build options)
     (shutdown-agents)))
