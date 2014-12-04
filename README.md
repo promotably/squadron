@@ -21,8 +21,8 @@ You can do a deploy via the command line, but in general, this is
 intended to be run via Codeship.io custom deploy script:
 
 ```
-curl -sL --user 'cvillecsteele:githubfib0112358!'
-https://api.github.com/repos/promotably/squadron/tarball/master > squadron.tar
+lein uberjar
+curl -sL --user 'cvillecsteele:githubfib0112358!' https://api.github.com/repos/promotably/squadron/tarball/master > squadron.tar
 tar -xf squadron.tar
 rm squadron.tar
 export PATH=.:$PATH
@@ -32,6 +32,7 @@ wget https://s3.amazonaws.com/aws-cli/awscli-bundle.zip
 unzip awscli-bundle.zip
 mkdir ./bin
 ./awscli-bundle/install -b ./bin/aws
+./bin/aws s3 cp target/*standalone*jar s3://promotably-build-artifacts/api-$CI_COMMITTER_USERNAME-$CI_COMMIT_ID-standalone.jar
 cd promotably-squadron-* && ln -s ../bin/aws ./aws && lein run --github-user=cvillecsteele --github-password='githubfib0112358!' --super-stack-name=$CI_COMMITTER_USERNAME-$CI_COMMIT_ID
 ```
 

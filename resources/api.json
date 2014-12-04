@@ -4,6 +4,15 @@
     "Description" : "API cluster",
     
     "Parameters" : {
+	"ArtifactName" : {
+	    "Description" : "Filename of build API build jar",
+	    "Type" : "String"
+	},
+	"ArtifactBucket" : {
+	    "Description" : "S3 Bucket where build artifacts are stored",
+	    "Type" : "String",
+	    "Default" : "promotably-build-artifacts"
+	},
 	"TestResultsBucket" : {
 	    "Description" : "S3 Bucket where test runs are stored",
 	    "Type" : "String",
@@ -296,6 +305,13 @@
 					     ] 
 					   ]
 			    },
+			    { "Fn::Join" : [ "", 
+					     [ "arn:aws:s3:::", 
+					       { "Ref" : "ArtifactBucket" }, 
+					       "/*" 
+					     ] 
+					   ]
+			    },
 			    "arn:aws:s3:::aws-codedeploy-us-east-1/*",
 			    "arn:aws:s3:::aws-codedeploy-us-west-2/*"
 			]
@@ -562,6 +578,7 @@
 				"yum update -y aws-cfn-bootstrap\n",
 				"yum update -y aws-cli\n",
 				"yum update -y curl\n",
+				"yum update -y jsvc\n",
 
 				"# Helper function.\n",
 				"function error_exit\n",
@@ -595,6 +612,10 @@
 				"mkdir -p /opt/promotably\n",
 				"tar -xf /tmp/api.tar -C /opt/promotably\n",
 				"ln -s /opt/promotably/* /opt/promotably/api\n",
+				"aws s3 cp 's3://", { "Ref" : "ArtifactBucket" }, "/", 
+				  { "Ref" : "AWS::ArtifactName" }, "' /opt/promotably/\n",
+				"ln -s /opt/promotably/", { "Ref" : "AWS::ArtifactName" }, 
+				"   /opt/promotably/api-latest.jar\n",
 
 				"# Nginx setup\n",
 				"cp /tmp/nginx/default.conf /etc/nginx/conf.d/default.conf\n",

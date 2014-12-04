@@ -87,6 +87,7 @@
                   [:db-subnets "DBSubnetIDs"]
                   [:test-results-topic-arn "TestResultsSNSTopicARN"]
                   [:stage "Environment"]
+                  [:artifact-name "ArtifactName"]
                   [:cache-subnets "CacheSubnetIDs"]]
         cmd (str base-command " "
                  "cloudformation create-stack --output json "
@@ -137,7 +138,7 @@
         {:keys [exit out err] :as result} (apply sh (split cmd #"\s+"))]
     (if (= 0 exit)
       (read-str (:out result) :key-fn (comp keyword clojure.string/lower-case))
-      (throw+ {:type ::cf-create-api-error
+      (throw+ {:type ::cf-create-zk-error
                :result result
                :cmd cmd}))))
 
@@ -257,6 +258,7 @@
         zk-stack-name (str super-stack-name "-zk")]
     (cf-create-api {:region region
                     :stack-name api-stack-name
+                    :artifact-name (str "api-" super-stack-name "-standalone.jar")
                     :bastion-sg (:bastionsecuritygroup outputs)
                     :nat-sg (:natsecuritygroup outputs)
                     :priv-subnets (:privatesubneta outputs)
