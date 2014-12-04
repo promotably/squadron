@@ -4,15 +4,19 @@
     "Description" : "API cluster",
     
     "Parameters" : {
+	"TestResultsBucket" : {
+	    "Description" : "S3 Bucket where test runs are stored",
+	    "Type" : "String",
+	    "Default" : "promotably-test-results"
+	},
 	"DeployBucket" : {
 	    "Description" : "S3 Bucket where CodeDeploy revisions are stored",
 	    "Type" : "String",
 	    "Default" : "PromotablyCodeDeploy"
 	},
-	"TestResultsSNSTopicName" : {
-	    "Description" : "SNS Topic name for reporting test results",
-	    "Type" : "String",
-	    "Default" : "api-integration-tests"
+	"TestResultsSNSTopicARN" : {
+	    "Description" : "SNS Topic ARN for reporting test results",
+	    "Type" : "String"
 	},
 	"DBSubnetIDs" : {
 	    "Description" : "List of VPC subnets on which DB instance may reside.",
@@ -274,12 +278,20 @@
 			"Effect": "Allow",
 			"Action": [
 			    "s3:Get*",
-			    "s3:List*"
+			    "s3:List*",
+			    "s3:Put*",
 			],
 			"Resource": [
 			    { "Fn::Join" : [ "", 
 					     [ "arn:aws:s3:::", 
 					       { "Ref" : "DeployBucket" }, 
+					       "/*" 
+					     ] 
+					   ]
+			    },
+			    { "Fn::Join" : [ "", 
+					     [ "arn:aws:s3:::", 
+					       { "Ref" : "TestResultsBucket" }, 
 					       "/*" 
 					     ] 
 					   ]
@@ -381,7 +393,8 @@
 				"java-1.7.0-openjdk" : [],
 				"postgresql93" : [],
 				"git" : [],
-				"nginx" : []
+				"nginx" : [],
+				"jsvc" : []
 			    }
 			},
 			"files" : {
@@ -606,11 +619,19 @@
 				"export RDS_USER=", {"Ref": "DBUsername"}, "\n",
 				"export RDS_PW=", {"Ref": "DBPassword"}, "\n",
 				"export RDS_DB_NAME=", {"Ref": "DBName"}, "\n",
-				"export TEST_RESULTS_SNS_TOPIC_NAME=", {"Ref": "TestResultsSNSTopicName"}, "\n",
 				"export ENV=", {"Ref": "Environment"}, "\n",
 				"export LEIN_ROOT=yes\n",
 				"export STACKNAME=", { "Ref": "AWS::StackName" }, "\n",
-				"cd /opt/promotably/api && /usr/local/bin/lein run 2>&1 > /var/log/api.log &\n",
+				"if [ \"$ENV\" == 'integration' ]; then\n",
+				"   cd /opt/promotably/api && /usr/local/bin/lein midje api.integration.*",
+				"     2>&1 > /tmp/test_output\n",
+				"   aws s3 cp /tmp/test_output 's3://promotably-test-results/",
+				    { "Ref" : "AWS::StackName" }, "'\n",
+				"   aws sns publish --topic-arn ", {"Ref": "TestResultsSNSTopicARN"},
+				"     --message '", { "Ref" : "AWS::StackName" }, " test complete'\n",
+				"else\n",
+				"  cd /opt/promotably/api && /usr/local/bin/lein run 2>&1 > /var/log/api.log &\n",
+				"fi\n\n",
 				
 				"# All is well, so signal success.\n",
 				"/opt/aws/bin/cfn-signal -e 0 ",

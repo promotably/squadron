@@ -85,7 +85,7 @@
                   [:db-class "DBClass"]
                   [:db-storage "DBAllocatedStorage"]
                   [:db-subnets "DBSubnetIDs"]
-                  [:test-results-topic-name "TestResultsSNSTopicName"]
+                  [:test-results-topic-arn "TestResultsSNSTopicARN"]
                   [:stage "Environment"]
                   [:cache-subnets "CacheSubnetIDs"]]
         cmd (str base-command " "
@@ -225,7 +225,7 @@
 (defn build
   [{:keys [super-stack-name
            stage
-           test-results-topic
+           test-results-topic-arn
            keyvault-bucket github-user github-password
            db-username db-name db-password db-instance-type
            pagify-ref api-ref] :as options}]
@@ -274,7 +274,7 @@
                     :cache-subnets private-subnets
                     :vpcid (:vpcid outputs)
                     :availability-zones (str region "a")
-                    :test-results-topic-name test-results-topic
+                    :test-results-topic-arn test-results-topic-arn
                     :stage stage})
     (cf-create-zk {:region region
                    :stack-name zk-stack-name
@@ -303,8 +303,8 @@
                          :stage stage}))))
 
 (def cli-options
-  [[nil "--test-results-topic TOPIC" "Topic for test results notification."
-    :default "api-integration-tests"]
+  [[nil "--test-results-topic-arn TOPIC-ARN" "Topic ARN for test results notification."
+    :default "arn:aws:sns:us-east-1:955631477036:api-integration-tests"]
    [nil "--github-user USER" "Github username"]
    [nil "--github-password PW" "Github password"]
    [nil "--api-ref REF" "Git reference (tag, branch, commit id) for API repo."
