@@ -393,8 +393,7 @@
 				"java-1.7.0-openjdk" : [],
 				"postgresql93" : [],
 				"git" : [],
-				"nginx" : [],
-				"jsvc" : []
+				"nginx" : []
 			    }
 			},
 			"files" : {
