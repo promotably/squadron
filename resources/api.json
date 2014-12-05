@@ -618,6 +618,7 @@
 				"   /opt/promotably/api-latest.jar\n",
 				"aws s3 cp 's3://", { "Ref" : "ArtifactBucket" }, 
 				  "/apid'  /etc/init.d\n",
+				"chmod a+x /etc/init.d/apid\n",
 				"chkconfig --add apid\n",
 
 				"# Nginx setup\n",
@@ -657,7 +658,7 @@
 				"   aws sns publish  ",
 				"     --region ", { "Ref": "AWS::Region" },
 				"     --topic-arn ", {"Ref": "TestResultsSNSTopicARN"},
-				"     --message 'https://s3.amazonaws.com/", { "Ref" : "TestResultsBucket" },
+				"     --message 's3://", { "Ref" : "TestResultsBucket" },
 				       "/", { "Ref" : "AWS::StackName" }, ".txt'\n",
 				"else\n",
 				"  service apid start\n",
