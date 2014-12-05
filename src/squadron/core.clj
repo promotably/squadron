@@ -372,6 +372,6 @@
   [& args]
   (alter-var-root #'base-command (constantly "aws "))
   (let [{:keys [options summary errors] :as parsed} (parse-opts args cli-options)]
-    ;; (build options)
+    (build options)
     (create-deploy-bundle options)
     (shutdown-agents)))
