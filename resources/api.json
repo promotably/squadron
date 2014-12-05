@@ -201,50 +201,66 @@
 	},
 
 
-	"DeployServiceRole": {
-	    "Type" : "AWS::IAM::Role",
-	    "Properties" : {
+	"CodeDeployTrustRole": {
+	    "Type": "AWS::IAM::Role",
+	    "Properties": {
 		"AssumeRolePolicyDocument": {
-		    "Version" : "2012-10-17",
-		    "Statement" : [ {
-			"Effect" : "Allow",
-			"Principal" : {
-			    "Service" : [ 
-				"codedeploy.us-east-1.amazonaws.com",
-				"codedeploy.us-west-2.amazonaws.com"
+		    "Statement": [
+			{
+			    "Sid": "1",
+			    "Effect": "Allow",
+			    "Principal": {
+				"Service": [
+				    "codedeploy.us-east-1.amazonaws.com",
+				    "codedeploy.us-west-2.amazonaws.com"
+				]
+			    },
+			    "Action": "sts:AssumeRole"
+			}
+		    ]
+		},
+		"Path": "/"
+	    }
+	},
+	"CodeDeployRolePolicies": {
+	    "Type": "AWS::IAM::Policy",
+	    "Properties": {
+		"PolicyName": "CodeDeployPolicy",
+		"PolicyDocument": {
+		    "Statement": [
+			{
+			    "Effect": "Allow",
+			    "Resource": [
+				"*"
+			    ],
+			    "Action": [
+				"ec2:Describe*"
 			    ]
 			},
-			"Action" : [ "sts:AssumeRole" ]
-		    } ]
-		}
-	    }
-	},
-
-	"DeployRolePolicies" : {
-	    "Type" : "AWS::IAM::Policy",
-	    "Properties" : {
-		"PolicyName" : "root",
-		"PolicyDocument" : {
-		    "Version" : "2012-10-17",
-		    "Statement" : [ {
-			"Action": [
-			    "autoscaling:PutLifecycleHook",
-			    "autoscaling:DeleteLifecycleHook",
-			    "autoscaling:RecordLifecycleActionHeartbeat",
-			    "autoscaling:CompleteLifecycleAction",
-			    "autoscaling:DescribeAutoscalingGroups",
-			    "autoscaling:PutInstanceInStandby",
-			    "autoscaling:PutInstanceInService",
-			    "ec2:Describe*"
-			],
-			"Effect": "Allow",
-			"Resource": "*"
-		    } ]
+			{
+			    "Effect": "Allow",
+			    "Resource": [
+				"*"
+			    ],
+			    "Action": [
+				"autoscaling:CompleteLifecycleAction",
+				"autoscaling:DeleteLifecycleHook",
+				"autoscaling:DescribeLifecycleHooks",
+				"autoscaling:DescribeAutoScalingGroups",
+				"autoscaling:PutLifecycleHook",
+				"autoscaling:RecordLifecycleActionHeartbeat"
+			    ]
+			}
+		    ]
 		},
-		"Roles" : [ { "Ref": "DeployServiceRole" } ]
+		"Roles": [
+		    {
+			"Ref": "CodeDeployTrustRole"
+		    }
+		]
 	    }
 	},
-
+	
 	"RootRole": {
 	    "Type" : "AWS::IAM::Role",
 	    "Properties" : {
@@ -618,7 +634,7 @@
 				"   /opt/promotably/api-latest.jar\n",
 				"aws s3 cp 's3://", { "Ref" : "ArtifactBucket" }, 
 				  "/apid'  /etc/init.d\n",
-				"chmod a+x /etc/init.d/apid\n",
+				"chmod 000744 /etc/init.d/apid\n",
 				"chkconfig --add apid\n",
 
 				"# Nginx setup\n",
@@ -651,6 +667,7 @@
 
 				". /opt/promotably/api.conf\n",
 				"if [ \"$ENV\" == 'integration' ]; then\n",
+				"   export MIDJE_COLORIZE=false\n",
 				"   cd /opt/promotably/api && /usr/local/bin/lein midje api.integration.*",
 				"     2>&1 > /tmp/test_output.txt\n",
 				"   aws s3 cp /tmp/test_output.txt 's3://", 
@@ -708,6 +725,15 @@
     
     "Outputs" : {
 
+	"CodeDeployTrustRoleARN": {
+	    "Value": {
+		"Fn::GetAtt": [
+		    "CodeDeployTrustRole",
+		    "Arn"
+		]
+	    }
+	},
+
 	"KinesisStreamA" : {
 	    "Description" : "Kinesis Stream A",
 	    "Value" : { "Ref" : "KinesisStreamA" }
@@ -751,11 +777,6 @@
 	"APIInstanceGroup" : {
 	    "Description" : "ASG of the API servers",
 	    "Value" : { "Ref" : "APIInstanceGroup" }
-	},
-
-	"DeployServiceRole" : {
-	    "Description" : "CodeDeploy Service Role",
-	    "Value" : { "Ref" : "DeployServiceRole" }
 	},
 
 	"URL": {
