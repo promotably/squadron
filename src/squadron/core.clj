@@ -227,6 +227,7 @@
 (defn build
   [{:keys [super-stack-name
            stage
+           region
            test-results-topic-arn
            keyvault-bucket github-user github-password
            db-username db-name db-password db-instance-type
@@ -235,8 +236,7 @@
     (throw+ {:type ::missing-parameter :parameter :github-password}))
   (if-not github-user
     (throw+ {:type ::missing-parameter :parameter :github-user}))
-  (let [region "us-east-1"
-        super-stack-name (or super-stack-name
+  (let [super-stack-name (or super-stack-name
                              (str "squadron-" (get-random-hex-string 6)))
         keyname (str super-stack-name "-devops")
         keyvault-bucket-name keyvault-bucket
@@ -323,7 +323,7 @@
                    " --description " super-stack-name
                    " --region " region
                    " --source " super-stack-name)
-          {:keys [exit out err] :as result} (apply sh (split cmd #" "))]
+          {:keys [exit out err] :as result} (apply sh (split cmd #"\s+"))]
       (if (= 0 exit)
         nil
         (throw+ {:type ::deploy-error
@@ -332,7 +332,8 @@
                  :region region})))))
 
 (def cli-options
-  [[nil "--api-jar JARFILE" "API uberjar file"]
+  [[nil "--region REGION" "AWS region" :default "us-east-1"]
+   [nil "--api-jar JARFILE" "API uberjar file"]
    [nil "--deploy-bucket BUCKET" "CodeDeploy s3 bucket." :default "promotably-build-artifacts"]
    [nil "--deploy-application-name APPNAME" "CodeDeploy application name."
     :default "promotably-production-app"]
@@ -370,8 +371,6 @@
   [& args]
   (alter-var-root #'base-command (constantly "aws "))
   (let [{:keys [options summary errors] :as parsed} (parse-opts args cli-options)]
-    ;; (clojure.pprint/pprint parsed)
-    ;; (System/exit 0)
-    (build options)
+    ;; (build options)
     (create-deploy-bundle options)
     (shutdown-agents)))
