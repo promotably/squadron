@@ -313,6 +313,7 @@
         appspec (str super-stack-name "/appspec.yml")
         symlink (str super-stack-name "/scripts/symlink.sh")]
     (fs/copy-dir "resources/deploy_skeleton" super-stack-name)
+    (fs/mkdir (str super-stack-name "/content"))
     (fs/copy api-jar (str super-stack-name "/content/" jar-base-name))
     (spit appspec (format (slurp appspec) jar-base-name jar-base-name))
     (spit symlink (format (slurp symlink) jar-base-name))
