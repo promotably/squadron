@@ -613,8 +613,8 @@
 				"tar -xf /tmp/api.tar -C /opt/promotably\n",
 				"ln -s /opt/promotably/* /opt/promotably/api\n",
 				"aws s3 cp 's3://", { "Ref" : "ArtifactBucket" }, "/", 
-				  { "Ref" : "AWS::ArtifactName" }, "' /opt/promotably/\n",
-				"ln -s /opt/promotably/", { "Ref" : "AWS::ArtifactName" }, 
+				  { "Ref" : "ArtifactName" }, "' /opt/promotably/\n",
+				"ln -s /opt/promotably/", { "Ref" : "ArtifactName" }, 
 				"   /opt/promotably/api-latest.jar\n",
 
 				"# Nginx setup\n",
