@@ -309,14 +309,14 @@
   "Fill a folder, suitable for uploading as a CodeDeploy bundle, and push it."
   [{:keys [region api-jar super-stack-name
            deploy-bucket deploy-application-name] :as options}]
-  (let [jar-base-name (fs/base-name api-jar)
-        appspec (str super-stack-name "/appspec.yml")
-        symlink (str super-stack-name "/scripts/symlink.sh")]
+  (let [appspec (str super-stack-name "/appspec.yml")
+        symlink (str super-stack-name "/scripts/symlink.sh")
+        jar-name (str "api-" super-stack-name "-standalone.jar")]
     (fs/copy-dir "resources/deploy_skeleton" super-stack-name)
     (fs/mkdir (str super-stack-name "/content"))
-    (fs/copy api-jar (str super-stack-name "/content/" jar-base-name))
-    (spit appspec (format (slurp appspec) jar-base-name jar-base-name))
-    (spit symlink (format (slurp symlink) jar-base-name))
+    (fs/copy api-jar (str super-stack-name "/content/" jar-name))
+    (spit appspec (format (slurp appspec) jar-name jar-name))
+    (spit symlink (format (slurp symlink) jar-name))
     (let [cmd (str base-command "deploy push "
                    " --ignore-hidden-files "
                    " --application-name " deploy-application-name
