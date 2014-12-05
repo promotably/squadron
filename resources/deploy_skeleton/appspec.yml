@@ -1,0 +1,26 @@
+version: 0.0
+os: linux 
+
+files:
+  - source: content/%s
+    destination: /opt/promotably
+
+permissions:
+  - object: /opt/promotably/%s
+    owner: ec2-user
+    group:
+    mode: 644
+
+hooks:
+  ApplicationStop:
+    - location: scripts/stop.sh
+      timeout: 90
+      runas: root
+  AfterInstall:
+    - location: scripts/symlink.sh
+      timeout: 90
+      runas: root
+  ApplicationStart:
+    - location: scripts/start.sh
+      timeout: 90
+      runas: root

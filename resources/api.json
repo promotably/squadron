@@ -21,7 +21,7 @@
 	"DeployBucket" : {
 	    "Description" : "S3 Bucket where CodeDeploy revisions are stored",
 	    "Type" : "String",
-	    "Default" : "PromotablyCodeDeploy"
+	    "Default" : "promotably-code-deploy"
 	},
 	"TestResultsSNSTopicARN" : {
 	    "Description" : "SNS Topic ARN for reporting test results",
@@ -597,6 +597,7 @@
 				"yum install -y jsvc\n",
 
 				"# Helper function.\n",
+				"",
 				"function error_exit\n",
 				"{\n",
 				"  /opt/aws/bin/cfn-signal -e 1 -r \"$1\"",
@@ -607,6 +608,7 @@
 				"}\n",
 
 				"# Install the AWS CodeDeploy Agent.\n",
+				"",
 				"cd /home/ec2-user/\n",
 				"aws s3 cp 's3://aws-codedeploy-us-east-1/latest/codedeploy-agent.noarch.rpm' . || error_exit 'Failed to download AWS CodeDeploy Agent.'\n",
 				"yum -y install codedeploy-agent.noarch.rpm || error_exit 'Failed to install AWS CodeDeploy Agent.' \n",
@@ -622,36 +624,44 @@
 
 
 			        "# Get API tarball\n",
+				"",
 				"curl -sL --user '", { "Ref" : "GitHubUser" }, ":", { "Ref" : "GitHubPW" }, "'", 
 				" https://api.github.com/repos/promotably/api/tarball/",
 				{ "Ref" : "GitHubRef" }, " > /tmp/api.tar\n",
 				"mkdir -p /opt/promotably\n",
 				"tar -xf /tmp/api.tar -C /opt/promotably\n",
-				"ln -s /opt/promotably/* /opt/promotably/api\n",
+				"ln -s /opt/promotably/* /opt/promotably/api\n\n",
+
+			        "# Get build artifacts\n\n",
+				"",
 				"aws s3 cp 's3://", { "Ref" : "ArtifactBucket" }, "/", 
 				  { "Ref" : "ArtifactName" }, "' /opt/promotably/\n",
 				"ln -s /opt/promotably/", { "Ref" : "ArtifactName" }, 
-				"   /opt/promotably/api-latest.jar\n",
+				"   /opt/promotably/api-current.jar\n",
 				"aws s3 cp 's3://", { "Ref" : "ArtifactBucket" }, 
 				  "/apid'  /etc/init.d\n",
-				"chmod 000744 /etc/init.d/apid\n",
+				"chmod 000755 /etc/init.d/apid\n",
 				"chkconfig --add apid\n",
 
 				"# Nginx setup\n",
+				"",
 				"cp /tmp/nginx/default.conf /etc/nginx/conf.d/default.conf\n",
 				"service nginx restart\n",
 
 				"# Install lein\n",
+				"",
 				"curl https://raw.githubusercontent.com/technomancy/leiningen/stable/bin/lein > /usr/local/bin/lein\n",
 				"chmod a+x /usr/local/bin/lein\n",
 
 				"# Wait for it...\n",
+				"",
 				"while : ; do\n",
 				"    [[ -f /tmp/cacheclusterconfig ]] && break\n",
 				"sleep 1\n",
 				"done\n\n",
 				
 				"# Create API config\n",
+				"",
 				"echo export KINESIS_A=", {"Ref": "KinesisStreamA"}, " > /opt/promotably/api.conf\n",
 				"echo export KINESIS_B=", {"Ref": "KinesisStreamB"}, " >> /opt/promotably/api.conf\n",
 				"echo export REDIS_HOST=$(grep Address /tmp/cacheclusterconfig  | cut -d: -f2 | cut -d\\\" -f2) >> /opt/promotably/api.conf\n",

@@ -5,6 +5,7 @@
    [clojure.java.shell :as shell :refer [sh]]
    [clojure.tools.logging :as log]
    [clojure.data.json :refer [read-str write-str]]
+   [me.raynes.fs :as fs]
    [slingshot.slingshot :refer [throw+ try+]])
   (:gen-class))
 
@@ -304,8 +305,38 @@
                          :vpcid (:vpcid outputs)
                          :stage stage}))))
 
+(defn create-deploy-bundle
+  "Fill a folder, suitable for uploading as a CodeDeploy bundle, and push it."
+  [{:keys [region api-jar super-stack-name
+           deploy-bucket deploy-application-name] :as options}]
+  (let [jar-base-name (fs/base-name api-jar)
+        appspec (str super-stack-name "/appspec.yml")
+        symlink (str super-stack-name "/scripts/symlink.sh")]
+    (fs/copy-dir "resources/deploy_skeleton" super-stack-name)
+    (fs/copy api-jar (str super-stack-name "/content/" jar-base-name))
+    (spit appspec (format (slurp appspec) jar-base-name jar-base-name))
+    (spit symlink (format (slurp symlink) jar-base-name))
+    (let [cmd (str base-command "deploy push "
+                   " --ignore-hidden-files "
+                   " --application-name " deploy-application-name
+                   " --s3-location s3://" deploy-bucket "/" super-stack-name ".zip"
+                   " --description " super-stack-name
+                   " --region " region
+                   " --source " super-stack-name)
+          {:keys [exit out err] :as result} (apply sh (split cmd #" "))]
+      (if (= 0 exit)
+        nil
+        (throw+ {:type ::deploy-error
+                 :result result
+                 :options options
+                 :region region})))))
+
 (def cli-options
-  [[nil "--test-results-topic-arn TOPIC-ARN" "Topic ARN for test results notification."
+  [[nil "--api-jar JARFILE" "API uberjar file"]
+   [nil "--deploy-bucket BUCKET" "CodeDeploy s3 bucket." :default "promotably-build-artifacts"]
+   [nil "--deploy-application-name APPNAME" "CodeDeploy application name."
+    :default "promotably-production-app"]
+   [nil "--test-results-topic-arn TOPIC-ARN" "Topic ARN for test results notification."
     :default "arn:aws:sns:us-east-1:955631477036:api-integration-tests"]
    [nil "--github-user USER" "Github username"]
    [nil "--github-password PW" "Github password"]
@@ -342,4 +373,5 @@
     ;; (clojure.pprint/pprint parsed)
     ;; (System/exit 0)
     (build options)
+    (create-deploy-bundle options)
     (shutdown-agents)))

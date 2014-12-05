@@ -11,4 +11,5 @@
                  [org.clojure/tools.nrepl "0.2.6"]
                  [org.clojure/data.json "0.2.5"]
                  [org.clojure/tools.cli "0.3.1"]
-                 [slingshot "0.12.1"]])
+                 [slingshot "0.12.1"]
+                 [me.raynes/fs "1.4.6"]])
