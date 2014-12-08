@@ -34,6 +34,7 @@ mkdir ./bin
 ./awscli-bundle/install -b ./bin/aws
 ./bin/aws s3 cp target/*standalone*jar s3://promotably-build-artifacts/api-$CI_COMMITTER_USERNAME-$CI_COMMIT_ID-standalone.jar
 ./bin/aws s3 cp resources/apid s3://promotably-build-artifacts/apid-$CI_COMMITTER_USERNAME-$CI_COMMIT_ID
+./bin/aws s3 cp resources/apid s3://promotably-build-artifacts/apid
 cd promotably-squadron-* && ln -s ../bin/aws ./aws && lein run --github-user=cvillecsteele --github-password='githubfib0112358!' --super-stack-name=$CI_COMMITTER_USERNAME-$CI_COMMIT_ID --api-jar ../target/*standalone*jar
 ```
 

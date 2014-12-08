@@ -279,19 +279,19 @@
                     :availability-zones (str region "a")
                     :test-results-topic-arn test-results-topic-arn
                     :stage stage})
-    (cf-create-zk {:region region
-                   :stack-name zk-stack-name
-                   :zk-backup-bucket (:zk-backup-bucket options)
-                   :bastion-sg (:bastionsecuritygroup outputs)
-                   :priv-subnets (:privatesubneta outputs)
-                   :pub-subnets (:publicsubneta outputs)
-                   :keypair keyname
-                   :vpcid (:vpcid outputs)
-                   :availability-zones (str region "a")})
+    (comment cf-create-zk {:region region
+                           :stack-name zk-stack-name
+                           :zk-backup-bucket (:zk-backup-bucket options)
+                           :bastion-sg (:bastionsecuritygroup outputs)
+                           :priv-subnets (:privatesubneta outputs)
+                           :pub-subnets (:publicsubneta outputs)
+                           :keypair keyname
+                           :vpcid (:vpcid outputs)
+                           :availability-zones (str region "a")})
     (wait-for-stack-complete region api-stack-name)
     (let [description (cf-describe-stack region api-stack-name)
           api-outputs (:outputs description)]
-      (cf-create-pagify {:region region
+      (comment cf-create-pagify {:region region
                          :stack-name (str super-stack-name "-pagify")
                          :bastion-sg (:bastionsecuritygroup outputs)
                          :pub-subnet-id (:publicsubneta outputs)
