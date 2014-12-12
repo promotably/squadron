@@ -581,7 +581,7 @@
 	    "Properties" : {
 		"ImageId" : "ami-b66ed3de",
 		"SecurityGroups" : [ { "Ref" : "APIServerSecurityGroup" } ],
-		"InstanceType" : "t2.micro",
+		"InstanceType" : "t2.small",
 		"KeyName": { "Ref": "KeyPair" },
 		"IamInstanceProfile": { "Ref": "RootInstanceProfile" },
 		"UserData": {
