@@ -177,6 +177,46 @@
                :result result
                :cmd cmd}))))
 
+(defn cf-create-scribe
+  [{:keys [test-results-topic-arn region stack-name] :as options}]
+  (let [mappings [[:pub-subnet-id "PublicSubnetId"]
+                  [:priv-subnet-id "PrivateSubnetId"]
+                  [:vpcid "VpcId"]
+                  [:kinesis-stream-a "KinesisStreamA"]
+                  [:kinesis-stream-b "KinesisStreamB"]
+                  [:db-host "DBHost"]
+                  [:db-port "DBPort"]
+                  [:db-name "DBName"]
+                  [:db-username "DBUsername"]
+                  [:db-password "DBPassword"]
+                  [:github-user "GitHubUser"]
+                  [:github-pw "GitHubPW"]
+                  [:github-ref "GitHubRef"]
+                  [:test-results-topic-arn "TestResultsSNSTopicARN"]
+                  [:bastion-sg "BastionSecurityGroup"]
+                  [:stage "Environment"]
+                  [:keypair "KeyPair"]]
+        cmd (str base-command " "
+                 "cloudformation create-stack --output json "
+                 "--region " region  " "
+                 "--template-body file://resources/scribe.json "
+                 "--stack-name " stack-name " "
+                 "--capabilities CAPABILITY_IAM "
+                 "--parameters "
+                 (apply str (interpose
+                             " "
+                             (map
+                              #(format "ParameterKey=%s,ParameterValue=%s"
+                                       (second %)
+                                       ((first %) options))
+                              mappings))))
+        {:keys [exit out err] :as result} (apply sh (split cmd #"\s+"))]
+    (if (= 0 exit)
+      (read-str (:out result) :key-fn (comp keyword clojure.string/lower-case))
+      (throw+ {:type ::cf-create-scribe-error
+               :result result
+               :cmd cmd}))))
+
 (defn cf-describe-stack
   [region stack-name]
   (let [cmd (format "%s cloudformation describe-stacks --output json --region %s --stack-name %s"
@@ -300,6 +340,28 @@
                          :github-pw github-password
                          :github-ref pagify-ref
                          :keypair keyname
+                         :kinesis-stream-a (:kinesisstreama api-outputs)
+                         :kinesis-stream-b (:kinesisstreamb api-outputs)
+                         :vpcid (:vpcid outputs)
+                         :stage stage})
+      (def x api-outputs)
+      (def y outputs)
+      (def z options)
+      (cf-create-scribe {:region region
+                         :test-results-topic-arn test-results-topic-arn
+                         :stack-name (str super-stack-name "-scribe")
+                         :bastion-sg (:bastionsecuritygroup outputs)
+                         :pub-subnet-id (:publicsubneta outputs)
+                         :priv-subnet-id (:privatesubneta outputs)
+                         :github-user github-user
+                         :github-pw github-password
+                         :github-ref pagify-ref
+                         :keypair keyname
+                         :db-host (:dbhost api-outputs)
+                         :db-port (:dbport api-outputs)
+                         :db-name db-name
+                         :db-username db-username
+                         :db-password db-password
                          :kinesis-stream-a (:kinesisstreama api-outputs)
                          :kinesis-stream-b (:kinesisstreamb api-outputs)
                          :vpcid (:vpcid outputs)
