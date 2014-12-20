@@ -312,6 +312,10 @@
 
 			        "# Get build artifacts\n\n",
 				"",
+				"aws s3 cp 's3://", { "Ref" : "ArtifactBucket" }, "/", 
+				  { "Ref" : "ArtifactName" }, "' /opt/promotably/\n",
+				"ln -s /opt/promotably/", { "Ref" : "ArtifactName" }, 
+				"   /opt/promotably/scribe-current.jar\n",
 				"aws s3 cp 's3://", { "Ref" : "ArtifactBucket" }, 
 				  "/scribed'  /etc/init.d\n",
 				"chmod 000755 /etc/init.d/scribed\n",
