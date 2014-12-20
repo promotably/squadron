@@ -337,7 +337,7 @@
 				". /opt/promotably/scribe.conf\n",
 
 				"# Build uberjar\n",
-				""
+				"",
 				"cd /opt/promotably/scribe && /usr/local/bin/lein uberjar\n",
 				"cp /opt/promotably/scribe/target/scribe*standalone.jar /opt/promotably/scribe-current.jar\n",
 
