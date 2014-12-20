@@ -312,10 +312,6 @@
 
 			        "# Get build artifacts\n\n",
 				"",
-				"aws s3 cp 's3://", { "Ref" : "ArtifactBucket" }, "/", 
-				  { "Ref" : "ArtifactName" }, "' /opt/promotably/\n",
-				"ln -s /opt/promotably/", { "Ref" : "ArtifactName" }, 
-				"   /opt/promotably/scribe-current.jar\n",
 				"aws s3 cp 's3://", { "Ref" : "ArtifactBucket" }, 
 				  "/scribed'  /etc/init.d\n",
 				"chmod 000755 /etc/init.d/scribed\n",
@@ -339,6 +335,11 @@
 				"echo export STACKNAME=", { "Ref": "AWS::StackName" }, " >> /opt/promotably/scribe.conf\n",
 
 				". /opt/promotably/scribe.conf\n",
+
+				"# Build uberjar\n",
+				""
+				"cd /opt/promotably/scribe && lein uberjar\n",
+				"cp /opt/promotably/scribe/target/scribe*standalone.jar /opt/promotably/scribe-current.jar\n",
 
 				"# Run Scribe\n",
 				"if [ \"$ENV\" == 'integration' ]; then\n",
