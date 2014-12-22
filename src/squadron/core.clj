@@ -89,6 +89,7 @@
                   [:test-results-topic-arn "TestResultsSNSTopicARN"]
                   [:stage "Environment"]
                   [:artifact-name "ArtifactName"]
+                  [:dashboard-ref "DashboardRef"]
                   [:cache-subnets "CacheSubnetIDs"]]
         cmd (str base-command " "
                  "cloudformation create-stack --output json "
@@ -271,7 +272,7 @@
            test-results-topic-arn
            keyvault-bucket github-user github-password
            db-username db-name db-password db-instance-type
-           pagify-ref api-ref] :as options}]
+           dashboard-ref pagify-ref api-ref] :as options}]
   (if-not github-password
     (throw+ {:type ::missing-parameter :parameter :github-password}))
   (if-not github-user
@@ -318,6 +319,7 @@
                     :vpcid (:vpcid outputs)
                     :availability-zones (str region "a")
                     :test-results-topic-arn test-results-topic-arn
+                    :dashboard-ref dashboard-ref
                     :stage stage})
     (comment cf-create-zk {:region region
                            :stack-name zk-stack-name
@@ -419,6 +421,8 @@
    [nil "--super-stack-name SSN" "A name for the stacks on AWS" :default nil]
    [nil "--zk-backup-bucket BUCKETNAME" "A name for zk backup bucket"
     :default "promotably-zk-backups"]
+   [nil "--dashboard-ref DASHREF" "A git commit ref for the version of dashboard to use"
+    :default "latest"]
    [nil "--stage ENV" "A name for stage/environment for the squadron"
     :default "integration"]
    ;; A non-idempotent option

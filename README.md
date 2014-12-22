@@ -23,8 +23,12 @@ intended to be run via Codeship.io custom deploy script:
 ```
 lein uberjar
 curl -sL --user 'cvillecsteele:githubfib0112358!' https://api.github.com/repos/promotably/squadron/tarball/master > squadron.tar
+curl -sL --user 'cvillecsteele:githubfib0112358!' https://api.github.com/repos/promotably/dashboard/tarball/master > dashboard.tar
 tar -xf squadron.tar
+tar -xf dashboard.tar
 rm squadron.tar
+rm dashboard.tar
+export DASH_REF=$(echo promotably-dashboard-* | cut -d'-' -f3)
 export PATH=.:$PATH
 export AWS_ACCESS_KEY_ID=AKIAJUYKJU5POOICSK7Q
 export AWS_SECRET_ACCESS_KEY=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
@@ -35,16 +39,14 @@ mkdir ./bin
 ./bin/aws s3 cp target/*standalone*jar s3://promotably-build-artifacts/api-$CI_COMMITTER_USERNAME-$CI_COMMIT_ID-standalone.jar
 ./bin/aws s3 cp resources/apid s3://promotably-build-artifacts/apid-$CI_COMMITTER_USERNAME-$CI_COMMIT_ID
 ./bin/aws s3 cp resources/apid s3://promotably-build-artifacts/apid
-cd promotably-squadron-* && ln -s ../bin/aws ./aws && lein run --github-user=cvillecsteele --github-password='githubfib0112358!' --super-stack-name=$CI_COMMITTER_USERNAME-$CI_COMMIT_ID --api-jar ../target/*standalone*jar
+cd promotably-squadron-* && ln -s ../bin/aws ./aws && lein run --github-user=cvillecsteele --github-password='githubfib0112358!' --super-stack-name=$CI_COMMITTER_USERNAME-$CI_COMMIT_ID --api-jar ../target/*standalone*jar --dashboard-ref=$DASH_REF
 ```
 
 A full list of command line arguments is available in core.clj.
 
 ## TODO
 
-* Deploy pagify
 * Deploy Wordpress site
-* AWS CodeDeploy integration?
 
 ## License
 

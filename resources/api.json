@@ -4,6 +4,11 @@
     "Description" : "API cluster",
     
     "Parameters" : {
+	"DashboardRef" : {
+	    "Description" : "Git ref of dashboard to refer to",
+	    "Type" : "String",
+	    "Default" : "latest"
+	},
 	"ArtifactName" : {
 	    "Description" : "Filename of build API build jar",
 	    "Type" : "String"
@@ -662,6 +667,8 @@
 				
 				"# Create API config\n",
 				"",
+				"echo export ARTIFACT_BUCKET=", {"Ref": "ArtifactBucket"}, " > /opt/promotably/api.conf\n",
+				"echo export DASHBOARD_INDEX_PATH=db/", {"Ref": "DashboardRef"}, "/index.html > /opt/promotably/api.conf\n",
 				"echo export KINESIS_A=", {"Ref": "KinesisStreamA"}, " > /opt/promotably/api.conf\n",
 				"echo export KINESIS_B=", {"Ref": "KinesisStreamB"}, " >> /opt/promotably/api.conf\n",
 				"echo export REDIS_HOST=$(grep Address /tmp/cacheclusterconfig  | cut -d: -f2 | cut -d\\\" -f2) >> /opt/promotably/api.conf\n",
