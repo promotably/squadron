@@ -325,7 +325,6 @@
 				"",
 				"echo '{' > /opt/promotably/scribe.conf\n",
 				"echo \\\"ARTIFACT_BUCKET\\\"          \\\"", {"Ref": "ArtifactBucket"}, "\\\" >> /opt/promotably/scribe.conf\n",
-				"echo \\\"DASHBOARD_INDEX_PATH\\\"     \\\"db/", {"Ref": "DashboardRef"}, "/index.html\\\" >> /opt/promotably/scribe.conf\n",
 				"echo \\\"KINESIS_A\\\"                \\\"", {"Ref": "KinesisStreamA"}, "\\\" >> /opt/promotably/scribe.conf\n",
 				"echo \\\"KINESIS_B\\\"                \\\"", {"Ref": "KinesisStreamB"}, "\\\" >> /opt/promotably/scribe.conf\n",
 				"echo \\\"RDS_HOST\\\"                 \\\"", {"Ref": "DBHost"}, "\\\" >> /opt/promotably/scribe.conf\n",
