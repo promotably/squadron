@@ -1,828 +1,706 @@
 {
     "AWSTemplateFormatVersion" : "2010-09-09",
-
     "Description" : "API cluster",
     
     "Parameters" : {
-	"DashboardRef" : {
-	    "Description" : "Git ref of dashboard to refer to",
-	    "Type" : "String",
-	    "Default" : "latest"
-	},
-	"ArtifactName" : {
-	    "Description" : "Filename of build API build jar",
-	    "Type" : "String"
-	},
-	"ArtifactBucket" : {
-	    "Description" : "S3 Bucket where build artifacts are stored",
-	    "Type" : "String",
-	    "Default" : "promotably-build-artifacts"
-	},
-	"TestResultsBucket" : {
-	    "Description" : "S3 Bucket where test runs are stored",
-	    "Type" : "String",
-	    "Default" : "promotably-test-results"
-	},
-	"DeployBucket" : {
-	    "Description" : "S3 Bucket where CodeDeploy revisions are stored",
-	    "Type" : "String",
-	    "Default" : "promotably-code-deploy"
-	},
-	"TestResultsSNSTopicARN" : {
-	    "Description" : "SNS Topic ARN for reporting test results",
-	    "Type" : "String"
-	},
-	"DBSubnetIDs" : {
-	    "Description" : "List of VPC subnets on which DB instance may reside.",
-	    "Type" : "List<AWS::EC2::Subnet::Id>"
-	},
-	"CacheSubnetIDs" : {
-	    "Description" : "List of VPC subnets on which cache may reside.",
-	    "Type" : "List<AWS::EC2::Subnet::Id>"
-	},
-	"GitHubRef" : {
-	    "Description" : "Github tag or branch name to fetch for API repo",
-	    "Type" : "String",
-	    "Default" : "master"
-	},
-	"GitHubUser" : {
-	    "Description" : "Github username",
-	    "Type" : "String"
-	},
-	"GitHubPW" : {
-	    "Description" : "Github password",
-	    "Type" : "String"
-	},
-	"PublicSubnets" : {
-	    "Description" : "List of VPC public subnet IDs for the cluster. Note: must match up with the passed AvailabilityZones.",
-	    "Type" : "List<AWS::EC2::Subnet::Id>"
-	},
-	"PrivateSubnets" : {
-	    "Description" : "List of VPC private subnet IDs for the cluster. Note: must match up with the passed AvailabilityZones.",
-	    "Type" : "List<AWS::EC2::Subnet::Id>"
-	},
-	"VpcId" : {
-	    "Description" : "VPC associated with the provided subnets",
-	    "Type" : "AWS::EC2::VPC::Id"
-	},
-	"Environment" : {
-	    "Description" : "Environment tag",
-	    "Type" : "String",
-	    "Default" : "integration"
-	},
-	"Role" : {
-	    "Description" : "Role tag",
-	    "Type" : "String",
-	    "Default" : "api"
-	},
-	"BastionSecurityGroup" : {
-	    "Description" : "Security Group associated with bastion host",
-	    "Type" : "AWS::EC2::SecurityGroup::Id"
-	},
-	"NATSecurityGroup" : {
-	    "Description" : "Security Group associated with NAT host",
-	    "Type" : "AWS::EC2::SecurityGroup::Id"
-	},
-	"KeyPair": {
-	    "Description": "Name of the keypair to use for SSH access",
-	    "Type": "AWS::EC2::KeyPair::KeyName"
-	},
-	"AvailabilityZones": {
-	    "Description" : "(Optional) If passed, only launch nodes in these AZs (e.g., 'us-east-1a,us-east-1b'). Note: these must match up with the passed Subnets.",
-	    "Type" : "CommaDelimitedList",
-	    "Default" : ""
-	},
-	"DBName": {
-	    "Description": "Database name",
-	    "Type": "String"
-	},
-	"DBUsername": {
-	    "Description": "Database username",
-	    "Type": "String"
-	},
-	"DBPassword": {
-	    "Description": "Database password",
-	    "Type": "String"
-	},
-	"DBClass": {
-	    "Description": "Database instance class",
-	    "Type": "String"
-	},
-	"DBAllocatedStorage": {
-	    "Description": "Database allocated storage",
-	    "Type": "String"
-	}
+
+        "DashboardRef" : {
+            "Description" : "Git ref of dashboard to refer to",
+            "Type" : "String",
+            "Default" : "latest"
+        },
+        "ArtifactName" : {
+            "Description" : "Filename of build API build jar",
+            "Type" : "String"
+        },
+        "ArtifactBucket" : {
+            "Description" : "S3 Bucket where build artifacts are stored",
+            "Type" : "String",
+            "Default" : "promotably-build-artifacts"
+        },
+        "TestResultsBucket" : {
+            "Description" : "S3 Bucket where test runs are stored",
+            "Type" : "String",
+            "Default" : "promotably-test-results"
+        },
+        "DeployBucket" : {
+            "Description" : "S3 Bucket where CodeDeploy revisions are stored",
+            "Type" : "String",
+            "Default" : "promotably-code-deploy"
+        },
+        "TestResultsSNSTopicARN" : {
+            "Description" : "SNS Topic ARN for reporting test results",
+            "Type" : "String"
+        },
+        "DBSubnetIDs" : {
+            "Description" : "List of VPC subnets on which DB instance may reside.",
+            "Type" : "List<AWS::EC2::Subnet::Id>"
+        },
+        "CacheSubnetIDs" : {
+            "Description" : "List of VPC subnets on which cache may reside.",
+            "Type" : "List<AWS::EC2::Subnet::Id>"
+        },
+        "GitHubRef" : {
+            "Description" : "Github tag or branch name to fetch for API repo",
+            "Type" : "String",
+            "Default" : "master"
+        },
+        "GitHubUser" : {
+            "Description" : "Github username",
+            "Type" : "String"
+        },
+        "GitHubPW" : {
+            "Description" : "Github password",
+            "Type" : "String"
+        },
+        "PublicSubnets" : {
+            "Description" : "List of VPC public subnet IDs for the cluster. Note: must match up with the passed AvailabilityZones.",
+            "Type" : "List<AWS::EC2::Subnet::Id>"
+        },
+        "PrivateSubnets" : {
+            "Description" : "List of VPC private subnet IDs for the cluster. Note: must match up with the passed AvailabilityZones.",
+            "Type" : "List<AWS::EC2::Subnet::Id>"
+        },
+        "VpcId" : {
+            "Description" : "VPC associated with the provided subnets",
+            "Type" : "AWS::EC2::VPC::Id"
+        },
+        "Environment" : {
+            "Description" : "Environment tag",
+            "Type" : "String",
+            "Default" : "integration"
+        },
+        "Role" : {
+            "Description" : "Role tag",
+            "Type" : "String",
+            "Default" : "api"
+        },
+        "BastionSecurityGroup" : {
+            "Description" : "Security Group associated with bastion host",
+            "Type" : "AWS::EC2::SecurityGroup::Id"
+        },
+        "NATSecurityGroup" : {
+            "Description" : "Security Group associated with NAT host",
+            "Type" : "AWS::EC2::SecurityGroup::Id"
+        },
+        "KeyPair": {
+            "Description": "Name of the keypair to use for SSH access",
+            "Type": "AWS::EC2::KeyPair::KeyName"
+        },
+        "AvailabilityZones": {
+            "Description" : "(Optional) If passed, only launch nodes in these AZs (e.g., 'us-east-1a,us-east-1b'). Note: these must match up with the passed Subnets.",
+            "Type" : "CommaDelimitedList",
+            "Default" : ""
+        },
+        "DBName": {
+            "Description": "Database name",
+            "Type": "String"
+        },
+        "DBUsername": {
+            "Description": "Database username",
+            "Type": "String"
+        },
+        "DBPassword": {
+            "Description": "Database password",
+            "Type": "String"
+        },
+        "DBClass": {
+            "Description": "Database instance class",
+            "Type": "String"
+        },
+        "DBAllocatedStorage": {
+            "Description": "Database allocated storage",
+            "Type": "String"
+        }
     },
 
     "Conditions" : {
-	"UseAllAvailabilityZones" : {"Fn::Equals" : [{ "Fn::Join" : ["", {"Ref" : "AvailabilityZones"} ]}, ""]}
+        "UseAllAvailabilityZones" : { "Fn::Equals" : [{ "Fn::Join" : [ "", { "Ref" : "AvailabilityZones" } ]}, "" ]}
     },
 
     "Resources" : {
 
-	"ElasticacheSubnetGroup" : {
-	    "Type" : "AWS::ElastiCache::SubnetGroup",
-	    "Properties" : {
-		"Description" : "Cache Subnet Group",
-		"SubnetIds" : { "Ref" : "CacheSubnetIDs" }
-	    }
-	},
+        "ElasticacheSubnetGroup" : {
+            "Type" : "AWS::ElastiCache::SubnetGroup",
+            "Properties" : {
+                "Description" : "Cache Subnet Group",
+                "SubnetIds" : { "Ref" : "CacheSubnetIDs" }
+            }
+        },
 
-	"ElasticacheSecurityGroup": {
-	    "Type": "AWS::EC2::SecurityGroup",
-	    "Properties": {
-		"GroupDescription": "Elasticache Security Group",
-		"VpcId" : { "Ref" : "VpcId" },
-		"SecurityGroupIngress": [ {
-		    "IpProtocol": "tcp",
-		    "FromPort": "6379",
-		    "ToPort": "6379",
-		    "SourceSecurityGroupId": {"Ref": "APIServerSecurityGroup"}
-		} ]
-	    }
-	},
+        "ElasticacheSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription": "Elasticache Security Group",
+                "VpcId" : { "Ref" : "VpcId" },
+                "SecurityGroupIngress": [{
+                    "IpProtocol": "tcp",
+                    "FromPort": "6379",
+                    "ToPort": "6379",
+                    "SourceSecurityGroupId": { "Ref": "APIServerSecurityGroup" }
+                }]
+            }
+        },
 
-	"RedisCluster": {
-	    "Type": "AWS::ElastiCache::CacheCluster",
-	    "Properties": {
-		"AutoMinorVersionUpgrade": "true",
-		"Engine": "redis",
-		"CacheNodeType": "cache.m1.small",
-		"NumCacheNodes": "1",
-		"CacheSubnetGroupName": { "Ref": "ElasticacheSubnetGroup" },
-		"VpcSecurityGroupIds": [{"Fn::GetAtt": [ "ElasticacheSecurityGroup", "GroupId"]}]
-	    }
-	},
-	
-	"DBSubnetGroup" : {
-	    "Type" : "AWS::RDS::DBSubnetGroup",
-	    "Properties" : {
-		"DBSubnetGroupDescription" : "description",
-		"SubnetIds" : { "Ref" : "DBSubnetIDs" },
-		"Tags": [
-		    { "Key": "Name", "Value": "DBSubnetGroup" }
-		]
-	    }
-	},
+        "RedisCluster": {
+            "Type": "AWS::ElastiCache::CacheCluster",
+            "Properties": {
+                "AutoMinorVersionUpgrade": "true",
+                "Engine": "redis",
+                "CacheNodeType": "cache.m1.small",
+                "NumCacheNodes": "1",
+                "CacheSubnetGroupName": { "Ref": "ElasticacheSubnetGroup" },
+                "VpcSecurityGroupIds": [{"Fn::GetAtt": [ "ElasticacheSecurityGroup", "GroupId"]}]
+            }
+        },
+    
+        "DBSubnetGroup" : {
+            "Type" : "AWS::RDS::DBSubnetGroup",
+            "Properties" : {
+                "DBSubnetGroupDescription" : "description",
+                "SubnetIds" : { "Ref" : "DBSubnetIDs" },
+                "Tags": [{ "Key": "Name", "Value": "DBSubnetGroup" }]
+            }
+        },
 
-	"DBInstance" : {
-	    "Type": "AWS::RDS::DBInstance",
-	    "Properties": {
-		"DBName"            : { "Ref" : "DBName" },
-		"Engine"            : "postgres",
-		"MasterUsername"    : { "Ref" : "DBUsername" },
-		"MasterUserPassword": { "Ref" : "DBPassword" },
-		"DBInstanceClass"   : { "Ref" : "DBClass" },
-		"DBSecurityGroups"  : [ { "Ref" : "DBSecurityGroup" } ],
-		"AllocatedStorage"  : { "Ref" : "DBAllocatedStorage" },
-		"DBSubnetGroupName" : { "Ref" : "DBSubnetGroup" }
-	    }
-	},
+        "DBInstance" : {
+            "Type": "AWS::RDS::DBInstance",
+            "Properties": {
+                "DBName"            : { "Ref" : "DBName" },
+                "Engine"            : "postgres",
+                "MasterUsername"    : { "Ref" : "DBUsername" },
+                "MasterUserPassword": { "Ref" : "DBPassword" },
+                "DBInstanceClass"   : { "Ref" : "DBClass" },
+                "DBSecurityGroups"  : [{ "Ref" : "DBSecurityGroup" }],
+                "AllocatedStorage"  : { "Ref" : "DBAllocatedStorage" },
+                "DBSubnetGroupName" : { "Ref" : "DBSubnetGroup" }
+            }
+        },
 
-	"DBSecurityGroup": {
-	    "Type": "AWS::RDS::DBSecurityGroup",
-	    "Properties": {
-		"EC2VpcId" : { "Ref" : "VpcId" },
-		"DBSecurityGroupIngress": { 
-		    "EC2SecurityGroupId": { "Ref": "APIServerSecurityGroup" } 
-		},
-		"GroupDescription"      : "Access to API instances"
-	    }
-	},
+        "DBSecurityGroup": {
+            "Type": "AWS::RDS::DBSecurityGroup",
+            "Properties": {
+                "EC2VpcId" : { "Ref" : "VpcId" },
+                "DBSecurityGroupIngress": { "EC2SecurityGroupId": { "Ref": "APIServerSecurityGroup" } },
+                "GroupDescription"      : "Access to API instances"
+            }
+        },
 
-	"KinesisStreamA" : {
-	    "Type" : "AWS::Kinesis::Stream",
-	    "Properties" : {
-		"ShardCount" : "2"
-	    }
-	},
+        "KinesisStreamA" : {
+            "Type" : "AWS::Kinesis::Stream",
+            "Properties" : {
+                "ShardCount" : "2"
+            }
+        },
 
+        "KinesisStreamB" : {
+            "Type" : "AWS::Kinesis::Stream",
+            "Properties" : {
+                "ShardCount" : "2"
+            }
+        },
 
-	"KinesisStreamB" : {
-	    "Type" : "AWS::Kinesis::Stream",
-	    "Properties" : {
-		"ShardCount" : "2"
-	    }
-	},
+        "CodeDeployTrustRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "Path": "/",
+                "AssumeRolePolicyDocument": {
+                    "Statement": [{
+                        "Sid": "1",
+                        "Effect": "Allow",
+                        "Principal": {
+                            "Service": [
+                                "codedeploy.us-east-1.amazonaws.com",
+                                "codedeploy.us-west-2.amazonaws.com"
+                            ]
+                        },
+                        "Action": "sts:AssumeRole"
+                    }]
+                }
+            }
+        },
 
+        "CodeDeployRolePolicies": {
+            "Type": "AWS::IAM::Policy",
+            "Properties": {
+                "PolicyName": "CodeDeployPolicy",
+                "PolicyDocument": {
+                    "Statement": [{
+                        "Effect": "Allow",
+                        "Resource": [ "*" ],
+                        "Action": [ "ec2:Describe*" ]
+                    },{
+                        "Effect": "Allow",
+                        "Resource": [ "*" ],
+                        "Action": [
+                            "autoscaling:CompleteLifecycleAction",
+                            "autoscaling:DeleteLifecycleHook",
+                            "autoscaling:DescribeLifecycleHooks",
+                            "autoscaling:DescribeAutoScalingGroups",
+                            "autoscaling:PutLifecycleHook",
+                            "autoscaling:RecordLifecycleActionHeartbeat"
+                        ]
+                    }]
+                },
+                "Roles": [{ "Ref": "CodeDeployTrustRole" }]
+            }
+        },
+    
+        "RootRole": {
+            "Type" : "AWS::IAM::Role",
+            "Properties" : {
+                "Path" : "/",
+                "AssumeRolePolicyDocument": {
+                    "Version" : "2012-10-17",
+                    "Statement" : [{
+                        "Effect" : "Allow",
+                        "Principal" : { "Service" : [ "ec2.amazonaws.com" ] },
+                        "Action" : [ "sts:AssumeRole" ]
+                    }]
+                }
+            }
+        },
 
-	"CodeDeployTrustRole": {
-	    "Type": "AWS::IAM::Role",
-	    "Properties": {
-		"AssumeRolePolicyDocument": {
-		    "Statement": [
-			{
-			    "Sid": "1",
-			    "Effect": "Allow",
-			    "Principal": {
-				"Service": [
-				    "codedeploy.us-east-1.amazonaws.com",
-				    "codedeploy.us-west-2.amazonaws.com"
-				]
-			    },
-			    "Action": "sts:AssumeRole"
-			}
-		    ]
-		},
-		"Path": "/"
-	    }
-	},
-	"CodeDeployRolePolicies": {
-	    "Type": "AWS::IAM::Policy",
-	    "Properties": {
-		"PolicyName": "CodeDeployPolicy",
-		"PolicyDocument": {
-		    "Statement": [
-			{
-			    "Effect": "Allow",
-			    "Resource": [
-				"*"
-			    ],
-			    "Action": [
-				"ec2:Describe*"
-			    ]
-			},
-			{
-			    "Effect": "Allow",
-			    "Resource": [
-				"*"
-			    ],
-			    "Action": [
-				"autoscaling:CompleteLifecycleAction",
-				"autoscaling:DeleteLifecycleHook",
-				"autoscaling:DescribeLifecycleHooks",
-				"autoscaling:DescribeAutoScalingGroups",
-				"autoscaling:PutLifecycleHook",
-				"autoscaling:RecordLifecycleActionHeartbeat"
-			    ]
-			}
-		    ]
-		},
-		"Roles": [
-		    {
-			"Ref": "CodeDeployTrustRole"
-		    }
-		]
-	    }
-	},
-	
-	"RootRole": {
-	    "Type" : "AWS::IAM::Role",
-	    "Properties" : {
-		"AssumeRolePolicyDocument": {
-		    "Version" : "2012-10-17",
-		    "Statement" : [ {
-			"Effect" : "Allow",
-			"Principal" : {
-			    "Service" : [ "ec2.amazonaws.com" ]
-			},
-			"Action" : [ "sts:AssumeRole" ]
-		    } ]
-		},
-		"Path" : "/"
-	    }
-	},
+        "RolePolicies" : {
+            "Type" : "AWS::IAM::Policy",
+            "Properties" : {
+                "PolicyName" : "root",
+                "PolicyDocument" : {
+                    "Version" : "2012-10-17",
+                    "Statement" : [{
+                        "Effect" : "Allow",
+                        "Action" : "kinesis:*",
+                        "Resource" : { "Fn::Join" : [ "", [ "arn:aws:kinesis:", { "Ref" : "AWS::Region" }, ":", { "Ref" : "AWS::AccountId" }, ":stream/", { "Ref" : "KinesisStreamA" } ]]}
+                    },{
+                        "Effect" : "Allow",
+                        "Action" : "kinesis:*",
+                        "Resource" : { "Fn::Join" : [ "", [ "arn:aws:kinesis:", { "Ref" : "AWS::Region" }, ":", { "Ref" : "AWS::AccountId" }, ":stream/", { "Ref" : "KinesisStreamB" } ]]}
+                    },{
+                        "Effect": "Allow",
+                        "Action": [ "sns:ListTopics", "sns:Publish" ],
+                        "Resource": "*"
+                    },{
+                        "Effect": "Allow",
+                        "Action": [ "s3:Get*", "s3:List*", "s3:Put*" ],
+                        "Resource": [
+                            { "Fn::Join" : [ "", [ "arn:aws:s3:::", { "Ref" : "DeployBucket" }, "/*" ] ] },
+                            { "Fn::Join" : [ "", [ "arn:aws:s3:::", { "Ref" : "TestResultsBucket" }, "/*" ] ] },
+                            { "Fn::Join" : [ "", [ "arn:aws:s3:::", { "Ref" : "ArtifactBucket" }, "/*" ] ] },
+                            "arn:aws:s3:::aws-codedeploy-us-east-1/*",
+                            "arn:aws:s3:::aws-codedeploy-us-west-2/*"
+                        ]
+                    },{
+                        "Effect" : "Allow",
+                        "Action" : "cloudwatch:*",
+                        "Resource" : "*"
+                    },{
+                        "Effect" : "Allow",
+                        "Action" : [ "elasticache:DescribeCacheClusters" ],
+                        "Resource" : "*"
+                    }]
+                },
+                "Roles" : [ { "Ref": "RootRole" } ]
+            }
+        },
+    
+        "RootInstanceProfile" : {
+            "Type" : "AWS::IAM::InstanceProfile",
+            "Properties" : {
+                "Path" : "/",
+                "Roles" : [ { "Ref": "RootRole" } ]
+            }
+        },
+    
+        "ClientSecurityGroup" : {
+            "Type" : "AWS::EC2::SecurityGroup",
+            "Properties" : {
+                "GroupDescription" : "For clients. Grants access to the associated load balancer.",
+                "VpcId" : { "Ref" : "VpcId" }
+            }
+        },
 
-	"RolePolicies" : {
-	    "Type" : "AWS::IAM::Policy",
-	    "Properties" : {
-		"PolicyName" : "root",
-		"PolicyDocument" : {
-		    "Version" : "2012-10-17",
-		    "Statement" : [ {
-			"Effect" : "Allow",
-			"Action" : "kinesis:*",
-			"Resource" : { "Fn::Join" : [ "", [ "arn:aws:kinesis:", { "Ref" : "AWS::Region" }, ":", { "Ref" : "AWS::AccountId" }, ":stream/", { "Ref" : "KinesisStreamA" } ]]}
-		    }, {
-			"Effect" : "Allow",
-			"Action" : "kinesis:*",
-			"Resource" : { "Fn::Join" : [ "", [ "arn:aws:kinesis:", { "Ref" : "AWS::Region" }, ":", { "Ref" : "AWS::AccountId" }, ":stream/", { "Ref" : "KinesisStreamB" } ]]}
-		    }, {
-			"Effect": "Allow",
-			"Action": [
-			    "sns:ListTopics",
-			    "sns:Publish"
-			],
-			"Resource": "*"
-		    }, {
-			"Effect": "Allow",
-			"Action": [
-			    "s3:Get*",
-			    "s3:List*",
-			    "s3:Put*"
-			],
-			"Resource": [
-			    { "Fn::Join" : [ "", 
-					     [ "arn:aws:s3:::", 
-					       { "Ref" : "DeployBucket" }, 
-					       "/*" 
-					     ] 
-					   ]
-			    },
-			    { "Fn::Join" : [ "", 
-					     [ "arn:aws:s3:::", 
-					       { "Ref" : "TestResultsBucket" }, 
-					       "/*" 
-					     ] 
-					   ]
-			    },
-			    { "Fn::Join" : [ "", 
-					     [ "arn:aws:s3:::", 
-					       { "Ref" : "ArtifactBucket" }, 
-					       "/*" 
-					     ] 
-					   ]
-			    },
-			    "arn:aws:s3:::aws-codedeploy-us-east-1/*",
-			    "arn:aws:s3:::aws-codedeploy-us-west-2/*"
-			]
-		    }, {
-			"Effect" : "Allow",
-			"Action" : "cloudwatch:*",
-			"Resource" : "*"
-		    }, {
-			"Effect" : "Allow",
-			"Action" : [ "elasticache:DescribeCacheClusters" ],
-			"Resource" : "*"
-		    } ]
-		},
-		"Roles" : [ { "Ref": "RootRole" } ]
-	    }
-	},
-	
-	"RootInstanceProfile" : {
-	    "Type" : "AWS::IAM::InstanceProfile",
-	    "Properties" : {
-		"Path" : "/",
-		"Roles" : [ { "Ref": "RootRole" } ]
-	    }
-	},
-	
-	"ClientSecurityGroup" : {
-	    "Type" : "AWS::EC2::SecurityGroup",
-	    "Properties" : {
-		"GroupDescription" : "For clients. Grants access to the associated load balancer.",
-		"VpcId" : { "Ref" : "VpcId" }
-	    }
-	},
+        "LbSecurityGroup" : {
+            "Type" : "AWS::EC2::SecurityGroup",
+            "Properties" : {
+                "GroupDescription" : "Controls who can connect to the load balancer for this service",
+                "VpcId" : { "Ref" : "VpcId" },
+                "SecurityGroupIngress" : [
+                    { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "SourceSecurityGroupId" : { "Ref" : "ClientSecurityGroup"} },
+                    { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "CidrIp": "0.0.0.0/0" },
+                    { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "SourceSecurityGroupId" : { "Ref" : "BastionSecurityGroup"} }
+                ]
+            }
+        },
 
-	"LbSecurityGroup" : {
-	    "Type" : "AWS::EC2::SecurityGroup",
-	    "Properties" : {
-		"GroupDescription" : "Controls who can connect to the load balancer for this service",
-		"VpcId" : { "Ref" : "VpcId" },
-		"SecurityGroupIngress" :
-		[ { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "SourceSecurityGroupId" : { "Ref" : "ClientSecurityGroup"} },
-		  { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "CidrIp": "0.0.0.0/0" },
-		  { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "SourceSecurityGroupId" : { "Ref" : "BastionSecurityGroup"} } ]
-	    }
-	},
+        "APIServerSecurityGroup" : {
+            "Type" : "AWS::EC2::SecurityGroup",
+            "Properties" : {
+                "GroupDescription" : "Enable SSH access",
+                "VpcId" : { "Ref" : "VpcId" },
+                "SecurityGroupIngress" : [ 
+                    { "IpProtocol" : "tcp", "FromPort" : "22", "ToPort" : "22", "SourceSecurityGroupId" : { "Ref" : "BastionSecurityGroup" } },
+                    { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "SourceSecurityGroupId" : { "Ref" : "LbSecurityGroup" } },
+                    { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "SourceSecurityGroupId" : { "Ref" : "BastionSecurityGroup" } }
+                ]
+            }
+        },
 
-	"APIServerSecurityGroup" : {
-	    "Type" : "AWS::EC2::SecurityGroup",
-	    "Properties" : {
-		"GroupDescription" : "Enable SSH access",
-		"VpcId" : { "Ref" : "VpcId" },
-		"SecurityGroupIngress" : [ 
-		    { "IpProtocol" : "tcp", "FromPort" : "22", "ToPort" : "22", 
-		      "SourceSecurityGroupId" : { "Ref" : "BastionSecurityGroup" } 
-		    },
-		    { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80",
-		      "SourceSecurityGroupId" : { "Ref" : "LbSecurityGroup" }
-		    },
-		    { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80",
-		      "SourceSecurityGroupId" : { "Ref" : "BastionSecurityGroup" }
-		    }
-		]
-	    }
-	},
+        "APILoadBalancer" : {
+            "Type" : "AWS::ElasticLoadBalancing::LoadBalancer",
+            "Properties" : {
+                "Subnets": { "Ref": "PublicSubnets" },
+                "SecurityGroups": [{ "Ref": "LbSecurityGroup" }],
+                "Policies" : [{
+                    "PolicyName" : "EnableProxyProtocol",
+                    "PolicyType" : "ProxyProtocolPolicyType",
+                    "Attributes" : [{
+                        "Name"  : "ProxyProtocol",
+                        "Value" : "true"
+                    }],
+                    "InstancePorts" : ["80"]
+                }],
+                "Listeners" : [{
+                    "LoadBalancerPort" : "80",
+                    "InstancePort" : "80",
+                    "Protocol" : "TCP",
+                    "InstanceProtocol" : "TCP"
+                }]
+            }
+        },
 
-	"APILoadBalancer" : {
-	    "Type" : "AWS::ElasticLoadBalancing::LoadBalancer",
-	    "Properties" : {
-		"Subnets": { "Ref": "PublicSubnets" },
-		"SecurityGroups": [{ "Ref": "LbSecurityGroup" }],
-		"Policies" : [{
-		    "PolicyName" : "EnableProxyProtocol",
-		    "PolicyType" : "ProxyProtocolPolicyType",
-		    "Attributes" : [{
-			"Name"  : "ProxyProtocol",
-			"Value" : "true"
-		    }],
-		    "InstancePorts" : ["80"]
-		}],
-		"Listeners" : [ {
-		    "LoadBalancerPort" : "80",
-		    "InstancePort" : "80",
-		    "Protocol" : "TCP",
-		    "InstanceProtocol" : "TCP"
-		} ]
-	    }
-	},
+        "APILaunchConfig" : {
+            "Type" : "AWS::AutoScaling::LaunchConfiguration",
+            "Metadata" : {
+                "AWS::CloudFormation::Init" : {
+                    "config" : {
+                        "packages" : {
+                                "yum" : {
+                                "java-1.7.0-openjdk" : [],
+                                "postgresql93" : [],
+                                "git" : [],
+                                "nginx" : []
+                            }
+                        },
+                        "files" : {
+                            "/tmp/nginx/default.conf" : {
+                                "content" : { "Fn::Join" : ["", [
 
-	"APILaunchConfig" : {
-	    "Type" : "AWS::AutoScaling::LaunchConfiguration",
-	    "Metadata" : {
-		"AWS::CloudFormation::Init" : {
-		    "config" : {
-			"packages" : {
-			    "yum" : {
-				"java-1.7.0-openjdk" : [],
-				"postgresql93" : [],
-				"git" : [],
-				"nginx" : []
-			    }
-			},
-			"files" : {
-			    "/tmp/nginx/default.conf" : {
-				"content" : { "Fn::Join" : ["", [
+                                    "log_format elb_log '$proxy_protocol_addr - $remote_user [$time_local] ' '\"$request\" $status $body_bytes_sent \"$http_referer\" ' '\"$http_user_agent\"';\n",
+                                    "\n\n",
 
-				    "log_format elb_log '$proxy_protocol_addr - $remote_user [$time_local] ' '\"$request\" $status $body_bytes_sent \"$http_referer\" ' '\"$http_user_agent\"';\n",
-				    "\n\n",
+                                    "upstream api {\n",
+                                    "  server 127.0.0.1:3000 fail_timeout=0;\n",
+                                    "}\n\n",
 
-				    "upstream api {\n",
-				    "  server 127.0.0.1:3000 fail_timeout=0;\n",
-				    "}\n\n",
+                                    "server {\n",
+                                    "  listen 80 proxy_protocol;\n",
+                                    "  listen [::]:80 default proxy_protocol ipv6only=on;\n",
+                                    "  charset utf-8;\n",
+                                    "  access_log /var/log/nginx/elb-access.log elb_log;\n",
+                                    "  # set_real_ip_from 172.31.0.0/20;\n",
+                                    "  # real_ip_header proxy_protocol;\n",
 
-				    "server {\n",
-				    "  listen 80 proxy_protocol;\n",
-				    "  listen [::]:80 default proxy_protocol ipv6only=on;\n",
-				    "  charset utf-8;\n",
-				    "  access_log /var/log/nginx/elb-access.log elb_log;\n",
-				    "  # set_real_ip_from 172.31.0.0/20;\n",
-				    "  # real_ip_header proxy_protocol;\n",
+                                    "  location / {\n",
+                                    "    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n",
+                                    "    proxy_set_header Host $http_host;\n",
+                                    "    proxy_redirect off;\n\n",
 
-				    "  location / {\n",
-				    "    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n",
-				    "    proxy_set_header Host $http_host;\n",
-				    "    proxy_redirect off;\n\n",
+                                    "    if (!-f $request_filename) {\n",
+                                    "      proxy_pass http://api;\n",
+                                    "      break;\n",
+                                    "    }\n",
+                                    "  }\n",
+                                    "}\n"
+                                ] ]},
+                                "mode"   : "000644",
+                                "owner"  : "root",
+                                "group"  : "root"
+                            },
+                            "/etc/cron.d/get_cluster_config" : {
+                                "content" : "*/5 * * * * root /usr/local/bin/get_cluster_config",
+                                "mode"    : "000644",
+                                "owner"   : "root",
+                                "group"   : "root"
+                            },
+                            "/etc/cron.d/get_iam_config" : {
+                                "content" : "*/5 * * * * root /usr/local/bin/get_iam_config",
+                                "mode"    : "000644",
+                                "owner"   : "root",
+                                "group"   : "root"
+                            },
+                            "/tmp/postgres_setup.sql" : {
+                                "content" : { "Fn::Join" : [ "", [
+                                    "CREATE USER ", {"Ref": "DBUsername"}, " WITH PASSWORD '", {"Ref": "DBPassword"}, "';\n",
+                                    "CREATE DATABASE ", {"Ref": "DBName"}, ";\n",
+                                    "GRANT ALL PRIVILEGES ON DATABASE ", {"Ref": "DBName"}, " to ", {"Ref": "DBUsername"}, ";\n",
+                                    "\\c ", {"Ref": "DBName"}, "\n",
+                                    "CREATE EXTENSION \"uuid-ossp\";\n",
+                                    "CREATE TABLE IF NOT EXISTS migrations(version varchar(255));\n",
+                                    "GRANT ALL PRIVILEGES ON TABLE migrations TO ", {"Ref": "DBUsername"}, ";\n"
+                                ] ]},
+                                "mode"    : "000644",
+                                "owner"   : "root",
+                                "group"   : "root"
+                            },
+                            "/usr/local/bin/get_cluster_config" : {
+                                "content" : { "Fn::Join" : [ "", [
+                                    "#! /bin/bash\n",
+                                    "aws elasticache describe-cache-clusters ",
+                                    "         --cache-cluster-id ", {"Ref" : "RedisCluster"},
+                                    "         --show-cache-node-info --region ", { "Ref" : "AWS::Region" }, " > /tmp/cacheclusterconfig\n"
+                                ] ]},
+                                "mode"    : "000755",
+                                "owner"   : "root",
+                                "group"   : "root"
+                            },
+                            "/usr/local/bin/get_iam_config" : {
+                                "content" : { "Fn::Join" : [ "", [
+                                    "#! /bin/bash\n",
+                                    "export ROLE=$(curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/)\n",
+                                    "curl http://169.254.169.254/latest/meta-data/iam/security-credentials/$ROLE > /tmp/iamconfig\n"
+                                ] ]},
+                                "mode"    : "000755",
+                                "owner"   : "root",
+                                "group"   : "root"
+                            },
+                            "/etc/cfn/cfn-hup.conf" : {
+                                "content" : { "Fn::Join" : [ "", [
+                                    "[main]\n",
+                                    "stack=", { "Ref" : "AWS::StackId" }, "\n",
+                                    "region=", { "Ref" : "AWS::Region" }, "\n"
+                                ] ]},
+                                "mode"    : "000400",
+                                "owner"   : "root",
+                                "group"   : "root"
+                            },
+                            "/etc/cfn/hooks.d/cfn-auto-reloader.conf" : {
+                                "content": { "Fn::Join" : [ "", [
+                                    "[cfn-auto-reloader-hook]\n",
+                                    "triggers=post.update\n",
+                                    "path=Resources.APILaunchConfig.Metadata.AWS::CloudFormation::Init\n",
+                                    "action=/opt/aws/bin/cfn-init -v ",
+                                      " --stack ", { "Ref" : "AWS::StackName" },
+                                      " --resource APILaunchConfig",
+                                      " --region ", { "Ref" : "AWS::Region" }, "\n",
+                                    "runas=root\n"
+                                ] ]}
+                            }
+                        },
+                        "commands" : {
+                            "01-get-cluster-config" : { "command" : "/usr/local/bin/get_cluster_config" },
+                            "02-get-iam-config" : { "command" : "/usr/local/bin/get_iam_config" },
+                            "03-postgres-setup" : {
+                                "command" : { "Fn::Join": [ "", [
+                                    "export PGPASSWORD='", {"Ref": "DBPassword"}, "' && psql -f /tmp/postgres_setup.sql -h ", 
+                                    { "Fn::GetAtt" : [ "DBInstance", "Endpoint.Address" ]}, " -p ",
+                                    {"Fn::GetAtt": [ "DBInstance", "Endpoint.Port"]}, " -U ", {"Ref": "DBUsername"}, "\n"
+                                ] ]}
+                            }
+                        },
+                        "services" : {
+                            "sysvinit" : {
+                                "codedeploy-agent": {
+                                    "enabled": "true",
+                                    "ensureRunning": "true"
+                                },
+                                "nginx" : {
+                                    "enabled" : "true",
+                                    "ensureRunning" : "true",
+                                    "files" : [ "/etc/nginx/conf.d/default.conf" ],
+                                    "sources" : [ "/var/www/html" ]
+                                },
+                                "cfn-hup" : {
+                                    "enabled" : "true", 
+                                    "ensureRunning" : "true",
+                                    "files" : [ "/etc/cfn/cfn-hup.conf", "/etc/cfn/hooks.d/cfn-auto-reloader.conf" ]
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "Properties" : {
+                "ImageId" : "ami-b66ed3de",
+                "SecurityGroups" : [{ "Ref" : "APIServerSecurityGroup" }],
+                "InstanceType" : "t2.small",
+                "KeyName": { "Ref": "KeyPair" },
+                "IamInstanceProfile": { "Ref": "RootInstanceProfile" },
+                "UserData": { "Fn::Base64": { "Fn::Join": [ "", [
+                    "#!/bin/bash -ex\n",
+                    "yum update -y\n",
+                    "yum update -y aws-cfn-bootstrap\n",
+                    "yum update -y aws-cli\n",
+                    "yum update -y curl\n",
+                    "yum install -y jsvc\n",
 
-				    "    if (!-f $request_filename) {\n",
-				    "      proxy_pass http://api;\n",
-				    "      break;\n",
-				    "    }\n",
-				    "  }\n",
-				    "}\n"
-				]]},
-				"mode"   : "000644",
-				"owner"  : "root",
-				"group"  : "root"
-			    },
-			    "/etc/cron.d/get_cluster_config" : {
-			        "content" : "*/5 * * * * root /usr/local/bin/get_cluster_config",
-			        "mode"    : "000644",
-			        "owner"   : "root",
-			        "group"   : "root"
-			    },
-			    "/etc/cron.d/get_iam_config" : {
-			        "content" : "*/5 * * * * root /usr/local/bin/get_iam_config",
-			        "mode"    : "000644",
-			        "owner"   : "root",
-			        "group"   : "root"
-			    },
-			    "/tmp/postgres_setup.sql" : {
-				"content" : { 
-				    "Fn::Join" : ["", 
-						  [ "CREATE USER ", {"Ref": "DBUsername"}, " WITH PASSWORD '", {"Ref": "DBPassword"}, "';\n",
-						    "CREATE DATABASE ", {"Ref": "DBName"}, ";\n",
-						    "GRANT ALL PRIVILEGES ON DATABASE ", {"Ref": "DBName"}, " to ", {"Ref": "DBUsername"}, ";\n",
-						    "\\c ", {"Ref": "DBName"}, "\n",
-						    "CREATE EXTENSION \"uuid-ossp\";\n",
-						    "CREATE TABLE IF NOT EXISTS migrations(version varchar(255));\n",
-						    "GRANT ALL PRIVILEGES ON TABLE migrations TO ", {"Ref": "DBUsername"}, ";\n"]
-						 ]
-				},
-			        "mode"    : "000644",
-			        "owner"   : "root",
-			        "group"   : "root"
-			    },
-			    "/usr/local/bin/get_cluster_config" : {
-			        "content" : { "Fn::Join" : ["", [
-				    "#! /bin/bash\n",
-				    "aws elasticache describe-cache-clusters ",
-				    "         --cache-cluster-id ", {"Ref" : "RedisCluster"},
-				    "         --show-cache-node-info --region ", { "Ref" : "AWS::Region" }, " > /tmp/cacheclusterconfig\n"
-				]]},
-			        "mode"    : "000755",
-			        "owner"   : "root",
-			        "group"   : "root"
-			    },
-			    "/usr/local/bin/get_iam_config" : {
-			        "content" : { "Fn::Join" : ["", [
-				    "#! /bin/bash\n",
-				    "export ROLE=$(curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/)\n",
-				    "curl http://169.254.169.254/latest/meta-data/iam/security-credentials/$ROLE > /tmp/iamconfig\n"
-				]]},
-			        "mode"    : "000755",
-			        "owner"   : "root",
-			        "group"   : "root"
-			    },
-			    "/etc/cfn/cfn-hup.conf" : {
-				"content" : { "Fn::Join" : ["", [
-				    "[main]\n",
-				    "stack=", { "Ref" : "AWS::StackId" }, "\n",
-				    "region=", { "Ref" : "AWS::Region" }, "\n"
-				]]},
-				"mode"    : "000400",
-				"owner"   : "root",
-				"group"   : "root"
-			    },
-			    "/etc/cfn/hooks.d/cfn-auto-reloader.conf" : {
-				"content": { "Fn::Join" : ["", [
-				    "[cfn-auto-reloader-hook]\n",
-				    "triggers=post.update\n",
-				    "path=Resources.APILaunchConfig.Metadata.AWS::CloudFormation::Init\n",
-				    "action=/opt/aws/bin/cfn-init -v ",
-				    "         --stack ", { "Ref" : "AWS::StackName" },
-				    "         --resource APILaunchConfig ",
-				    "         --region ", { "Ref" : "AWS::Region" }, "\n",
-				    "runas=root\n"
-				]]}
-			    }
-			},
-			"commands" : {
-			    "01-get-cluster-config" : {
-				"command" : "/usr/local/bin/get_cluster_config"
-			    },
-			    "02-get-iam-config" : {
-				"command" : "/usr/local/bin/get_iam_config"
-			    },
-			    "03-postgres-setup" : {
-				"command" : { 
-				    "Fn::Join": [
-					"",
-					[
-					    "export PGPASSWORD='", {"Ref": "DBPassword"}, "' && psql -f /tmp/postgres_setup.sql -h ", 
-					    {"Fn::GetAtt": [ "DBInstance", "Endpoint.Address"]},
-					    " -p ",
-					    {"Fn::GetAtt": [ "DBInstance", "Endpoint.Port"]},
-					    " -U ", {"Ref": "DBUsername"}, "\n"
-					]
-				    ]
-				}
-			    }
-			},
-			"services" : {
-			    "sysvinit" : {
-				"codedeploy-agent": {
-				    "enabled": "true",
-				    "ensureRunning": "true"
-				},
-				"nginx" : {
-				    "enabled" : "true",
-				    "ensureRunning" : "true",
-				    "files" : ["/etc/nginx/conf.d/default.conf"],
-				    "sources" : ["/var/www/html"]
-				},
-				"cfn-hup" : { "enabled" : "true", 
-					      "ensureRunning" : "true",
-					      "files" : ["/etc/cfn/cfn-hup.conf", 
-							 "/etc/cfn/hooks.d/cfn-auto-reloader.conf"]}
-			    }
-			}
-		    }
-		}
-	    },
-	    "Properties" : {
-		"ImageId" : "ami-b66ed3de",
-		"SecurityGroups" : [ { "Ref" : "APIServerSecurityGroup" } ],
-		"InstanceType" : "t2.small",
-		"KeyName": { "Ref": "KeyPair" },
-		"IamInstanceProfile": { "Ref": "RootInstanceProfile" },
-		"UserData": {
-		    "Fn::Base64": {
-			"Fn::Join": [
-			    "",
-			    [
-				"#!/bin/bash -ex\n",
-				"yum update -y\n",
-				"yum update -y aws-cfn-bootstrap\n",
-				"yum update -y aws-cli\n",
-				"yum update -y curl\n",
-				"yum install -y jsvc\n",
+                    "# Helper function.\n",
+                    "",
+                    "function error_exit\n",
+                    "{\n",
+                    "  /opt/aws/bin/cfn-signal -e 1 -r \"$1\"",
+                    "         --stack ", { "Ref" : "AWS::StackName" },
+                    "         --resource APILaunchConfig ",
+                    "         --region ", { "Ref" : "AWS::Region" }, "\n",
+                    "  exit 1\n",
+                    "}\n",
 
-				"# Helper function.\n",
-				"",
-				"function error_exit\n",
-				"{\n",
-				"  /opt/aws/bin/cfn-signal -e 1 -r \"$1\"",
-				"         --stack ", { "Ref" : "AWS::StackName" },
-				"         --resource APILaunchConfig ",
-				"         --region ", { "Ref" : "AWS::Region" }, "\n",
-				"  exit 1\n",
-				"}\n",
+                    "# Install the AWS CodeDeploy Agent.\n",
+                    "",
+                    "cd /home/ec2-user/\n",
+                    "aws s3 cp 's3://aws-codedeploy-us-east-1/latest/codedeploy-agent.noarch.rpm' . || error_exit 'Failed to download AWS CodeDeploy Agent.'\n",
+                    "yum -y install codedeploy-agent.noarch.rpm || error_exit 'Failed to install AWS CodeDeploy Agent.' \n",
+                    "/opt/aws/bin/cfn-init -s ", { "Ref": "AWS::StackId" },
+                      " -r APILaunchConfig --region ", { "Ref": "AWS::Region" },
+                      " || error_exit 'Failed to run cfn-init.'\n",
 
-				"# Install the AWS CodeDeploy Agent.\n",
-				"",
-				"cd /home/ec2-user/\n",
-				"aws s3 cp 's3://aws-codedeploy-us-east-1/latest/codedeploy-agent.noarch.rpm' . || error_exit 'Failed to download AWS CodeDeploy Agent.'\n",
-				"yum -y install codedeploy-agent.noarch.rpm || error_exit 'Failed to install AWS CodeDeploy Agent.' \n",
-				"/opt/aws/bin/cfn-init -s ",
-				{
-				    "Ref": "AWS::StackId"
-				},
-				" -r APILaunchConfig --region ",
-				{
-				    "Ref": "AWS::Region"
-				},
-				" || error_exit 'Failed to run cfn-init.'\n",
+                    "# Get API tarball\n",
+                    "curl -sL --user '", { "Ref" : "GitHubUser" }, ":", { "Ref" : "GitHubPW" }, "'", " https://api.github.com/repos/promotably/api/tarball/", { "Ref" : "GitHubRef" }, " > /tmp/api.tar\n",
+                    "mkdir -p /opt/promotably\n",
+                    "tar -xf /tmp/api.tar -C /opt/promotably\n",
+                    "ln -s /opt/promotably/* /opt/promotably/api\n\n",
 
+                    "# Get build artifacts\n",
+                    "aws s3 cp 's3://", { "Ref" : "ArtifactBucket" }, "/", { "Ref" : "ArtifactName" }, "' /opt/promotably/\n",
+                    "ln -s /opt/promotably/", { "Ref" : "ArtifactName" }, "   /opt/promotably/api-current.jar\n",
+                    "aws s3 cp 's3://", { "Ref" : "ArtifactBucket" }, "/apid'  /etc/init.d\n",
+                    "chmod 000755 /etc/init.d/apid\n",
+                    "chkconfig --add apid\n",
 
-			        "# Get API tarball\n",
-				"",
-				"curl -sL --user '", { "Ref" : "GitHubUser" }, ":", { "Ref" : "GitHubPW" }, "'", 
-				" https://api.github.com/repos/promotably/api/tarball/",
-				{ "Ref" : "GitHubRef" }, " > /tmp/api.tar\n",
-				"mkdir -p /opt/promotably\n",
-				"tar -xf /tmp/api.tar -C /opt/promotably\n",
-				"ln -s /opt/promotably/* /opt/promotably/api\n\n",
+                    "# Nginx setup\n",
+                    "cp /tmp/nginx/default.conf /etc/nginx/conf.d/default.conf\n",
+                    "service nginx restart\n",
 
-			        "# Get build artifacts\n\n",
-				"",
-				"aws s3 cp 's3://", { "Ref" : "ArtifactBucket" }, "/", 
-				  { "Ref" : "ArtifactName" }, "' /opt/promotably/\n",
-				"ln -s /opt/promotably/", { "Ref" : "ArtifactName" }, 
-				"   /opt/promotably/api-current.jar\n",
-				"aws s3 cp 's3://", { "Ref" : "ArtifactBucket" }, 
-				  "/apid'  /etc/init.d\n",
-				"chmod 000755 /etc/init.d/apid\n",
-				"chkconfig --add apid\n",
+                    "# Install lein\n",
+                    "curl https://raw.githubusercontent.com/technomancy/leiningen/stable/bin/lein > /usr/local/bin/lein\n",
+                    "chmod a+x /usr/local/bin/lein\n",
 
-				"# Nginx setup\n",
-				"",
-				"cp /tmp/nginx/default.conf /etc/nginx/conf.d/default.conf\n",
-				"service nginx restart\n",
+                    "# Wait for it...\n",
+                    "while : ; do\n",
+                    "  [[ -f /tmp/cacheclusterconfig ]] && break\n",
+                    "  sleep 1\n",
+                    "done\n\n",
+                    
+                    "# Create API config\n",
+                    "echo '{' > /opt/promotably/api.conf\n",
+                    "echo \\\"ARTIFACT_BUCKET\\\"          \\\"", {"Ref": "ArtifactBucket"}, "\\\" >> /opt/promotably/api.conf\n",
+                    "echo \\\"DASHBOARD_INDEX_PATH\\\"     \\\"db/", {"Ref": "DashboardRef"}, "/index.html\\\" >> /opt/promotably/api.conf\n",
+                    "echo \\\"KINESIS_A\\\"                \\\"", {"Ref": "KinesisStreamA"}, "\\\" >> /opt/promotably/api.conf\n",
+                    "echo \\\"KINESIS_B\\\"                \\\"", {"Ref": "KinesisStreamB"}, "\\\" >> /opt/promotably/api.conf\n",
+                    "echo \\\"REDIS_HOST\\\"               \\\"$(grep Address /tmp/cacheclusterconfig  | cut -d: -f2 | cut -d\\\" -f2)\\\" >> /opt/promotably/api.conf\n",
+                    "echo \\\"REDIS_PORT\\\"               \\\"$(grep Port /tmp/cacheclusterconfig | cut -d: -f 2 | cut -d, -f1 | cut -d ' ' -f 2)\\\" >> /opt/promotably/api.conf\n",
+                    "echo \\\"RDS_HOST\\\"                 \\\"", {"Fn::GetAtt": [ "DBInstance", "Endpoint.Address"]}, "\\\" >> /opt/promotably/api.conf\n",
+                    "echo \\\"RDS_PORT\\\"                 \\\"", {"Fn::GetAtt": [ "DBInstance", "Endpoint.Port"]}, "\\\" >> /opt/promotably/api.conf\n",
+                    "echo \\\"RDS_USER\\\"                 \\\"", {"Ref": "DBUsername"}, "\\\" >> /opt/promotably/api.conf\n",
+                    "echo \\\"RDS_PW\\\"                   \\\"", {"Ref": "DBPassword"}, "\\\" >> /opt/promotably/api.conf\n",
+                    "echo \\\"RDS_DB_NAME\\\"              \\\"", {"Ref": "DBName"}, "\\\" >> /opt/promotably/api.conf\n",
+                    "echo \\\"ENV\\\"                      \\\"", {"Ref": "Environment"}, "\\\" >> /opt/promotably/api.conf\n",
+                    "echo \\\"LEIN_ROOT\\\"                \\\"yes\\\" >> /opt/promotably/api.conf\n",
+                    "echo \\\"STACKNAME\\\"                \\\"", { "Ref": "AWS::StackName" }, "\\\" >> /opt/promotably/api.conf\n",
+                    "echo '}' >> /opt/promotably/api.conf\n",
 
-				"# Install lein\n",
-				"",
-				"curl https://raw.githubusercontent.com/technomancy/leiningen/stable/bin/lein > /usr/local/bin/lein\n",
-				"chmod a+x /usr/local/bin/lein\n",
+                    "export ARTIFACT_BUCKET=", {"Ref": "ArtifactBucket"}, "\n",
+                    "export DASHBOARD_INDEX_PATH=db/", {"Ref": "DashboardRef"}, "/index.html\n",
+                    "export KINESIS_A=", {"Ref": "KinesisStreamA"}, "\n",
+                    "export KINESIS_B=", {"Ref": "KinesisStreamB"}, "\n",
+                    "export REDIS_HOST=$(grep Address /tmp/cacheclusterconfig  | cut -d: -f2 | cut -d\\\" -f2)\n",
+                    "export REDIS_PORT=$(grep Port /tmp/cacheclusterconfig | cut -d: -f 2 | cut -d, -f1 | cut -d ' ' -f 2)\n",
+                    "export RDS_HOST=", {"Fn::GetAtt": [ "DBInstance", "Endpoint.Address"]}, "\n",
+                    "export RDS_PORT=", {"Fn::GetAtt": [ "DBInstance", "Endpoint.Port"]}, "\n",
+                    "export RDS_USER=", {"Ref": "DBUsername"}, "\n",
+                    "export RDS_PW=", {"Ref": "DBPassword"}, "\n",
+                    "export RDS_DB_NAME=", {"Ref": "DBName"}, "\n",
+                    "export ENV=", {"Ref": "Environment"}, "\n",
+                    "export LEIN_ROOT=yes\n",
+                    "export STACKNAME=", { "Ref": "AWS::StackName" }, "\n",
+                    "export MIDJE_COLORIZE=false\n",
 
-				"# Wait for it...\n",
-				"",
-				"while : ; do\n",
-				"    [[ -f /tmp/cacheclusterconfig ]] && break\n",
-				"sleep 1\n",
-				"done\n\n",
-				
-				"# Create API config\n",
-				"",
-				"echo '{' > /opt/promotably/api.conf\n",
-				"echo \\\"ARTIFACT_BUCKET\\\"          \\\"", {"Ref": "ArtifactBucket"}, "\\\" >> /opt/promotably/api.conf\n",
-				"echo \\\"DASHBOARD_INDEX_PATH\\\"     \\\"db/", {"Ref": "DashboardRef"}, "/index.html\\\" >> /opt/promotably/api.conf\n",
-				"echo \\\"KINESIS_A\\\"                \\\"", {"Ref": "KinesisStreamA"}, "\\\" >> /opt/promotably/api.conf\n",
-				"echo \\\"KINESIS_B\\\"                \\\"", {"Ref": "KinesisStreamB"}, "\\\" >> /opt/promotably/api.conf\n",
-				"echo \\\"REDIS_HOST\\\"               \\\"$(grep Address /tmp/cacheclusterconfig  | cut -d: -f2 | cut -d\\\" -f2)\\\" >> /opt/promotably/api.conf\n",
-				"echo \\\"REDIS_PORT\\\"               \\\"$(grep Port /tmp/cacheclusterconfig | cut -d: -f 2 | cut -d, -f1 | cut -d ' ' -f 2)\\\" >> /opt/promotably/api.conf\n",
-				"echo \\\"RDS_HOST\\\"                 \\\"", {"Fn::GetAtt": [ "DBInstance", "Endpoint.Address"]}, "\\\" >> /opt/promotably/api.conf\n",
-				"echo \\\"RDS_PORT\\\"                 \\\"", {"Fn::GetAtt": [ "DBInstance", "Endpoint.Port"]}, "\\\" >> /opt/promotably/api.conf\n",
-				"echo \\\"RDS_USER\\\"                 \\\"", {"Ref": "DBUsername"}, "\\\" >> /opt/promotably/api.conf\n",
-				"echo \\\"RDS_PW\\\"                   \\\"", {"Ref": "DBPassword"}, "\\\" >> /opt/promotably/api.conf\n",
-				"echo \\\"RDS_DB_NAME\\\"              \\\"", {"Ref": "DBName"}, "\\\" >> /opt/promotably/api.conf\n",
-				"echo \\\"ENV\\\"                      \\\"", {"Ref": "Environment"}, "\\\" >> /opt/promotably/api.conf\n",
-				"echo \\\"LEIN_ROOT\\\"                \\\"yes\\\" >> /opt/promotably/api.conf\n",
-				"echo \\\"STACKNAME\\\"                \\\"", { "Ref": "AWS::StackName" }, "\\\" >> /opt/promotably/api.conf\n",
-				"echo '}' >> /opt/promotably/api.conf\n",
+                    "if [ \"$ENV\" == 'integration' ]; then\n",
+                    "   echo API INTEGRATION TEST RESULTS > /tmp/test_output.txt\n",
+                    "   cd /opt/promotably/api && /usr/local/bin/lein midje api.integration.*",
+                    "     2>&1 >> /tmp/test_output.txt\n",
+                    "   aws s3 cp /tmp/test_output.txt 's3://", 
+                      { "Ref" : "TestResultsBucket" }, "/",
+                      { "Ref" : "AWS::StackName" }, ".txt'",
+                    " --acl public-read\n",
+                    "   aws sns publish  ",
+                    "     --region ", { "Ref": "AWS::Region" },
+                    "     --topic-arn ", {"Ref": "TestResultsSNSTopicARN"},
+                    "     --message 'https://s3.amazonaws.com/", { "Ref" : "TestResultsBucket" },
+                           "/", { "Ref" : "AWS::StackName" }, ".txt'\n",
+                    "fi\n\n",
+                    "service apid start\n",
+                    
+                    "# All is well, so signal success.\n",
+                    "/opt/aws/bin/cfn-signal -e 0 ",
+                    "         --stack ", { "Ref" : "AWS::StackName" },
+                    "         --resource APILaunchConfig ",
+                    "         --region ", { "Ref" : "AWS::Region" }, "\n"
+                ] ]} }
+            }
+        },
 
-				"export ARTIFACT_BUCKET=", {"Ref": "ArtifactBucket"}, "\n",
-				"export DASHBOARD_INDEX_PATH=db/", {"Ref": "DashboardRef"}, "/index.html\n",
-				"export KINESIS_A=", {"Ref": "KinesisStreamA"}, "\n",
-				"export KINESIS_B=", {"Ref": "KinesisStreamB"}, "\n",
-				"export REDIS_HOST=$(grep Address /tmp/cacheclusterconfig  | cut -d: -f2 | cut -d\\\" -f2)\n",
-				"export REDIS_PORT=$(grep Port /tmp/cacheclusterconfig | cut -d: -f 2 | cut -d, -f1 | cut -d ' ' -f 2)\n",
-				"export RDS_HOST=", {"Fn::GetAtt": [ "DBInstance", "Endpoint.Address"]}, "\n",
-				"export RDS_PORT=", {"Fn::GetAtt": [ "DBInstance", "Endpoint.Port"]}, "\n",
-				"export RDS_USER=", {"Ref": "DBUsername"}, "\n",
-				"export RDS_PW=", {"Ref": "DBPassword"}, "\n",
-				"export RDS_DB_NAME=", {"Ref": "DBName"}, "\n",
-				"export ENV=", {"Ref": "Environment"}, "\n",
-				"export LEIN_ROOT=yes\n",
-				"export STACKNAME=", { "Ref": "AWS::StackName" }, "\n",
-				"export MIDJE_COLORIZE=false\n",
-
-				"if [ \"$ENV\" == 'integration' ]; then\n",
-				"   echo API INTEGRATION TEST RESULTS > /tmp/test_output.txt\n",
-				"   cd /opt/promotably/api && /usr/local/bin/lein midje api.integration.*",
-				"     2>&1 >> /tmp/test_output.txt\n",
-				"   aws s3 cp /tmp/test_output.txt 's3://", 
-				  { "Ref" : "TestResultsBucket" }, "/",
-				  { "Ref" : "AWS::StackName" }, ".txt'",
-				" --acl public-read\n",
-				"   aws sns publish  ",
-				"     --region ", { "Ref": "AWS::Region" },
-				"     --topic-arn ", {"Ref": "TestResultsSNSTopicARN"},
-				"     --message 'https://s3.amazonaws.com/", { "Ref" : "TestResultsBucket" },
-				       "/", { "Ref" : "AWS::StackName" }, ".txt'\n",
-				"fi\n\n",
-				"service apid start\n",
-				
-				"# All is well, so signal success.\n",
-				"/opt/aws/bin/cfn-signal -e 0 ",
-				"         --stack ", { "Ref" : "AWS::StackName" },
-				"         --resource APILaunchConfig ",
-				"         --region ", { "Ref" : "AWS::Region" }, "\n"
-			    ]
-			]
-		    }
-		}
-	    }
-	},
-
-	"APIInstanceGroup" : {
-	    "Type" : "AWS::AutoScaling::AutoScalingGroup",
-	    "Properties" : {
-		"Tags": [
-		    {
-			"Key": "Name",
-			"PropagateAtLaunch": "true",
-			"Value": "API Server Instance"
-		    }
-		],
-		"AvailabilityZones" : {
-		    "Fn::If" : [
-			"UseAllAvailabilityZones",
-			{ "Fn::GetAZs": "AWS::Region" },
-			{ "Ref" : "AvailabilityZones" }
-		    ]
-		},
-		"LaunchConfigurationName" : { "Ref" : "APILaunchConfig" },
-		"MinSize" : "1",
-		"MaxSize" : "1",
-		"DesiredCapacity" : 1,
-		"VPCZoneIdentifier" : { "Ref" : "PrivateSubnets" },
-		"LoadBalancerNames" : [ { "Ref" : "APILoadBalancer" } ]
-	    }
-	}
-
+        "APIInstanceGroup" : {
+            "Type" : "AWS::AutoScaling::AutoScalingGroup",
+            "Properties" : {
+                "Tags": [{ "Key": "Name", "PropagateAtLaunch": "true", "Value": "API Server Instance" } ],
+                "AvailabilityZones" : { "Fn::If" : [ "UseAllAvailabilityZones",
+                    { "Fn::GetAZs": "AWS::Region" },
+                    { "Ref" : "AvailabilityZones" }
+                ] },
+                "LaunchConfigurationName" : { "Ref" : "APILaunchConfig" },
+                "MinSize" : "1",
+                "MaxSize" : "1",
+                "DesiredCapacity" : 1,
+                "VPCZoneIdentifier" : { "Ref" : "PrivateSubnets" },
+                "LoadBalancerNames" : [ { "Ref" : "APILoadBalancer" } ]
+            }
+        }
     },
     
     "Outputs" : {
 
-	"CodeDeployTrustRoleARN": {
-	    "Value": {
-		"Fn::GetAtt": [
-		    "CodeDeployTrustRole",
-		    "Arn"
-		]
-	    }
-	},
-
-	"KinesisStreamA" : {
-	    "Description" : "Kinesis Stream A",
-	    "Value" : { "Ref" : "KinesisStreamA" }
-	},
-
-	"KinesisStreamB" : {
-	    "Description" : "Kinesis Stream B",
-	    "Value" : { "Ref" : "KinesisStreamB" }
-	},
-
-	"DBHost" : {
-	    "Description" : "RDS Host",
-	    "Value" : {"Fn::GetAtt": [ "DBInstance", "Endpoint.Address"]}
-	},
-
-	"DBPort" : {
-	    "Description" : "RDS Port",
-	    "Value" : {"Fn::GetAtt": [ "DBInstance", "Endpoint.Port"]}
-	},
-
-	"DBInstance" : {
-	    "Description" : "Main Postgres Database",
-	    "Value" : { "Ref" : "DBInstance" }
-	},
-
-	"RedisCluster" : {
-	    "Description" : "Redis Cluster",
-	    "Value" : { "Ref" : "RedisCluster" }
-	},
-
-	"KinesisStreamA" : {
-	    "Description" : "The name of the Kinesis Stream. This was autogenerated by the Kinesis Resource named 'KinesisStreamA'",
-	    "Value" : { "Ref" : "KinesisStreamA" }
-	},
-
-	"KinesisStreamB" : {
-	    "Description" : "The name of the Kinesis Stream. This was autogenerated by the Kinesis Resource named 'KinesisStreamB'",
-	    "Value" : { "Ref" : "KinesisStreamB" }
-	},
-
-	"APIInstanceGroup" : {
-	    "Description" : "ASG of the API servers",
-	    "Value" : { "Ref" : "APIInstanceGroup" }
-	},
-
-	"URL": {
-	    "Description": "URL for testing",
-	    "Value": {
-		"Fn::Join": [
-		    "",
-		    [
-			"http://", { "Fn::GetAtt": [ "APILoadBalancer", "DNSName" ] }
-		    ]
-		]
-	    }
-	}
+        "CodeDeployTrustRoleARN": {
+            "Value": { "Fn::GetAtt": [ "CodeDeployTrustRole", "Arn" ] }
+        },
+        "KinesisStreamA" : {
+            "Description" : "Kinesis Stream A",
+            "Value" : { "Ref" : "KinesisStreamA" }
+        },
+        "KinesisStreamB" : {
+            "Description" : "Kinesis Stream B",
+            "Value" : { "Ref" : "KinesisStreamB" }
+        },
+        "DBHost" : {
+            "Description" : "RDS Host",
+            "Value" : {"Fn::GetAtt": [ "DBInstance", "Endpoint.Address"]}
+        },
+        "DBPort" : {
+            "Description" : "RDS Port",
+            "Value" : {"Fn::GetAtt": [ "DBInstance", "Endpoint.Port"]}
+        },
+        "DBInstance" : {
+            "Description" : "Main Postgres Database",
+            "Value" : { "Ref" : "DBInstance" }
+        },
+        "RedisCluster" : {
+            "Description" : "Redis Cluster",
+            "Value" : { "Ref" : "RedisCluster" }
+        },
+        "KinesisStreamA" : {
+            "Description" : "The name of the Kinesis Stream. This was autogenerated by the Kinesis Resource named 'KinesisStreamA'",
+            "Value" : { "Ref" : "KinesisStreamA" }
+        },
+        "KinesisStreamB" : {
+            "Description" : "The name of the Kinesis Stream. This was autogenerated by the Kinesis Resource named 'KinesisStreamB'",
+            "Value" : { "Ref" : "KinesisStreamB" }
+        },
+        "APIInstanceGroup" : {
+            "Description" : "ASG of the API servers",
+            "Value" : { "Ref" : "APIInstanceGroup" }
+        },
+        "URL": {
+            "Description": "URL for testing",
+            "Value": { "Fn::Join": [ "", [ "http://", { "Fn::GetAtt": [ "APILoadBalancer", "DNSName" ] } ] ] }
+        }
     }
 }
-
