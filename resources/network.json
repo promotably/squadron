@@ -59,6 +59,22 @@
 
     "Mappings" : {
 
+        "config" : {
+            "cidr" : {
+                "VPC"            : "10.236.0.0/16",
+                "PublicAll"      : "10.236.128.0/17",
+                "PrivateAll"     : "10.236.0.0/17",
+
+                "PublicSubnetA"  : "10.236.128.0/20",
+                "PublicSubnetB"  : "10.236.144.0/20",
+                "PublicSubnetC"  : "10.236.160.0/20",
+
+                "PrivateSubnetA" : "10.236.0.0/20",
+                "PrivateSubnetB" : "10.236.16.0/20",
+                "PrivateSubnetC" : "10.236.32.0/20"
+            }
+        },
+
         "AWSNATAMI" : {
             "us-east-1"      : { "AMI" : "ami-c6699baf" },
             "us-west-2"      : { "AMI" : "ami-52ff7262" },
@@ -69,18 +85,6 @@
             "us-east-1" :      { "id" : "ami-83dee0ea" },
             "us-west-2" :      { "id" : "ami-d0d8b8e0" },
             "eu-west-1" :      { "id" : "ami-aa56a1dd" }
-        },
-
-        "SubnetConfig" : {
-            "VPC"     : { "CIDR" : "10.236.0.0/16" },
-
-            "PublicSubnetA"  : { "CIDR" : "10.236.100.0/24" },
-            "PublicSubnetB"  : { "CIDR" : "10.236.101.0/24" },
-            "PublicSubnetC"  : { "CIDR" : "10.236.102.0/24" },
-
-            "PrivateSubnetA" : { "CIDR" : "10.236.0.0/24" },
-            "PrivateSubnetB" : { "CIDR" : "10.236.1.0/24" },
-            "PrivateSubnetC" : { "CIDR" : "10.236.2.0/24" }
         },
 
         "PreferredAz" : {
@@ -101,7 +105,7 @@
         "VPC" : {
             "Type" : "AWS::EC2::VPC",
             "Properties" : {
-                "CidrBlock" : { "Fn::FindInMap" : [ "SubnetConfig", "VPC", "CIDR" ]},
+                "CidrBlock" : { "Fn::FindInMap" : [ "config", "cidr", "VPC" ]},
                 "EnableDnsSupport" : "true",
                 "EnableDnsHostnames" : "true",
                 "Tags" : [{ "Key" : "Application", "Value" : { "Ref" : "AWS::StackId" } },
@@ -115,7 +119,7 @@
             "Properties" : {
                 "VpcId" : { "Ref" : "VPC" },
                 "AvailabilityZone" : { "Fn::FindInMap" : [ "PreferredAz", { "Ref" : "AWS::Region" }, "A" ]},
-                "CidrBlock" : { "Fn::FindInMap" : [ "SubnetConfig", "PublicSubnetA", "CIDR" ]},
+                "CidrBlock" : { "Fn::FindInMap" : [ "config", "cidr", "PublicSubnetA" ]},
                 "Tags" : [{ "Key" : "Application", "Value" : { "Ref" : "AWS::StackId" } },
                           { "Key" : "Network", "Value" : "PublicSubnetA" }]
             }
@@ -127,7 +131,7 @@
             "Properties" : {
                 "VpcId" : { "Ref" : "VPC" },
                 "AvailabilityZone" : { "Fn::FindInMap" : [ "PreferredAz", { "Ref" : "AWS::Region" }, "B" ]},
-                "CidrBlock" : { "Fn::FindInMap" : [ "SubnetConfig", "PublicSubnetB", "CIDR" ]},
+                "CidrBlock" : { "Fn::FindInMap" : [ "config", "cidr", "PublicSubnetB" ]},
                 "Tags" : [{ "Key" : "Application", "Value" : { "Ref" : "AWS::StackId" } },
                           { "Key" : "Network", "Value" : "PublicSubnetB" }]
             }
@@ -139,7 +143,7 @@
             "Properties" : {
                 "VpcId" : { "Ref" : "VPC" },
                 "AvailabilityZone" : { "Fn::FindInMap" : [ "PreferredAz", { "Ref" : "AWS::Region" }, "C" ]},
-                "CidrBlock" : { "Fn::FindInMap" : [ "SubnetConfig", "PublicSubnetC", "CIDR" ]},
+                "CidrBlock" : { "Fn::FindInMap" : [ "config", "cidr", "PublicSubnetC" ]},
                 "Tags" : [{ "Key" : "Application", "Value" : { "Ref" : "AWS::StackId" } },
                           { "Key" : "Network", "Value" : "PublicSubnetC" }]
             }
@@ -309,7 +313,7 @@
             "Properties" : {
                 "VpcId" : { "Ref" : "VPC" },
                 "AvailabilityZone" : { "Fn::FindInMap" : [ "PreferredAz", { "Ref" : "AWS::Region" }, "A" ]},
-                "CidrBlock" : { "Fn::FindInMap" : [ "SubnetConfig", "PrivateSubnetA", "CIDR" ]},
+                "CidrBlock" : { "Fn::FindInMap" : [ "config", "cidr", "PrivateSubnetA" ]},
                 "Tags" : [{ "Key" : "Application", "Value" : { "Ref" : "AWS::StackId" } },
                           { "Key" : "Network", "Value" : "PrivateSubnetA" }]
             }
@@ -321,7 +325,7 @@
             "Properties" : {
                 "VpcId" : { "Ref" : "VPC" },
                 "AvailabilityZone" : { "Fn::FindInMap" : [ "PreferredAz", { "Ref" : "AWS::Region" }, "B" ]},
-                "CidrBlock" : { "Fn::FindInMap" : [ "SubnetConfig", "PrivateSubnetB", "CIDR" ]},
+                "CidrBlock" : { "Fn::FindInMap" : [ "config", "cidr", "PrivateSubnetB" ]},
                 "Tags" : [{ "Key" : "Application", "Value" : { "Ref" : "AWS::StackId" } },
                           { "Key" : "Network", "Value" : "PrivateSubnetB" }]
             }
@@ -333,7 +337,7 @@
             "Properties" : {
                 "VpcId" : { "Ref" : "VPC" },
                 "AvailabilityZone" : { "Fn::FindInMap" : [ "PreferredAz", { "Ref" : "AWS::Region" }, "C" ]},
-                "CidrBlock" : { "Fn::FindInMap" : [ "SubnetConfig", "PrivateSubnetC", "CIDR" ]},
+                "CidrBlock" : { "Fn::FindInMap" : [ "config", "cidr", "PrivateSubnetC" ]},
                 "Tags" : [{ "Key" : "Application", "Value" : { "Ref" : "AWS::StackId" } },
                           { "Key" : "Network", "Value" : "PrivateSubnetC" }]
             }
@@ -581,7 +585,7 @@
                     { "Ref" : "AWS::NoValue" }
                 ]},
                 "SecurityGroupEgress"  : [ 
-                    { "IpProtocol" : "tcp", "FromPort" : "22",  "ToPort" : "22",  "CidrIp" : { "Fn::FindInMap" : [ "SubnetConfig", "VPC", "CIDR" ]}},
+                    { "IpProtocol" : "tcp", "FromPort" : "22",  "ToPort" : "22",  "CidrIp" : { "Fn::FindInMap" : [ "config", "cidr", "VPC" ]}},
                     { "IpProtocol" : "tcp", "FromPort" : "80",  "ToPort" : "80",  "CidrIp" : "0.0.0.0/0" },
                     { "IpProtocol" : "tcp", "FromPort" : "443",  "ToPort" : "443",  "CidrIp" : "0.0.0.0/0" },
                     { "IpProtocol" : "tcp", "FromPort" : "11371",  "ToPort" : "11371",  "CidrIp" : "0.0.0.0/0" } 
