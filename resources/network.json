@@ -46,7 +46,7 @@
     "BastionKeyBucket" : {
       "Description" : "Name of the bucket where EC2 Keypairs are stored.",
       "Type" : "String",
-      "Default" : "your-keypairs"
+      "Default" : "promotably-keyvault"
     },
 
     "NATInstanceType" : {
