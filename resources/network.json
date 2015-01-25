@@ -81,6 +81,12 @@
             "PrivateSubnetA" : { "CIDR" : "10.236.0.0/24" },
             "PrivateSubnetB" : { "CIDR" : "10.236.1.0/24" },
             "PrivateSubnetC" : { "CIDR" : "10.236.2.0/24" }
+        },
+
+        "PreferredAz" : {
+            "us-east-1" : { "A": "us-east-1a", "B": "us-east-1c", "C": "us-east-1d" },
+            "us-west-2" : { "A": "us-west-2a", "B": "us-west-2b", "C": "us-west-2c" },
+            "eu-west-1" : { "A": "eu-west-1a", "B": "eu-west-1b", "C": "eu-west-1c" }
         }
     },
 
@@ -108,7 +114,7 @@
             "DependsOn" : "VPC",
             "Properties" : {
                 "VpcId" : { "Ref" : "VPC" },
-                "AvailabilityZone" : { "Fn::Join" : ["", [{ "Ref" : "AWS::Region"}, "a"]]},
+                "AvailabilityZone" : { "Fn::FindInMap" : [ "PreferredAz", { "Ref" : "AWS::Region" }, "A" ]},
                 "CidrBlock" : { "Fn::FindInMap" : [ "SubnetConfig", "PublicSubnetA", "CIDR" ]},
                 "Tags" : [{ "Key" : "Application", "Value" : { "Ref" : "AWS::StackId" } },
                           { "Key" : "Network", "Value" : "PublicSubnetA" }]
@@ -120,7 +126,7 @@
             "DependsOn" : "VPC",
             "Properties" : {
                 "VpcId" : { "Ref" : "VPC" },
-                "AvailabilityZone" : { "Fn::Join" : ["", [{ "Ref" : "AWS::Region"}, "c"]]},
+                "AvailabilityZone" : { "Fn::FindInMap" : [ "PreferredAz", { "Ref" : "AWS::Region" }, "B" ]},
                 "CidrBlock" : { "Fn::FindInMap" : [ "SubnetConfig", "PublicSubnetB", "CIDR" ]},
                 "Tags" : [{ "Key" : "Application", "Value" : { "Ref" : "AWS::StackId" } },
                           { "Key" : "Network", "Value" : "PublicSubnetB" }]
@@ -132,7 +138,7 @@
             "DependsOn" : "VPC",
             "Properties" : {
                 "VpcId" : { "Ref" : "VPC" },
-                "AvailabilityZone" : { "Fn::Join" : ["", [{ "Ref" : "AWS::Region"}, "c"]]},
+                "AvailabilityZone" : { "Fn::FindInMap" : [ "PreferredAz", { "Ref" : "AWS::Region" }, "C" ]},
                 "CidrBlock" : { "Fn::FindInMap" : [ "SubnetConfig", "PublicSubnetC", "CIDR" ]},
                 "Tags" : [{ "Key" : "Application", "Value" : { "Ref" : "AWS::StackId" } },
                           { "Key" : "Network", "Value" : "PublicSubnetC" }]
@@ -302,7 +308,7 @@
             "DependsOn" : "VPC",
             "Properties" : {
                 "VpcId" : { "Ref" : "VPC" },
-                "AvailabilityZone" : { "Fn::Join" : ["", [{ "Ref" : "AWS::Region"}, "a"]]},
+                "AvailabilityZone" : { "Fn::FindInMap" : [ "PreferredAz", { "Ref" : "AWS::Region" }, "A" ]},
                 "CidrBlock" : { "Fn::FindInMap" : [ "SubnetConfig", "PrivateSubnetA", "CIDR" ]},
                 "Tags" : [{ "Key" : "Application", "Value" : { "Ref" : "AWS::StackId" } },
                           { "Key" : "Network", "Value" : "PrivateSubnetA" }]
@@ -314,7 +320,7 @@
             "DependsOn" : "VPC",
             "Properties" : {
                 "VpcId" : { "Ref" : "VPC" },
-                "AvailabilityZone" : { "Fn::Join" : ["", [{ "Ref" : "AWS::Region"}, "c"]]},
+                "AvailabilityZone" : { "Fn::FindInMap" : [ "PreferredAz", { "Ref" : "AWS::Region" }, "B" ]},
                 "CidrBlock" : { "Fn::FindInMap" : [ "SubnetConfig", "PrivateSubnetB", "CIDR" ]},
                 "Tags" : [{ "Key" : "Application", "Value" : { "Ref" : "AWS::StackId" } },
                           { "Key" : "Network", "Value" : "PrivateSubnetB" }]
@@ -326,7 +332,7 @@
             "DependsOn" : "VPC",
             "Properties" : {
                 "VpcId" : { "Ref" : "VPC" },
-                "AvailabilityZone" : { "Fn::Join" : ["", [{ "Ref" : "AWS::Region"}, "c"]]},
+                "AvailabilityZone" : { "Fn::FindInMap" : [ "PreferredAz", { "Ref" : "AWS::Region" }, "C" ]},
                 "CidrBlock" : { "Fn::FindInMap" : [ "SubnetConfig", "PrivateSubnetC", "CIDR" ]},
                 "Tags" : [{ "Key" : "Application", "Value" : { "Ref" : "AWS::StackId" } },
                           { "Key" : "Network", "Value" : "PrivateSubnetC" }]
@@ -624,6 +630,14 @@
         "NATSecurityGroup" : {
             "Description" : "Security Group of the NAT Devices",
             "Value" : { "Ref" : "NATSecurityGroup" }
+        },
+        "AvailabilityZones" : {
+            "Description" : "List of availablity zones in which VPC is deployed",
+            "Value" : { "Fn::Join" : [ ",", [
+                { "Fn::FindInMap" : [ "PreferredAz", { "Ref" : "AWS::Region" }, "A" ]},
+                { "Fn::FindInMap" : [ "PreferredAz", { "Ref" : "AWS::Region" }, "B" ]},
+                { "Fn::FindInMap" : [ "PreferredAz", { "Ref" : "AWS::Region" }, "C" ]}
+            ] ]}
         }
     }
 }
