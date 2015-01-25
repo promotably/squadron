@@ -6,9 +6,9 @@
   "Parameters" : {
 
     "BastionKeyName" : {
-      "Description" : "Name of an existing EC2 KeyPair to enable SSH access to the bastion host",
+      "Description" : "Name of an EC2 KeyPair to enable SSH access to the bastion host (default is no ssh key)",
       "Type" : "String",
-      "Default": "bastion",
+      "Default": "None",
       "MinLength": "1",
       "MaxLength": "64",
       "AllowedPattern" : "[-_ a-zA-Z0-9]*",
@@ -16,9 +16,9 @@
     },
 
     "NATKeyName" : {
-      "Description" : "Name of an existing EC2 KeyPair to enable SSH access to the bastion host",
+      "Description" : "Name of an EC2 KeyPair to enable SSH access to the nat host (default is no ssh key)",
       "Type" : "String",
-      "Default": "nat",
+      "Default": "None",
       "MinLength": "1",
       "MaxLength": "64",
       "AllowedPattern" : "[-_ a-zA-Z0-9]*",
@@ -26,11 +26,11 @@
     },
 
     "SSHFrom" : {
-      "Description" : "Lockdown SSH access to the bastion host (default can be accessed from anywhere)",
+      "Description" : "Lockdown SSH access to the bastion host (default is no access)",
       "Type" : "String",
       "MinLength": "9",
       "MaxLength": "18",
-      "Default" : "0.0.0.0/0",
+      "Default" : "999.999.999.999/32",
       "AllowedPattern" : "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
       "ConstraintDescription" : "must be a valid CIDR range of the form x.x.x.x/x."
     },
@@ -94,6 +94,12 @@
       "PrivateSubnetB" : { "CIDR" : "10.236.1.0/24" },
       "PrivateSubnetC" : { "CIDR" : "10.236.2.0/24" }
     }
+  },
+
+  "Conditions" : {
+    "SSHFrom" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "SSHFrom" }, "999.999.999.999/32" ] }] },
+    "Bastion" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "BastionKeyName" }, "None" ] }] },
+    "NATKeyName" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "NATKeyName" }, "None" ] }] }
   },
 
   "Resources" : {
@@ -255,6 +261,7 @@
 
     "InboundSSHPublicNetworkAclEntry" : {
       "Type" : "AWS::EC2::NetworkAclEntry",
+      "Condition" : "SSHFrom",
       "Properties" : {
         "NetworkAclId" : { "Ref" : "PublicNetworkAcl" },
         "RuleNumber" : "102",
@@ -477,7 +484,7 @@
       "Properties" : {
         "InstanceType" : { "Ref" : "NATInstanceType" },
         "SubnetId" : { "Ref" : "PublicSubnetA" },
-        "KeyName"  : { "Ref" : "NATKeyName" },
+        "KeyName"  : { "Fn::If" : [ "NATKeyName", { "Ref" : "NATKeyName" }, { "Ref" : "AWS::NoValue" } ] },
         "SourceDestCheck" : "false",
         "ImageId" : { "Fn::FindInMap" : [ "AWSNATAMI", { "Ref" : "AWS::Region" }, "AMI" ]},
         "SecurityGroupIds" : [{ "Ref" : "NATSecurityGroup" }],
@@ -512,6 +519,7 @@
 
     "BastionIPAddress" : {
       "Type" : "AWS::EC2::EIP",
+      "Condition" : "Bastion",
       "DependsOn" : "GatewayToInternet",
       "Properties" : {
         "Domain" : "vpc",
@@ -562,6 +570,7 @@
 
     "BastionHost" : {
       "Type" : "AWS::EC2::Instance",
+      "Condition" : "Bastion",
       "Metadata" : {
         "AWS::CloudFormation::Init" : {
           "config" : {
@@ -616,16 +625,12 @@
       "Properties" : {
         "GroupDescription" : "Enable access to the Bastion host",
         "VpcId" : { "Ref" : "VPC" },
-        "SecurityGroupIngress" : [ 
-          { "IpProtocol" : "tcp", "FromPort" : "22",  "ToPort" : "22",  "CidrIp" : { "Ref" : "SSHFrom" }} 
-        ],
+        "SecurityGroupIngress" : { "Fn::If" : [ "SSHFrom",
+          [{ "IpProtocol" : "tcp", "FromPort" : "22",  "ToPort" : "22",  "CidrIp" : { "Ref" : "SSHFrom" }}],
+          { "Ref" : "AWS::NoValue" }
+        ]},
         "SecurityGroupEgress"  : [ 
-            { "IpProtocol" : "tcp", "FromPort" : "22",  "ToPort" : "22",  "CidrIp" : { "Fn::FindInMap" : [ "SubnetConfig", "PrivateSubnetA", "CIDR" ]}},
-            { "IpProtocol" : "tcp", "FromPort" : "22",  "ToPort" : "22",  "CidrIp" : { "Fn::FindInMap" : [ "SubnetConfig", "PrivateSubnetB", "CIDR" ]}},
-            { "IpProtocol" : "tcp", "FromPort" : "22",  "ToPort" : "22",  "CidrIp" : { "Fn::FindInMap" : [ "SubnetConfig", "PrivateSubnetC", "CIDR" ]}},
-            { "IpProtocol" : "tcp", "FromPort" : "22",  "ToPort" : "22",  "CidrIp" : { "Fn::FindInMap" : [ "SubnetConfig", "PublicSubnetA", "CIDR" ]}},
-            { "IpProtocol" : "tcp", "FromPort" : "22",  "ToPort" : "22",  "CidrIp" : { "Fn::FindInMap" : [ "SubnetConfig", "PublicSubnetB", "CIDR" ]}},
-            { "IpProtocol" : "tcp", "FromPort" : "22",  "ToPort" : "22",  "CidrIp" : { "Fn::FindInMap" : [ "SubnetConfig", "PublicSubnetC", "CIDR" ]}},
+            { "IpProtocol" : "tcp", "FromPort" : "22",  "ToPort" : "22",  "CidrIp" : { "Fn::FindInMap" : [ "SubnetConfig", "VPC", "CIDR" ]}},
             { "IpProtocol" : "tcp", "FromPort" : "80",  "ToPort" : "80",  "CidrIp" : "0.0.0.0/0" },
             { "IpProtocol" : "tcp", "FromPort" : "443",  "ToPort" : "443",  "CidrIp" : "0.0.0.0/0" },
             { "IpProtocol" : "tcp", "FromPort" : "11371",  "ToPort" : "11371",  "CidrIp" : "0.0.0.0/0" } 
@@ -665,7 +670,7 @@
     },
     "Bastion" : {
       "Description" : "IP Address of the Bastion host",
-      "Value" :  { "Ref" : "BastionIPAddress" }
+      "Value" : { "Fn::If" : [ "Bastion", { "Ref" : "BastionIPAddress" }, "None" ] }
     },
     "BastionSecurityGroup" : {
       "Description" : "Security Group of the Bastion Host",
