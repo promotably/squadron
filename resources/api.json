@@ -1,7 +1,7 @@
 {
     "AWSTemplateFormatVersion" : "2010-09-09",
     "Description" : "API cluster",
-    
+
     "Parameters" : {
 
         "DashboardRef" : {
@@ -153,13 +153,13 @@
                 "VpcSecurityGroupIds": [{"Fn::GetAtt": [ "ElasticacheSecurityGroup", "GroupId"]}]
             }
         },
-    
+
         "DBSubnetGroup" : {
             "Type" : "AWS::RDS::DBSubnetGroup",
             "Properties" : {
                 "DBSubnetGroupDescription" : "description",
                 "SubnetIds" : { "Ref" : "DBSubnetIDs" },
-                "Tags": [{ "Key": "Name", "Value": "DBSubnetGroup" }]
+                "Tags": [{ "Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ { "Ref" : "AWS::StackName" }, "dbsubetnetgroup" ] ]}, "PropagateAtLaunch" : "true" }]
             }
         },
 
@@ -245,7 +245,7 @@
                 "Roles": [{ "Ref": "CodeDeployTrustRole" }]
             }
         },
-    
+
         "RootRole": {
             "Type" : "AWS::IAM::Role",
             "Properties" : {
@@ -302,7 +302,7 @@
                 "Roles" : [ { "Ref": "RootRole" } ]
             }
         },
-    
+
         "RootInstanceProfile" : {
             "Type" : "AWS::IAM::InstanceProfile",
             "Properties" : {
@@ -310,7 +310,7 @@
                 "Roles" : [ { "Ref": "RootRole" } ]
             }
         },
-    
+
         "ClientSecurityGroup" : {
             "Type" : "AWS::EC2::SecurityGroup",
             "Properties" : {
@@ -337,7 +337,7 @@
             "Properties" : {
                 "GroupDescription" : "Enable SSH access",
                 "VpcId" : { "Ref" : "VpcId" },
-                "SecurityGroupIngress" : [ 
+                "SecurityGroupIngress" : [
                     { "IpProtocol" : "tcp", "FromPort" : "22", "ToPort" : "22", "SourceSecurityGroupId" : { "Ref" : "BastionSecurityGroup" } },
                     { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "SourceSecurityGroupId" : { "Ref" : "LbSecurityGroup" } },
                     { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "SourceSecurityGroupId" : { "Ref" : "BastionSecurityGroup" } }
@@ -491,7 +491,7 @@
                             "02-get-iam-config" : { "command" : "/usr/local/bin/get_iam_config" },
                             "03-postgres-setup" : {
                                 "command" : { "Fn::Join": [ "", [
-                                    "export PGPASSWORD='", {"Ref": "DBPassword"}, "' && psql -f /tmp/postgres_setup.sql -h ", 
+                                    "export PGPASSWORD='", {"Ref": "DBPassword"}, "' && psql -f /tmp/postgres_setup.sql -h ",
                                     { "Fn::GetAtt" : [ "DBInstance", "Endpoint.Address" ]}, " -p ",
                                     {"Fn::GetAtt": [ "DBInstance", "Endpoint.Port"]}, " -U ", {"Ref": "DBUsername"}, "\n"
                                 ] ]}
@@ -510,7 +510,7 @@
                                     "sources" : [ "/var/www/html" ]
                                 },
                                 "cfn-hup" : {
-                                    "enabled" : "true", 
+                                    "enabled" : "true",
                                     "ensureRunning" : "true",
                                     "files" : [ "/etc/cfn/cfn-hup.conf", "/etc/cfn/hooks.d/cfn-auto-reloader.conf" ]
                                 }
@@ -579,7 +579,7 @@
                     "  [[ -f /tmp/cacheclusterconfig ]] && break\n",
                     "  sleep 1\n",
                     "done\n\n",
-                    
+
                     "# Create API config\n",
                     "echo '{' > /opt/promotably/api.conf\n",
                     "echo \\\"ARTIFACT_BUCKET\\\"          \\\"", {"Ref": "ArtifactBucket"}, "\\\" >> /opt/promotably/api.conf\n",
@@ -618,7 +618,7 @@
                     "   echo API INTEGRATION TEST RESULTS > /tmp/test_output.txt\n",
                     "   cd /opt/promotably/api && /usr/local/bin/lein midje api.integration.*",
                     "     2>&1 >> /tmp/test_output.txt\n",
-                    "   aws s3 cp /tmp/test_output.txt 's3://", 
+                    "   aws s3 cp /tmp/test_output.txt 's3://",
                       { "Ref" : "TestResultsBucket" }, "/",
                       { "Ref" : "AWS::StackName" }, ".txt'",
                     " --acl public-read\n",
@@ -629,12 +629,12 @@
                            "/", { "Ref" : "AWS::StackName" }, ".txt'\n",
                     "fi\n\n",
                     "service apid start\n",
-                    
+
                     "# All is well, so signal success.\n",
                     "/opt/aws/bin/cfn-signal -e 0 ",
-                    "         --stack ", { "Ref" : "AWS::StackName" },
-                    "         --resource APILaunchConfig ",
-                    "         --region ", { "Ref" : "AWS::Region" }, "\n"
+                      " --stack ", { "Ref" : "AWS::StackName" },
+                      " --resource APILaunchConfig ",
+                      " --region ", { "Ref" : "AWS::Region" }, "\n"
                 ] ]} }
             }
         },
@@ -642,7 +642,6 @@
         "APIInstanceGroup" : {
             "Type" : "AWS::AutoScaling::AutoScalingGroup",
             "Properties" : {
-                "Tags": [{ "Key": "Name", "PropagateAtLaunch": "true", "Value": "API Server Instance" } ],
                 "AvailabilityZones" : { "Fn::If" : [ "UseAllAvailabilityZones",
                     { "Fn::GetAZs": "AWS::Region" },
                     { "Ref" : "AvailabilityZones" }
@@ -652,11 +651,12 @@
                 "MaxSize" : "1",
                 "DesiredCapacity" : 1,
                 "VPCZoneIdentifier" : { "Ref" : "PrivateSubnets" },
-                "LoadBalancerNames" : [ { "Ref" : "APILoadBalancer" } ]
+                "LoadBalancerNames" : [ { "Ref" : "APILoadBalancer" } ],
+                "Tags": [{ "Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ { "Ref" : "AWS::StackName" }, "api" ] ]}, "PropagateAtLaunch" : "true" }]
             }
         }
     },
-    
+
     "Outputs" : {
 
         "CodeDeployTrustRoleARN": {

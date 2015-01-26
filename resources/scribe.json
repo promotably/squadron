@@ -1,7 +1,7 @@
 {
     "AWSTemplateFormatVersion" : "2010-09-09",
     "Description" : "Scribe",
-    
+
     "Parameters" : {
 
         "TestResultsBucket" : {
@@ -156,7 +156,7 @@
                 }
             }
         },
-        
+
         "RootInstanceProfile" : {
             "Type" : "AWS::IAM::InstanceProfile",
             "Properties" : {
@@ -248,7 +248,6 @@
                 "ImageId" : "ami-b66ed3de",
                 "InstanceType" : "t2.micro",
                 "IamInstanceProfile": { "Ref": "RootInstanceProfile" },
-                "Tags": [{ "Key": "Name", "Value": "Scribe Instance" }],
                 "NetworkInterfaces" : [{ "AssociatePublicIpAddress" : true,
                                          "DeviceIndex": 0,
                                          "GroupSet": [{ "Ref": "ScribeSecurityGroup" }],
@@ -268,7 +267,7 @@
                           " --region ", { "Ref" : "AWS::Region" }, "\n",
 
                         "# Get Scribe tarball\n",
-                        "curl -sL --user '", { "Ref" : "GitHubUser" }, ":", { "Ref" : "GitHubPW" }, "'", 
+                        "curl -sL --user '", { "Ref" : "GitHubUser" }, ":", { "Ref" : "GitHubPW" }, "'",
                           " https://api.github.com/repos/promotably/scribe/tarball/", { "Ref" : "GitHubRef" }, " > /tmp/scribe.tar\n",
                         "mkdir -p /opt/promotably\n",
                         "tar -xf /tmp/scribe.tar -C /opt/promotably\n",
@@ -330,18 +329,19 @@
                           "/", { "Ref" : "AWS::StackName" }, "_scribe.txt'\n",
                         "fi\n\n",
                         "service scribed start\n",
-                                
+
                         "# Signal the status of cfn-init\n",
                         "/opt/aws/bin/cfn-signal -e $? ",
                         "         --stack ", { "Ref" : "AWS::StackName" },
                         "         --resource ScribeInstance ",
                         "         --region ", { "Ref" : "AWS::Region" }, "\n"
                     ] ]}
-                }
+                },
+                "Tags": [{ "Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ { "Ref" : "AWS::StackName" }, "scribe" ] ]}, "PropagateAtLaunch" : "true" }]
             }
         }
     },
-    
+
     "Outputs" : {
 
         "URL": {
