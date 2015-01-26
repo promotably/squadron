@@ -528,16 +528,16 @@
                 "GroupDescription" : "Enable internal access to the NAT device",
                 "VpcId" : { "Ref" : "VPC" },
                 "SecurityGroupIngress" : [
-                    { "IpProtocol" : "tcp", "FromPort" : "80",  "ToPort" : "80",  "CidrIp" : "10.236.0.0/24" },
-                    { "IpProtocol" : "tcp", "FromPort" : "443", "ToPort" : "443", "CidrIp" : "10.236.0.0/24" },
-                    { "IpProtocol" : "tcp", "FromPort" : "80",  "ToPort" : "80",  "CidrIp" : "10.236.1.0/24" },
-                    { "IpProtocol" : "tcp", "FromPort" : "443", "ToPort" : "443", "CidrIp" : "10.236.1.0/24" } ,
-                    { "IpProtocol" : "tcp", "FromPort" : "80",  "ToPort" : "80",  "CidrIp" : "10.236.2.0/24" },
-                    { "IpProtocol" : "tcp", "FromPort" : "443", "ToPort" : "443", "CidrIp" : "10.236.2.0/24" }  
+                    { "IpProtocol" : "tcp", "FromPort" : "80",  "ToPort" : "80",  "CidrIp" : { "Fn::FindInMap" : [ "config", "cidr", "PrivateAll" ]}},
+                    { "IpProtocol" : "tcp", "FromPort" : "443", "ToPort" : "443", "CidrIp" : { "Fn::FindInMap" : [ "config", "cidr", "PrivateAll" ]}},
+                    { "IpProtocol" : "tcp", "FromPort" : "123", "ToPort" : "123", "CidrIp" : { "Fn::FindInMap" : [ "config", "cidr", "PrivateAll" ]}},
+                    { "IpProtocol" : "udp", "FromPort" : "123", "ToPort" : "123", "CidrIp" : { "Fn::FindInMap" : [ "config", "cidr", "PrivateAll" ]}}
                 ],
                 "SecurityGroupEgress" : [
                     { "IpProtocol" : "tcp", "FromPort" : "80",  "ToPort" : "80",  "CidrIp" : "0.0.0.0/0" },
-                    { "IpProtocol" : "tcp", "FromPort" : "443", "ToPort" : "443", "CidrIp" : "0.0.0.0/0" } 
+                    { "IpProtocol" : "tcp", "FromPort" : "443", "ToPort" : "443", "CidrIp" : "0.0.0.0/0" },
+                    { "IpProtocol" : "tcp", "FromPort" : "123", "ToPort" : "123", "CidrIp" : "0.0.0.0/0" },
+                    { "IpProtocol" : "udp", "FromPort" : "123", "ToPort" : "123", "CidrIp" : "0.0.0.0/0" }
                 ]
             }
         },
