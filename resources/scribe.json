@@ -86,8 +86,8 @@
             "Type" : "String",
             "Default" : "scribe"
         },
-        "BastionSecurityGroup" : {
-            "Description" : "Security Group associated with bastion host",
+        "VpcDefaultSecurityGroup" : {
+            "Description" : "VPC default Security Group",
             "Type" : "AWS::EC2::SecurityGroup::Id"
         },
         "KeyPair": {
@@ -168,12 +168,8 @@
         "ScribeSecurityGroup": {
             "Type": "AWS::EC2::SecurityGroup",
             "Properties": {
-                "GroupDescription": "Scribe Security Group",
-                "VpcId" : { "Ref" : "VpcId" },
-                "SecurityGroupIngress": [
-                    { "IpProtocol": "tcp", "FromPort": "80", "ToPort": "80", "CidrIp": "0.0.0.0/0" },
-                    { "IpProtocol": "tcp", "FromPort": "22", "ToPort": "22", "SourceSecurityGroupId" : { "Ref" : "BastionSecurityGroup"} }
-                ]
+                "GroupDescription" : { "Ref" : "AWS::StackName" },
+                "VpcId" : { "Ref" : "VpcId" }
             }
         },
 
@@ -250,7 +246,7 @@
                 "IamInstanceProfile": { "Ref": "RootInstanceProfile" },
                 "NetworkInterfaces" : [{ "AssociatePublicIpAddress" : true,
                                          "DeviceIndex": 0,
-                                         "GroupSet": [{ "Ref": "ScribeSecurityGroup" }],
+                                         "GroupSet": [{ "Ref": "ScribeSecurityGroup" }, { "Ref" : "VpcDefaultSecurityGroup" }],
                                          "SubnetId" : { "Ref" : "PublicSubnetId" } }],
                 "UserData": {
                     "Fn::Base64": { "Fn::Join": [ "", [

@@ -296,12 +296,25 @@
             }
         },
 
-        "InboundEmphemeralPublicNetworkAclEntry" : {
+        "InboundEphemeralTcpPublicNetworkAclEntry" : {
             "Type" : "AWS::EC2::NetworkAclEntry",
             "Properties" : {
                 "NetworkAclId" : { "Ref" : "PublicNetworkAcl" },
                 "RuleNumber" : "106",
                 "Protocol" : "6",
+                "RuleAction" : "allow",
+                "Egress" : "false",
+                "CidrBlock" : "0.0.0.0/0",
+                "PortRange" : { "From" : "1024", "To" : "65535" }
+            }
+        },
+
+        "InboundEphemeralTcpPublicNetworkAclEntry" : {
+            "Type" : "AWS::EC2::NetworkAclEntry",
+            "Properties" : {
+                "NetworkAclId" : { "Ref" : "PublicNetworkAcl" },
+                "RuleNumber" : "107",
+                "Protocol" : "17",
                 "RuleAction" : "allow",
                 "Egress" : "false",
                 "CidrBlock" : "0.0.0.0/0",
@@ -522,22 +535,33 @@
             }
         },
 
+        "VpcDefaultSecurityGroup" : {
+            "Type" : "AWS::EC2::SecurityGroup",
+            "Properties" : {
+                "GroupDescription" : { "Fn::Join" : [ "", [ { "Ref" : "AWS::StackName" }, " Default Group" ] ]},
+                "VpcId" : { "Ref" : "VPC" },
+                "SecurityGroupIngress" : [
+                    { "IpProtocol" : "tcp", "FromPort" : "22",  "ToPort" : "22",  "SourceSecurityGroupId" : { "Ref" : "BastionSecurityGroup" }}
+                ],
+                "SecurityGroupEgress"  : [
+                    { "IpProtocol" : "tcp", "FromPort" : "80",  "ToPort" : "80",  "CidrIp" : "0.0.0.0/0" },
+                    { "IpProtocol" : "tcp", "FromPort" : "443",  "ToPort" : "443",  "CidrIp" : "0.0.0.0/0" },
+                    { "IpProtocol" : "tcp", "FromPort" : "123",  "ToPort" : "123",  "CidrIp" : "0.0.0.0/0" },
+                    { "IpProtocol" : "udp", "FromPort" : "123",  "ToPort" : "123",  "CidrIp" : "0.0.0.0/0" }
+                ]
+            }
+        },
+
         "NATSecurityGroup" : {
             "Type" : "AWS::EC2::SecurityGroup",
             "Properties" : {
-                "GroupDescription" : "Enable internal access to the NAT device",
+                "GroupDescription" : { "Fn::Join" : [ "", [ { "Ref" : "AWS::StackName" }, " NAT" ] ]},
                 "VpcId" : { "Ref" : "VPC" },
                 "SecurityGroupIngress" : [
                     { "IpProtocol" : "tcp", "FromPort" : "80",  "ToPort" : "80",  "CidrIp" : { "Fn::FindInMap" : [ "config", "cidr", "PrivateAll" ]}},
                     { "IpProtocol" : "tcp", "FromPort" : "443", "ToPort" : "443", "CidrIp" : { "Fn::FindInMap" : [ "config", "cidr", "PrivateAll" ]}},
                     { "IpProtocol" : "tcp", "FromPort" : "123", "ToPort" : "123", "CidrIp" : { "Fn::FindInMap" : [ "config", "cidr", "PrivateAll" ]}},
                     { "IpProtocol" : "udp", "FromPort" : "123", "ToPort" : "123", "CidrIp" : { "Fn::FindInMap" : [ "config", "cidr", "PrivateAll" ]}}
-                ],
-                "SecurityGroupEgress" : [
-                    { "IpProtocol" : "tcp", "FromPort" : "80",  "ToPort" : "80",  "CidrIp" : "0.0.0.0/0" },
-                    { "IpProtocol" : "tcp", "FromPort" : "443", "ToPort" : "443", "CidrIp" : "0.0.0.0/0" },
-                    { "IpProtocol" : "tcp", "FromPort" : "123", "ToPort" : "123", "CidrIp" : "0.0.0.0/0" },
-                    { "IpProtocol" : "udp", "FromPort" : "123", "ToPort" : "123", "CidrIp" : "0.0.0.0/0" }
                 ]
             }
         },
@@ -559,7 +583,7 @@
                 "KeyName"  : { "Fn::If" : [ "NATKeyName", { "Ref" : "NATKeyName" }, { "Ref" : "AWS::NoValue" } ] },
                 "SourceDestCheck" : "false",
                 "ImageId" : { "Fn::FindInMap" : [ "AWSNATAMI", { "Ref" : "AWS::Region" }, "AMI" ]},
-                "SecurityGroupIds" : [{ "Ref" : "NATSecurityGroup" }],
+                "SecurityGroupIds" : [{ "Ref" : "NATSecurityGroup" }, { "Ref" : "VpcDefaultSecurityGroup" }],
                 "Tags": [{ "Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ { "Ref" : "AWS::StackName" }, "nat" ] ]} }]
             }
         },
@@ -609,7 +633,7 @@
         "BastionSecurityGroup" : {
             "Type" : "AWS::EC2::SecurityGroup",
             "Properties" : {
-                "GroupDescription" : "Enable access to the Bastion host",
+                "GroupDescription" : { "Fn::Join" : [ "", [ { "Ref" : "AWS::StackName" }, " Bastion" ] ]},
                 "VpcId" : { "Ref" : "VPC" },
                 "SecurityGroupIngress" : { "Fn::If" : [ "SSHFrom",
                     [{ "IpProtocol" : "tcp", "FromPort" : "22",  "ToPort" : "22",  "CidrIp" : { "Ref" : "SSHFrom" }}],
@@ -617,8 +641,6 @@
                 ]},
                 "SecurityGroupEgress"  : [
                     { "IpProtocol" : "tcp", "FromPort" : "22",  "ToPort" : "22",  "CidrIp" : { "Fn::FindInMap" : [ "config", "cidr", "VPC" ]}},
-                    { "IpProtocol" : "tcp", "FromPort" : "80",  "ToPort" : "80",  "CidrIp" : "0.0.0.0/0" },
-                    { "IpProtocol" : "tcp", "FromPort" : "443",  "ToPort" : "443",  "CidrIp" : "0.0.0.0/0" },
                     { "IpProtocol" : "tcp", "FromPort" : "11371",  "ToPort" : "11371",  "CidrIp" : "0.0.0.0/0" }
                 ]
             }
@@ -656,7 +678,7 @@
                 "KeyName"  : { "Ref" : "BastionKeyName" },
                 "SubnetId" : { "Ref" : "PublicSubnetA" },
                 "ImageId"  : { "Fn::FindInMap": [ "BastionAMI", { "Ref": "AWS::Region" }, "id" ] },
-                "SecurityGroupIds" : [{ "Ref" : "BastionSecurityGroup" }],
+                "SecurityGroupIds" : [{ "Ref" : "BastionSecurityGroup" }, { "Ref" : "VpcDefaultSecurityGroup" }],
                 "UserData" : {
                     "Fn::Base64" : { "Fn::Join" : ["", [
                         "#!/bin/bash -ex\n",
@@ -706,6 +728,10 @@
         "Bastion" : {
             "Description" : "IP Address of the Bastion host",
             "Value" : { "Fn::If" : [ "Bastion", { "Ref" : "BastionIPAddress" }, "None" ] }
+        },
+        "VpcDefaultSecurityGroup" : {
+            "Description" : "VPC Default Security Group",
+            "Value" : { "Ref" : "VpcDefaultSecurityGroup" }
         },
         "BastionSecurityGroup" : {
             "Description" : "Security Group of the Bastion Host",

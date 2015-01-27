@@ -77,7 +77,7 @@
                   [:github-user "GitHubUser"]
                   [:github-pw "GitHubPW"]
                   [:github-ref "GitHubRef"]
-                  [:bastion-sg "BastionSecurityGroup"]
+                  [:default-sg "VpcDefaultSecurityGroup"]
                   [:keypair "KeyPair"]
                   [:nat-sg "NATSecurityGroup"]
                   [:db-name "DBName"]
@@ -118,7 +118,7 @@
                   [:pub-subnets "PublicSubnets"]
                   [:vpcid "VpcId"]
                   [:availability-zones "AvailabilityZones"]
-                  [:bastion-sg "BastionSecurityGroup"]
+                  [:default-sg "VpcDefaultSecurityGroup"]
                   [:keypair "KeyName"]
                   [:zk-backup-bucket "ExhibitorS3Bucket"]
                   [:region "ExhibitorS3Region"]
@@ -154,7 +154,7 @@
                   [:github-user "GitHubUser"]
                   [:github-pw "GitHubPW"]
                   [:github-ref "GitHubRef"]
-                  [:bastion-sg "BastionSecurityGroup"]
+                  [:default-sg "VpcDefaultSecurityGroup"]
                   [:stage "Environment"]
                   [:keypair "KeyPair"]]
         cmd (str base-command " "
@@ -194,7 +194,7 @@
                   [:github-pw "GitHubPW"]
                   [:github-ref "GitHubRef"]
                   [:test-results-topic-arn "TestResultsSNSTopicARN"]
-                  [:bastion-sg "BastionSecurityGroup"]
+                  [:default-sg "VpcDefaultSecurityGroup"]
                   [:stage "Environment"]
                   [:keypair "KeyPair"]]
         cmd (str base-command " "
@@ -301,7 +301,7 @@
     (cf-create-api {:region region
                     :stack-name api-stack-name
                     :artifact-name (str "api-" super-stack-name "-standalone.jar")
-                    :bastion-sg (:bastionsecuritygroup outputs)
+                    :default-sg (:vpcdefaultsecuritygroup outputs)
                     :nat-sg (:natsecuritygroup outputs)
                     :priv-subnets (:privatesubneta outputs)
                     :pub-subnets (:publicsubneta outputs)
@@ -324,7 +324,7 @@
     (comment cf-create-zk {:region region
                            :stack-name zk-stack-name
                            :zk-backup-bucket (:zk-backup-bucket options)
-                           :bastion-sg (:bastionsecuritygroup outputs)
+                           :default-sg (:vpcdefaultsecuritygroup outputs)
                            :priv-subnets (:privatesubneta outputs)
                            :pub-subnets (:publicsubneta outputs)
                            :keypair keyname
@@ -335,7 +335,7 @@
           api-outputs (:outputs description)]
       (comment cf-create-pagify {:region region
                          :stack-name (str super-stack-name "-pagify")
-                         :bastion-sg (:bastionsecuritygroup outputs)
+                         :default-sg (:vpcdefaultsecuritygroup outputs)
                          :pub-subnet-id (:publicsubneta outputs)
                          :priv-subnet-id (:privatesubneta outputs)
                          :github-user github-user
@@ -352,7 +352,7 @@
       (cf-create-scribe {:region region
                          :test-results-topic-arn test-results-topic-arn
                          :stack-name (str super-stack-name "-scribe")
-                         :bastion-sg (:bastionsecuritygroup outputs)
+                         :default-sg (:vpcdefaultsecuritygroup outputs)
                          :pub-subnet-id (:publicsubneta outputs)
                          :priv-subnet-id (:privatesubneta outputs)
                          :github-user github-user

@@ -75,8 +75,8 @@
             "Type" : "String",
             "Default" : "api"
         },
-        "BastionSecurityGroup" : {
-            "Description" : "Security Group associated with bastion host",
+        "VpcDefaultSecurityGroup" : {
+            "Description" : "VPC default Security Group",
             "Type" : "AWS::EC2::SecurityGroup::Id"
         },
         "NATSecurityGroup" : {
@@ -131,7 +131,7 @@
         "ElasticacheSecurityGroup": {
             "Type": "AWS::EC2::SecurityGroup",
             "Properties": {
-                "GroupDescription": "Elasticache Security Group",
+                "GroupDescription" : { "Fn::Join" : [ "", [ { "Ref" : "AWS::StackName" }, " Redis Cluster" ] ]},
                 "VpcId" : { "Ref" : "VpcId" },
                 "SecurityGroupIngress": [{
                     "IpProtocol": "tcp",
@@ -157,7 +157,7 @@
         "DBSubnetGroup" : {
             "Type" : "AWS::RDS::DBSubnetGroup",
             "Properties" : {
-                "DBSubnetGroupDescription" : "description",
+                "GroupDescription" : { "Fn::Join" : [ "", [ { "Ref" : "AWS::StackName" }, " RDS" ] ]},
                 "SubnetIds" : { "Ref" : "DBSubnetIDs" },
                 "Tags": [{ "Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ { "Ref" : "AWS::StackName" }, "dbsubetnetgroup" ] ]} }]
             }
@@ -182,7 +182,7 @@
             "Properties": {
                 "EC2VpcId" : { "Ref" : "VpcId" },
                 "DBSecurityGroupIngress": { "EC2SecurityGroupId": { "Ref": "APIServerSecurityGroup" } },
-                "GroupDescription"      : "Access to API instances"
+                "GroupDescription" : { "Fn::Join" : [ "", [ { "Ref" : "AWS::StackName" }, " api" ] ]}
             }
         },
 
@@ -314,7 +314,7 @@
         "ClientSecurityGroup" : {
             "Type" : "AWS::EC2::SecurityGroup",
             "Properties" : {
-                "GroupDescription" : "For clients. Grants access to the associated load balancer.",
+                "GroupDescription" : { "Fn::Join" : [ "", [ { "Ref" : "AWS::StackName" }, " api ELB clients" ] ]},
                 "VpcId" : { "Ref" : "VpcId" }
             }
         },
@@ -322,12 +322,11 @@
         "LbSecurityGroup" : {
             "Type" : "AWS::EC2::SecurityGroup",
             "Properties" : {
-                "GroupDescription" : "Controls who can connect to the load balancer for this service",
+                "GroupDescription" : { "Fn::Join" : [ "", [ { "Ref" : "AWS::StackName" }, " api ELB " ] ]},
                 "VpcId" : { "Ref" : "VpcId" },
                 "SecurityGroupIngress" : [
                     { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "SourceSecurityGroupId" : { "Ref" : "ClientSecurityGroup"} },
-                    { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "CidrIp": "0.0.0.0/0" },
-                    { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "SourceSecurityGroupId" : { "Ref" : "BastionSecurityGroup"} }
+                    { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "CidrIp": "0.0.0.0/0" }
                 ]
             }
         },
@@ -335,12 +334,10 @@
         "APIServerSecurityGroup" : {
             "Type" : "AWS::EC2::SecurityGroup",
             "Properties" : {
-                "GroupDescription" : "Enable SSH access",
+                "GroupDescription" : { "Fn::Join" : [ "", [ { "Ref" : "AWS::StackName" }, " api" ] ]},
                 "VpcId" : { "Ref" : "VpcId" },
                 "SecurityGroupIngress" : [
-                    { "IpProtocol" : "tcp", "FromPort" : "22", "ToPort" : "22", "SourceSecurityGroupId" : { "Ref" : "BastionSecurityGroup" } },
-                    { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "SourceSecurityGroupId" : { "Ref" : "LbSecurityGroup" } },
-                    { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "SourceSecurityGroupId" : { "Ref" : "BastionSecurityGroup" } }
+                    { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "SourceSecurityGroupId" : { "Ref" : "LbSecurityGroup" } }
                 ]
             }
         },
@@ -521,7 +518,7 @@
             },
             "Properties" : {
                 "ImageId" : "ami-b66ed3de",
-                "SecurityGroups" : [{ "Ref" : "APIServerSecurityGroup" }],
+                "SecurityGroups" : [{ "Ref" : "APIServerSecurityGroup" }, { "Ref" : "VpcDefaultSecurityGroup" }],
                 "InstanceType" : "t2.small",
                 "KeyName": { "Ref": "KeyPair" },
                 "IamInstanceProfile": { "Ref": "RootInstanceProfile" },
