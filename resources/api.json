@@ -159,7 +159,7 @@
             "Properties" : {
                 "DBSubnetGroupDescription" : "description",
                 "SubnetIds" : { "Ref" : "DBSubnetIDs" },
-                "Tags": [{ "Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ { "Ref" : "AWS::StackName" }, "dbsubetnetgroup" ] ]}, "PropagateAtLaunch" : "true" }]
+                "Tags": [{ "Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ { "Ref" : "AWS::StackName" }, "dbsubetnetgroup" ] ]} }]
             }
         },
 

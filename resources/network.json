@@ -560,7 +560,7 @@
                 "SourceDestCheck" : "false",
                 "ImageId" : { "Fn::FindInMap" : [ "AWSNATAMI", { "Ref" : "AWS::Region" }, "AMI" ]},
                 "SecurityGroupIds" : [{ "Ref" : "NATSecurityGroup" }],
-                "Tags": [{ "Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ { "Ref" : "AWS::StackName" }, "nat" ] ]}, "PropagateAtLaunch" : "true" }]
+                "Tags": [{ "Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ { "Ref" : "AWS::StackName" }, "nat" ] ]} }]
             }
         },
 
@@ -669,7 +669,7 @@
                         "chmod 0400 /home/ubuntu/*.pem\n"
                     ]]}
                 },
-                "Tags": [{ "Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ { "Ref" : "AWS::StackName" }, "bastion" ] ]}, "PropagateAtLaunch" : "true" }]
+                "Tags": [{ "Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ { "Ref" : "AWS::StackName" }, "bastion" ] ]} }]
             }
         }
     },
