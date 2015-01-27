@@ -243,16 +243,15 @@
             }
         },
 
-        "InboundInternalSSHPublicNetworkAclEntry" : {
+        "InboundVpcPublicNetworkAclEntry" : {
             "Type" : "AWS::EC2::NetworkAclEntry",
             "Properties" : {
                 "NetworkAclId" : { "Ref" : "PublicNetworkAcl" },
                 "RuleNumber" : "102",
-                "Protocol" : "6",
+                "Protocol" : "-1",
                 "RuleAction" : "allow",
                 "Egress" : "false",
-                "CidrBlock" : { "Fn::FindInMap" : [ "config", "cidr", "PublicAll" ] },
-                "PortRange" : { "From" : "22", "To" : "22" }
+                "CidrBlock" : { "Fn::FindInMap" : [ "config", "cidr", "VPC" ] }
             }
         },
 
@@ -322,29 +321,15 @@
             }
         },
 
-        "OutboundTcpPublicNetworkAclEntry" : {
+        "OutboundPublicNetworkAclEntry" : {
             "Type" : "AWS::EC2::NetworkAclEntry",
             "Properties" : {
                 "NetworkAclId" : { "Ref" : "PublicNetworkAcl" },
                 "RuleNumber" : "100",
-                "Protocol" : "6",
+                "Protocol" : "-1",
                 "RuleAction" : "allow",
                 "Egress" : "true",
-                "CidrBlock" : "0.0.0.0/0",
-                "PortRange" : { "From" : "0", "To" : "65535" }
-            }
-        },
-
-        "OutboundUdpPublicNetworkAclEntry" : {
-            "Type" : "AWS::EC2::NetworkAclEntry",
-            "Properties" : {
-                "NetworkAclId" : { "Ref" : "PublicNetworkAcl" },
-                "RuleNumber" : "101",
-                "Protocol" : "17",
-                "RuleAction" : "allow",
-                "Egress" : "true",
-                "CidrBlock" : "0.0.0.0/0",
-                "PortRange" : { "From" : "0", "To" : "65535" }
+                "CidrBlock" : "0.0.0.0/0"
             }
         },
 
@@ -459,55 +444,27 @@
             }
         },
 
-        "InboundTcpPrivateNetworkAclEntry" : {
+        "InboundPrivateNetworkAclEntry" : {
             "Type" : "AWS::EC2::NetworkAclEntry",
             "Properties" : {
                 "NetworkAclId" : { "Ref" : "PrivateNetworkAcl" },
                 "RuleNumber" : "100",
-                "Protocol" : "6",
+                "Protocol" : "-1",
                 "RuleAction" : "allow",
                 "Egress" : "false",
-                "CidrBlock" : "0.0.0.0/0",
-                "PortRange" : { "From" : "0", "To" : "65535" }
+                "CidrBlock" : "0.0.0.0/0"
             }
         },
 
-        "InboundUdpPrivateNetworkAclEntry" : {
-            "Type" : "AWS::EC2::NetworkAclEntry",
-            "Properties" : {
-                "NetworkAclId" : { "Ref" : "PrivateNetworkAcl" },
-                "RuleNumber" : "101",
-                "Protocol" : "17",
-                "RuleAction" : "allow",
-                "Egress" : "false",
-                "CidrBlock" : "0.0.0.0/0",
-                "PortRange" : { "From" : "0", "To" : "65535" }
-            }
-        },
-
-        "OutBoundTcpPrivateNetworkAclEntry" : {
+        "OutBoundPrivateNetworkAclEntry" : {
             "Type" : "AWS::EC2::NetworkAclEntry",
             "Properties" : {
                 "NetworkAclId" : { "Ref" : "PrivateNetworkAcl" },
                 "RuleNumber" : "100",
-                "Protocol" : "6",
+                "Protocol" : "-1",
                 "RuleAction" : "allow",
                 "Egress" : "true",
-                "CidrBlock" : "0.0.0.0/0",
-                "PortRange" : { "From" : "0", "To" : "65535" }
-            }
-        },
-
-        "OutBoundUdpPrivateNetworkAclEntry" : {
-            "Type" : "AWS::EC2::NetworkAclEntry",
-            "Properties" : {
-                "NetworkAclId" : { "Ref" : "PrivateNetworkAcl" },
-                "RuleNumber" : "101",
-                "Protocol" : "17",
-                "RuleAction" : "allow",
-                "Egress" : "true",
-                "CidrBlock" : "0.0.0.0/0",
-                "PortRange" : { "From" : "0", "To" : "65535" }
+                "CidrBlock" : "0.0.0.0/0"
             }
         },
 
