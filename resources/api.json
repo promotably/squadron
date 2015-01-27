@@ -157,7 +157,7 @@
         "DBSubnetGroup" : {
             "Type" : "AWS::RDS::DBSubnetGroup",
             "Properties" : {
-                "GroupDescription" : { "Fn::Join" : [ "", [ { "Ref" : "AWS::StackName" }, " RDS" ] ]},
+                "DBSubnetGroupDescription" : { "Fn::Join" : [ "", [ { "Ref" : "AWS::StackName" }, " RDS" ] ]},
                 "SubnetIds" : { "Ref" : "DBSubnetIDs" },
                 "Tags": [{ "Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ { "Ref" : "AWS::StackName" }, "dbsubetnetgroup" ] ]} }]
             }
