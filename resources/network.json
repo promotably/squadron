@@ -308,7 +308,7 @@
             }
         },
 
-        "InboundEphemeralTcpPublicNetworkAclEntry" : {
+        "InboundEphemeralUdpPublicNetworkAclEntry" : {
             "Type" : "AWS::EC2::NetworkAclEntry",
             "Properties" : {
                 "NetworkAclId" : { "Ref" : "PublicNetworkAcl" },
