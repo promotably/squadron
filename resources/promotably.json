@@ -17,27 +17,26 @@
             "Description" : "Path in ArtifactBucket to api.json",
             "Type" : "String"
         },
+        "ScribeTemplate" : {
+            "Description" : "Path in ArtifactBucket to sribe.json",
+            "Type" : "String"
+        },
         "ApiArtifact" : {
             "Description" : "Path in ArtifactBucket to api uberjar",
+            "Type" : "String"
+        },
+        "ApiZip" : {
+            "Description" : "Filename of API source",
+            "Type" : "String"
+        },
+        "ScribeZip" : {
+            "Description" : "Filename of Scribe source",
             "Type" : "String"
         },
         "DashboardRef" : {
             "Description" : "Git ref of dashboard to refer to",
             "Type" : "String",
             "Default" : "latest"
-        },
-        "ApiGitHubRef" : {
-            "Description" : "Github tag or branch name to fetch for API repo",
-            "Type" : "String",
-            "Default" : "master"
-        },
-        "GitHubUser" : {
-            "Description" : "Github username",
-            "Type" : "String"
-        },
-        "GitHubPW" : {
-            "Description" : "Github password",
-            "Type" : "String"
         },
 
         "SshKey" :  {
@@ -48,6 +47,13 @@
             "MaxLength": "64",
             "AllowedPattern" : "[-_ a-zA-Z0-9]*",
             "ConstraintDescription" : "can contain only alphanumeric characters, spaces, dashes and underscores."
+        },
+
+        "TestResultsSNSTopicARN" : {
+            "Description" : "Send Integration Test results to this SNS topic",
+            "Type" : "String",
+            "Default" : "arn:aws:sns:us-east-1:955631477036:api-integration-tests",
+            "AllowedPattern" : "arn:aws:sns:[-_:a-zA-Z0-9]*"
         }
 
     },
@@ -77,8 +83,9 @@
                 "Parameters" : {
                     "DashboardRef" : { "Ref" : "DashboardRef" },
                     "ArtifactName" : { "Ref" : "ApiArtifact" },
+                    "SourceZip" : { "Ref" : "ApiZip" },
                     "ArtifactBucket" : { "Ref" : "ArtifactBucket" },
-                    "TestResultsSNSTopicARN" : "arn:aws:sns:us-east-1:955631477036:api-integration-tests",
+                    "TestResultsSNSTopicARN" : { "Ref" : "TestResultsSNSTopicARN" },
                     "DBSubnetIDs" : { "Fn::Join" : [ ",", [
                         { "Fn::GetAtt" : [ "Network", "Outputs.PrivateSubnetA" ] },
                         { "Fn::GetAtt" : [ "Network", "Outputs.PrivateSubnetB" ] },
@@ -87,9 +94,6 @@
                         { "Fn::GetAtt" : [ "Network", "Outputs.PrivateSubnetA" ] },
                         { "Fn::GetAtt" : [ "Network", "Outputs.PrivateSubnetB" ] },
                         { "Fn::GetAtt" : [ "Network", "Outputs.PrivateSubnetC" ] } ]]},
-                    "GitHubRef" : { "Ref" : "ApiGitHubRef" },
-                    "GitHubUser" : { "Ref" : "GitHubUser" },
-                    "GitHubPW" : { "Ref" : "GitHubPW" },
                     "PublicSubnets" : { "Fn::Join" : [ ",", [
                         { "Fn::GetAtt" : [ "Network", "Outputs.PublicSubnetA" ] },
                         { "Fn::GetAtt" : [ "Network", "Outputs.PublicSubnetB" ] },
@@ -108,6 +112,31 @@
                     "DBPassword" : "promotably",
                     "DBClass" : "db.m3.medium",
                     "DBAllocatedStorage" : "10"
+                },
+                "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}
+            }
+        },
+
+        "Scribe" : {
+            "Type" : "AWS::CloudFormation::Stack",
+            "Properties" : {
+                "TemplateURL" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "ScribeTemplate" } ] ]},
+                "Parameters" : {
+                    "TestResultsSNSTopicARN" : { "Ref" : "TestResultsSNSTopicARN" },
+                    "ArtifactBucket" : { "Ref" : "ArtifactBucket" },
+                    "SourceZip" : { "Ref" : "ScribeZip" },
+                    "DBHost" : { "Fn::GetAtt" : [ "Api", "Outputs.DBHost" ] },
+                    "DBPort" : { "Fn::GetAtt" : [ "Api", "Outputs.DBPort" ] },
+                    "DBName" : "promotably",
+                    "DBUsername" : "promotably",
+                    "DBPassword" : "promotably",
+                    "KinesisStreamA" : { "Fn::GetAtt" : [ "Api", "Outputs.KinesisStreamA" ] },
+                    "KinesisStreamB" : { "Fn::GetAtt" : [ "Api", "Outputs.KinesisStreamB" ] },
+                    "PublicSubnetId" : { "Fn::GetAtt" : [ "Network", "Outputs.PublicSubnetA" ] },
+                    "VpcId" : { "Fn::GetAtt" : [ "Network", "Outputs.VPCId" ] },
+                    "Environment" : "integration",
+                    "VpcDefaultSecurityGroup" : { "Fn::GetAtt" : [ "Network", "Outputs.VpcDefaultSecurityGroup" ] },
+                    "KeyPair" : { "Ref" : "SshKey" }
                 },
                 "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}
             }

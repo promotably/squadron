@@ -13,6 +13,10 @@
             "Description" : "Filename of build API build jar",
             "Type" : "String"
         },
+        "SourceZip" : {
+            "Description" : "Filename of API source",
+            "Type" : "String"
+        },
         "ArtifactBucket" : {
             "Description" : "S3 Bucket where build artifacts are stored",
             "Type" : "String",
@@ -22,11 +26,6 @@
             "Description" : "S3 Bucket where test runs are stored",
             "Type" : "String",
             "Default" : "promotably-test-results"
-        },
-        "DeployBucket" : {
-            "Description" : "S3 Bucket where CodeDeploy revisions are stored",
-            "Type" : "String",
-            "Default" : "promotably-code-deploy"
         },
         "TestResultsSNSTopicARN" : {
             "Description" : "SNS Topic ARN for reporting test results",
@@ -39,19 +38,6 @@
         "CacheSubnetIDs" : {
             "Description" : "List of VPC subnets on which cache may reside.",
             "Type" : "List<AWS::EC2::Subnet::Id>"
-        },
-        "GitHubRef" : {
-            "Description" : "Github tag or branch name to fetch for API repo",
-            "Type" : "String",
-            "Default" : "master"
-        },
-        "GitHubUser" : {
-            "Description" : "Github username",
-            "Type" : "String"
-        },
-        "GitHubPW" : {
-            "Description" : "Github password",
-            "Type" : "String"
         },
         "PublicSubnets" : {
             "Description" : "List of VPC public subnet IDs for the cluster. Note: must match up with the passed AvailabilityZones.",
@@ -200,52 +186,6 @@
             }
         },
 
-        "CodeDeployTrustRole": {
-            "Type": "AWS::IAM::Role",
-            "Properties": {
-                "Path": "/",
-                "AssumeRolePolicyDocument": {
-                    "Statement": [{
-                        "Sid": "1",
-                        "Effect": "Allow",
-                        "Principal": {
-                            "Service": [
-                                "codedeploy.us-east-1.amazonaws.com",
-                                "codedeploy.us-west-2.amazonaws.com"
-                            ]
-                        },
-                        "Action": "sts:AssumeRole"
-                    }]
-                }
-            }
-        },
-
-        "CodeDeployRolePolicies": {
-            "Type": "AWS::IAM::Policy",
-            "Properties": {
-                "PolicyName": "CodeDeployPolicy",
-                "PolicyDocument": {
-                    "Statement": [{
-                        "Effect": "Allow",
-                        "Resource": [ "*" ],
-                        "Action": [ "ec2:Describe*" ]
-                    },{
-                        "Effect": "Allow",
-                        "Resource": [ "*" ],
-                        "Action": [
-                            "autoscaling:CompleteLifecycleAction",
-                            "autoscaling:DeleteLifecycleHook",
-                            "autoscaling:DescribeLifecycleHooks",
-                            "autoscaling:DescribeAutoScalingGroups",
-                            "autoscaling:PutLifecycleHook",
-                            "autoscaling:RecordLifecycleActionHeartbeat"
-                        ]
-                    }]
-                },
-                "Roles": [{ "Ref": "CodeDeployTrustRole" }]
-            }
-        },
-
         "RootRole": {
             "Type" : "AWS::IAM::Role",
             "Properties" : {
@@ -283,11 +223,8 @@
                         "Effect": "Allow",
                         "Action": [ "s3:Get*", "s3:List*", "s3:Put*" ],
                         "Resource": [
-                            { "Fn::Join" : [ "", [ "arn:aws:s3:::", { "Ref" : "DeployBucket" }, "/*" ] ] },
                             { "Fn::Join" : [ "", [ "arn:aws:s3:::", { "Ref" : "TestResultsBucket" }, "/*" ] ] },
-                            { "Fn::Join" : [ "", [ "arn:aws:s3:::", { "Ref" : "ArtifactBucket" }, "/*" ] ] },
-                            "arn:aws:s3:::aws-codedeploy-us-east-1/*",
-                            "arn:aws:s3:::aws-codedeploy-us-west-2/*"
+                            { "Fn::Join" : [ "", [ "arn:aws:s3:::", { "Ref" : "ArtifactBucket" }, "/*" ] ] }
                         ]
                     },{
                         "Effect" : "Allow",
@@ -496,10 +433,6 @@
                         },
                         "services" : {
                             "sysvinit" : {
-                                "codedeploy-agent": {
-                                    "enabled": "true",
-                                    "ensureRunning": "true"
-                                },
                                 "nginx" : {
                                     "enabled" : "true",
                                     "ensureRunning" : "true",
@@ -541,24 +474,14 @@
                     "  exit 1\n",
                     "}\n",
 
-                    "# Install the AWS CodeDeploy Agent.\n",
-                    "",
-                    "cd /home/ec2-user/\n",
-                    "aws s3 cp 's3://aws-codedeploy-us-east-1/latest/codedeploy-agent.noarch.rpm' . || error_exit 'Failed to download AWS CodeDeploy Agent.'\n",
-                    "yum -y install codedeploy-agent.noarch.rpm || error_exit 'Failed to install AWS CodeDeploy Agent.' \n",
                     "/opt/aws/bin/cfn-init -s ", { "Ref": "AWS::StackId" },
                       " -r APILaunchConfig --region ", { "Ref": "AWS::Region" },
                       " || error_exit 'Failed to run cfn-init.'\n",
 
-                    "# Get API tarball\n",
-                    "curl -sL --user '", { "Ref" : "GitHubUser" }, ":", { "Ref" : "GitHubPW" }, "'", " https://api.github.com/repos/promotably/api/tarball/", { "Ref" : "GitHubRef" }, " > /tmp/api.tar\n",
-                    "mkdir -p /opt/promotably\n",
-                    "tar -xf /tmp/api.tar -C /opt/promotably\n",
-                    "ln -s /opt/promotably/* /opt/promotably/api\n\n",
-
                     "# Get build artifacts\n",
+                    "mkdir -p /opt/promotably/api\n",
                     "aws s3 cp 's3://", { "Ref" : "ArtifactBucket" }, "/", { "Ref" : "ArtifactName" }, "' /opt/promotably/\n",
-                    "ln -s /opt/promotably/", { "Ref" : "ArtifactName" }, "   /opt/promotably/api-current.jar\n",
+                    "ln -snf /opt/promotably/", { "Ref" : "ArtifactName" }, "   /opt/promotably/api-current.jar\n",
                     "aws s3 cp 's3://", { "Ref" : "ArtifactBucket" }, "/apid'  /etc/init.d\n",
                     "chmod 000755 /etc/init.d/apid\n",
                     "chkconfig --add apid\n",
@@ -612,8 +535,11 @@
                     "export MIDJE_COLORIZE=false\n",
 
                     "if [ \"$ENV\" == 'integration' ]; then\n",
+                    "   aws s3 cp s3://$ARTIFACT_BUCKET/", { "Ref" : "SourceZip" }, " /tmp/api.zip\n",
+                    "   cd /opt/promotably/api\n",
+                    "   unzip /tmp/api.zip\n",
                     "   echo API INTEGRATION TEST RESULTS > /tmp/test_output.txt\n",
-                    "   cd /opt/promotably/api && /usr/local/bin/lein midje api.integration.*",
+                    "   /usr/local/bin/lein midje api.integration.*",
                     "     2>&1 >> /tmp/test_output.txt\n",
                     "   aws s3 cp /tmp/test_output.txt 's3://",
                       { "Ref" : "TestResultsBucket" }, "/",
@@ -656,9 +582,6 @@
 
     "Outputs" : {
 
-        "CodeDeployTrustRoleARN": {
-            "Value": { "Fn::GetAtt": [ "CodeDeployTrustRole", "Arn" ] }
-        },
         "KinesisStreamA" : {
             "Description" : "Kinesis Stream A",
             "Value" : { "Ref" : "KinesisStreamA" }
