@@ -318,7 +318,7 @@
                             "yum" : {
                                 "java-1.7.0-openjdk" : [],
                                 "nginx" : [],
-                                "jsvc" : []
+                                "apache-commons-daemon-jsvc" : []
                             }
                         },
                         "files" : {
@@ -357,13 +357,13 @@
                                 "group"  : "root"
                             },
                             "/opt/promotably/api-current.jar" : {
-                                "source" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", "/", { "Ref" : "ArtifactName" } ]]},
+                                "source" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "ArtifactName" } ]]},
                                 "mode"    : "000644",
                                 "owner"   : "root",
                                 "group"   : "root"
                             },
                             "/etc/rc.d/init.d/apid" : {
-                                "source" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", "/apid" ]]},
+                                "source" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/apid" ]]},
                                 "mode"    : "000755",
                                 "owner"   : "root",
                                 "group"   : "root"
@@ -417,8 +417,8 @@
                                       " --show-cache-node-info --region ", { "Ref" : "AWS::Region" },
                                       " --query 'CacheClusters[0].CacheNodes[0].Endpoint.port'",
                                       ")\n",
-                                      "sed -i \"s/^REDIS_HOST .*$/REDIS_HOST $cache_host/\" /opt/promotably/api.conf\n",
-                                      "sed -i \"s/^REDIS_PORT .*$/REDIS_PORT $cache_port/\" /opt/promotably/api.conf\n"
+                                      "sed -i \"s/^\\\"REDIS_HOST\\\" .*$/\\\"REDIS_HOST\\\" $cache_host/\" /opt/promotably/api.conf\n",
+                                      "sed -i \"s/^\\\"REDIS_PORT\\\" .*$/\\\"REDIS_PORT\\\" $cache_port/\" /opt/promotably/api.conf\n"
                                 ] ]},
                                 "mode"    : "000755",
                                 "owner"   : "root",
@@ -443,7 +443,7 @@
                                       " --stack ", { "Ref" : "AWS::StackName" },
                                       " --resource LaunchConfig",
                                       " --region ", { "Ref" : "AWS::Region" },
-                                      " -c update\n",
+                                      " -c base,update\n",
                                     "runas=root\n"
                                 ] ]}
                             }
@@ -486,18 +486,17 @@
                         }
                     },
                     "integration" : {
+                        "packages" : {
+                            "yum" : {
+                                "git" : []
+                            }
+                        },
                         "files" : {
                             "/opt/promotably/api.zip" : {
-                                "source" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", "/", { "Ref" : "SourceZip" } ]]},
+                                "source" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "SourceZip" } ]]},
                                 "mode"    : "000644",
                                 "owner"   : "root",
                                 "group"   : "root"
-                            },
-                            "/usr/local/bin/lein" : {
-                                "source" : "https://raw.githubusercontent.com/technomancy/leiningen/stable/bin/lein\n",
-                                "mode" : "000755",
-                                "owner" : "root",
-                                "group" : "root"
                             }
                         },
                         "commands" : {
@@ -514,25 +513,36 @@
                                     "RDS_DB_NAME" : { "Ref": "DBName" },
                                     "ENV" : { "Ref": "Environment" },
                                     "STACKNAME" : { "Ref": "AWS::StackName" },
-                                    "MIDJE_COLORIZE" : "false"
+                                    "MIDJE_COLORIZE" : "false",
+                                    "LEIN_ROOT" : "yes"
                                 },
                                 "cwd" : "/opt/promotably",
                                 "ignoreErrors" : "false",
                                 "command" : { "Fn::Join" : [ "", [
                                     "export REDIS_HOST=$(aws elasticache describe-cache-clusters ",
+                                      " --output=text\n",
                                       " --cache-cluster-id ", { "Ref" : "RedisCluster" },
                                       " --show-cache-node-info --region ", { "Ref" : "AWS::Region" },
                                       " --query 'CacheClusters[0].CacheNodes[0].Endpoint.Address'",
                                       ")\n",
                                     "export REDIS_PORT=$(aws elasticache describe-cache-clusters ",
+                                      " --output=text\n",
                                       " --cache-cluster-id ", { "Ref" : "RedisCluster" },
                                       " --show-cache-node-info --region ", { "Ref" : "AWS::Region" },
-                                      " --query 'CacheClusters[0].CacheNodes[0].Endpoint.port'",
+                                      " --query 'CacheClusters[0].CacheNodes[0].Endpoint.Port'",
                                       ")\n",
                                     "\n",
+                                    "curl https://raw.githubusercontent.com/technomancy/leiningen/stable/bin/lein > /usr/local/bin/lein\n",
+                                    "chmod 0755 /usr/local/bin/lein\n",
                                     "rm -rf api\n",
-                                    "unzip api.zip\n",
+                                    "mkdir api\n",
+                                    "cd api\n",
+                                    "unzip ../api.zip\n",
                                     "echo API INTEGRATION TEST RESULTS > /tmp/test_output.txt\n",
+                                    "echo >> /tmp/test_output.txt\n",
+                                    "echo ENVIRONMENT >> /tmp/test_output.txt\n",
+                                    "env >> /tmp/test_output.txt\n",
+                                    "echo >> /tmp/test_output.txt\n",
                                     "/usr/local/bin/lein midje api.integration.*",
                                       " 2>&1 >> /tmp/test_output.txt\n",
                                     "aws s3 cp /tmp/test_output.txt 's3://",
@@ -547,7 +557,7 @@
                                 ]]}
                             }
                         }
-                    },
+                     },
                     "boot" : {
                         "commands" : {
                             "01-apidchkconfig" : {
@@ -562,11 +572,26 @@
                                     "files" : [ "/etc/nginx/conf.d/default.conf" ],
                                     "sources" : [ "/var/www/html" ]
                                 },
+                                "apid" : {
+                                    "enabled" : "true",
+                                    "ensureRunning" : "true",
+                                    "files" : [ "/opt/promotably/api.conf", "/opt/promotably/api-current.jar" ]
+                                },
                                 "cfn-hup" : {
                                     "enabled" : "true",
                                     "ensureRunning" : "true",
                                     "files" : [ "/etc/cfn/cfn-hup.conf", "/etc/cfn/hooks.d/cfn-auto-reloader.conf" ]
                                 }
+                            }
+                        }
+                    },
+                    "update" : {
+                        "commands" : {
+                            "01-restartservices" : {
+                                "command" : { "Fn::Join" : [ "", [
+                                    "service nginx restart\n",
+                                    "service apid restart\n"
+                                ]]}
                             }
                         }
                     }
@@ -588,7 +613,7 @@
                     "",
                     "function error_exit\n",
                     "{\n",
-                    "  /opt/aws/bin/cfn-signal -e 1 -r \"$1\"",
+                    "  #/opt/aws/bin/cfn-signal -e 1 -r \"$1\"",
                     "         --stack ", { "Ref" : "AWS::StackName" },
                     "         --resource LaunchConfig ",
                     "         --region ", { "Ref" : "AWS::Region" }, "\n",
@@ -597,20 +622,20 @@
                     "\n",
                     "/opt/aws/bin/cfn-init -s ", { "Ref": "AWS::StackId" },
                       " -r LaunchConfig --region ", { "Ref": "AWS::Region" },
-                      " -c default error_exit 'Failed to run cfn-init - default'\n",
+                      " -c default || error_exit 'Failed to run cfn-init - default'\n",
                     "\n",
                     "if [ '", { "Ref": "Environment" }, "' = 'integration' ]; then\n",
                     "  /opt/aws/bin/cfn-init -s ", { "Ref": "AWS::StackId" },
                       " -r LaunchConfig --region ", { "Ref": "AWS::Region" },
-                      " -c integration error_exit 'Failed to run cfn-init - integration'\n",
+                      " -c integration || error_exit 'Failed to run cfn-init - integration'\n",
                     "fi\n",
                     "\n",
                     "/opt/aws/bin/cfn-init -s ", { "Ref": "AWS::StackId" },
                       " -r LaunchConfig --region ", { "Ref": "AWS::Region" },
-                      " -c boot error_exit 'Failed to run cfn-init - boot'\n",
+                      " -c boot || error_exit 'Failed to run cfn-init - boot'\n",
                     "\n",
                     "# All is well, so signal success.\n",
-                    "/opt/aws/bin/cfn-signal -e 0 ",
+                    "#/opt/aws/bin/cfn-signal -e 0 ",
                       " --stack ", { "Ref" : "AWS::StackName" },
                       " --resource LaunchConfig ",
                       " --region ", { "Ref" : "AWS::Region" }, "\n"
