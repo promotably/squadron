@@ -86,14 +86,6 @@
                     "SourceZip" : { "Ref" : "ApiZip" },
                     "ArtifactBucket" : { "Ref" : "ArtifactBucket" },
                     "TestResultsSNSTopicARN" : { "Ref" : "TestResultsSNSTopicARN" },
-                    "DBSubnetIDs" : { "Fn::Join" : [ ",", [
-                        { "Fn::GetAtt" : [ "Network", "Outputs.PrivateSubnetA" ] },
-                        { "Fn::GetAtt" : [ "Network", "Outputs.PrivateSubnetB" ] },
-                        { "Fn::GetAtt" : [ "Network", "Outputs.PrivateSubnetC" ] } ]]},
-                    "CacheSubnetIDs" : { "Fn::Join" : [ ",", [
-                        { "Fn::GetAtt" : [ "Network", "Outputs.PrivateSubnetA" ] },
-                        { "Fn::GetAtt" : [ "Network", "Outputs.PrivateSubnetB" ] },
-                        { "Fn::GetAtt" : [ "Network", "Outputs.PrivateSubnetC" ] } ]]},
                     "PublicSubnets" : { "Fn::Join" : [ ",", [
                         { "Fn::GetAtt" : [ "Network", "Outputs.PublicSubnetA" ] },
                         { "Fn::GetAtt" : [ "Network", "Outputs.PublicSubnetB" ] },

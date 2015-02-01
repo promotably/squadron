@@ -31,14 +31,6 @@
             "Description" : "SNS Topic ARN for reporting test results",
             "Type" : "String"
         },
-        "DBSubnetIDs" : {
-            "Description" : "List of VPC subnets on which DB instance may reside.",
-            "Type" : "List<AWS::EC2::Subnet::Id>"
-        },
-        "CacheSubnetIDs" : {
-            "Description" : "List of VPC subnets on which cache may reside.",
-            "Type" : "List<AWS::EC2::Subnet::Id>"
-        },
         "PublicSubnets" : {
             "Description" : "List of VPC public subnet IDs for the cluster. Note: must match up with the passed AvailabilityZones.",
             "Type" : "List<AWS::EC2::Subnet::Id>"
@@ -110,7 +102,7 @@
             "Type" : "AWS::ElastiCache::SubnetGroup",
             "Properties" : {
                 "Description" : "Cache Subnet Group",
-                "SubnetIds" : { "Ref" : "CacheSubnetIDs" }
+                "SubnetIds" : { "Ref" : "PrivateSubnets" }
             }
         },
 
@@ -144,7 +136,7 @@
             "Type" : "AWS::RDS::DBSubnetGroup",
             "Properties" : {
                 "DBSubnetGroupDescription" : { "Fn::Join" : [ "", [ { "Ref" : "AWS::StackName" }, " RDS" ] ]},
-                "SubnetIds" : { "Ref" : "DBSubnetIDs" },
+                "SubnetIds" : { "Ref" : "PrivateSubnets" },
                 "Tags": [{ "Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ { "Ref" : "AWS::StackName" }, "dbsubetnetgroup" ] ]} }]
             }
         },
@@ -302,21 +294,35 @@
             }
         },
 
-        "APILaunchConfig" : {
+        "LaunchConfig" : {
             "Type" : "AWS::AutoScaling::LaunchConfiguration",
             "Metadata" : {
+                "AWS::CloudFormation::Authentication" : {
+                    "S3AccessCreds" : {
+                        "type" : "S3",
+                        "roleName" : { "Ref" : "RootRole" },
+                        "buckets" : [ { "Ref" : "ArtifactBucket" } ]
+                    }
+                },
                 "AWS::CloudFormation::Init" : {
-                    "config" : {
+                    "configSets" : {
+                        "update" : [ "update" ],
+                        "base" : [ "base" ],
+                        "dbinit" : [ "dbinit" ],
+                        "boot" : [ "boot" ],
+                        "integration" : [ "integration" ],
+                        "default" : [ { "ConfigSet" : "base" }, "dbinit" ]
+                    },
+                    "base" : {
                         "packages" : {
-                                "yum" : {
+                            "yum" : {
                                 "java-1.7.0-openjdk" : [],
-                                "postgresql93" : [],
-                                "git" : [],
-                                "nginx" : []
+                                "nginx" : [],
+                                "jsvc" : []
                             }
                         },
                         "files" : {
-                            "/tmp/nginx/default.conf" : {
+                            "/etc/nginx/conf.d/default.conf" : {
                                 "content" : { "Fn::Join" : ["", [
 
                                     "log_format elb_log '$proxy_protocol_addr - $remote_user [$time_local] ' '\"$request\" $status $body_bytes_sent \"$http_referer\" ' '\"$http_user_agent\"';\n",
@@ -350,48 +356,69 @@
                                 "owner"  : "root",
                                 "group"  : "root"
                             },
-                            "/etc/cron.d/get_cluster_config" : {
-                                "content" : "*/5 * * * * root /usr/local/bin/get_cluster_config",
+                            "/opt/promotably/api-current.jar" : {
+                                "source" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", "/", { "Ref" : "ArtifactName" } ]]},
                                 "mode"    : "000644",
                                 "owner"   : "root",
                                 "group"   : "root"
                             },
-                            "/etc/cron.d/get_iam_config" : {
-                                "content" : "*/5 * * * * root /usr/local/bin/get_iam_config",
-                                "mode"    : "000644",
+                            "/etc/rc.d/init.d/apid" : {
+                                "source" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", "/apid" ]]},
+                                "mode"    : "000755",
                                 "owner"   : "root",
                                 "group"   : "root"
                             },
-                            "/tmp/postgres_setup.sql" : {
+                            "/opt/promotably/api.conf" : {
                                 "content" : { "Fn::Join" : [ "", [
-                                    "CREATE USER ", {"Ref": "DBUsername"}, " WITH PASSWORD '", {"Ref": "DBPassword"}, "';\n",
-                                    "CREATE DATABASE ", {"Ref": "DBName"}, ";\n",
-                                    "GRANT ALL PRIVILEGES ON DATABASE ", {"Ref": "DBName"}, " to ", {"Ref": "DBUsername"}, ";\n",
-                                    "\\c ", {"Ref": "DBName"}, "\n",
-                                    "CREATE EXTENSION \"uuid-ossp\";\n",
-                                    "CREATE TABLE IF NOT EXISTS migrations(version varchar(255));\n",
-                                    "GRANT ALL PRIVILEGES ON TABLE migrations TO ", {"Ref": "DBUsername"}, ";\n"
-                                ] ]},
-                                "mode"    : "000644",
+                                    "{\n",
+                                    "\"ARTIFACT_BUCKET\" {{ARTIFACT_BUCKET}}\"\n",
+                                    "\"DASHBOARD_INDEX_PATH\" \"{{DASHBOARD_INDEX_PATH}}\"\n",
+                                    "\"KINESIS_A\" \"{{KINESIS_A}}\"\n",
+                                    "\"KINESIS_B\" \"{{KINESIS_B}}\"\n",
+                                    "\"REDIS_HOST\" \"localhost\"\n",
+                                    "\"REDIS_POT\" \"6379\"\n",
+                                    "\"RDS_HOST\" \"{{RDS_HOST}}\"\n",
+                                    "\"RDS_PORT\" \"{{RDS_PORT}}\"\n",
+                                    "\"RDS_USER\" \"{{RDS_USER}}\"\n",
+                                    "\"RDS_PW\" \"{{RDS_PW}}\"\n",
+                                    "\"RDS_DB_NAME\" \"{{RDS_DB_NAME}}\"\n",
+                                    "\"ENV\" \"{{ENV}}\"\n",
+                                    "\"LEIN_ROOT\" \"yes\"\n",
+                                    "\"STACKNAME\" \"{{STACKNAME}}\"\n",
+                                    "}\n"
+                                ]]},
+                                "context" : {
+                                    "ARTIFACT_BUCKET" : { "Ref": "ArtifactBucket" },
+                                    "DASHBOARD_INDEX_PATH" : { "Ref": "DashboardRef" },
+                                    "KINESIS_A" : { "Ref": "KinesisStreamA" },
+                                    "KINESIS_B" : { "Ref": "KinesisStreamB" },
+                                    "RDS_HOST" : { "Fn::GetAtt": [ "DBInstance", "Endpoint.Address"]},
+                                    "RDS_PORT" : { "Fn::GetAtt": [ "DBInstance", "Endpoint.Port"]},
+                                    "RDS_USER" : { "Ref": "DBUsername" },
+                                    "RDS_PW" : { "Ref": "DBPassword" },
+                                    "RDS_DB_NAME" : { "Ref": "DBName" },
+                                    "ENV" : { "Ref": "Environment" },
+                                    "STACKNAME" : { "Ref": "AWS::StackName" }
+                                },
+                                "mode"    : "000755",
                                 "owner"   : "root",
                                 "group"   : "root"
                             },
                             "/usr/local/bin/get_cluster_config" : {
                                 "content" : { "Fn::Join" : [ "", [
                                     "#! /bin/bash\n",
-                                    "aws elasticache describe-cache-clusters ",
-                                    "         --cache-cluster-id ", {"Ref" : "RedisCluster"},
-                                    "         --show-cache-node-info --region ", { "Ref" : "AWS::Region" }, " > /tmp/cacheclusterconfig\n"
-                                ] ]},
-                                "mode"    : "000755",
-                                "owner"   : "root",
-                                "group"   : "root"
-                            },
-                            "/usr/local/bin/get_iam_config" : {
-                                "content" : { "Fn::Join" : [ "", [
-                                    "#! /bin/bash\n",
-                                    "export ROLE=$(curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/)\n",
-                                    "curl http://169.254.169.254/latest/meta-data/iam/security-credentials/$ROLE > /tmp/iamconfig\n"
+                                    "cache_host=$(aws elasticache describe-cache-clusters ",
+                                      " --cache-cluster-id ", { "Ref" : "RedisCluster" },
+                                      " --show-cache-node-info --region ", { "Ref" : "AWS::Region" },
+                                      " --query 'CacheClusters[0].CacheNodes[0].Endpoint.Address'",
+                                      ")\n",
+                                    "cache_port=$(aws elasticache describe-cache-clusters ",
+                                      " --cache-cluster-id ", { "Ref" : "RedisCluster" },
+                                      " --show-cache-node-info --region ", { "Ref" : "AWS::Region" },
+                                      " --query 'CacheClusters[0].CacheNodes[0].Endpoint.port'",
+                                      ")\n",
+                                      "sed -i \"s/^REDIS_HOST .*$/REDIS_HOST $cache_host/\" /opt/promotably/api.conf\n",
+                                      "sed -i \"s/^REDIS_PORT .*$/REDIS_PORT $cache_port/\" /opt/promotably/api.conf\n"
                                 ] ]},
                                 "mode"    : "000755",
                                 "owner"   : "root",
@@ -411,24 +438,120 @@
                                 "content": { "Fn::Join" : [ "", [
                                     "[cfn-auto-reloader-hook]\n",
                                     "triggers=post.update\n",
-                                    "path=Resources.APILaunchConfig.Metadata.AWS::CloudFormation::Init\n",
+                                    "path=Resources.LaunchConfig.Metadata.AWS::CloudFormation::Init\n",
                                     "action=/opt/aws/bin/cfn-init -v ",
                                       " --stack ", { "Ref" : "AWS::StackName" },
-                                      " --resource APILaunchConfig",
-                                      " --region ", { "Ref" : "AWS::Region" }, "\n",
+                                      " --resource LaunchConfig",
+                                      " --region ", { "Ref" : "AWS::Region" },
+                                      " -c update\n",
                                     "runas=root\n"
                                 ] ]}
                             }
                         },
                         "commands" : {
-                            "01-get-cluster-config" : { "command" : "/usr/local/bin/get_cluster_config" },
-                            "02-get-iam-config" : { "command" : "/usr/local/bin/get_iam_config" },
-                            "03-postgres-setup" : {
+                            "01-get-cluster-config" : { "command" : "/usr/local/bin/get_cluster_config" }
+                        }
+                    },
+                    "dbinit" : {
+                        "packages" : {
+                            "yum" : {
+                                "postgresql93" : []
+                            }
+                        },
+                        "files" : {
+                            "/tmp/postgres_setup.sql" : {
+                                "content" : { "Fn::Join" : [ "", [
+                                    "CREATE USER ", {"Ref": "DBUsername"}, " WITH PASSWORD '", {"Ref": "DBPassword"}, "';\n",
+                                    "CREATE DATABASE ", {"Ref": "DBName"}, ";\n",
+                                    "GRANT ALL PRIVILEGES ON DATABASE ", {"Ref": "DBName"}, " to ", {"Ref": "DBUsername"}, ";\n",
+                                    "\\c ", {"Ref": "DBName"}, "\n",
+                                    "CREATE EXTENSION \"uuid-ossp\";\n",
+                                    "CREATE TABLE IF NOT EXISTS migrations(version varchar(255));\n",
+                                    "GRANT ALL PRIVILEGES ON TABLE migrations TO ", {"Ref": "DBUsername"}, ";\n"
+                                ] ]},
+                                "mode"    : "000644",
+                                "owner"   : "root",
+                                "group"   : "root"
+                            }
+                        },
+                        "commands" : {
+                            "01-postgres-setup" : {
+                                "env" : { "PGPASSWORD" : {"Ref": "DBPassword"} },
                                 "command" : { "Fn::Join": [ "", [
-                                    "export PGPASSWORD='", {"Ref": "DBPassword"}, "' && psql -f /tmp/postgres_setup.sql -h ",
+                                    "psql -f /tmp/postgres_setup.sql -h ",
                                     { "Fn::GetAtt" : [ "DBInstance", "Endpoint.Address" ]}, " -p ",
-                                    {"Fn::GetAtt": [ "DBInstance", "Endpoint.Port"]}, " -U ", {"Ref": "DBUsername"}, "\n"
+                                    { "Fn::GetAtt": [ "DBInstance", "Endpoint.Port" ]}, " -U ", {"Ref": "DBUsername"}, "\n"
                                 ] ]}
+                            }
+                        }
+                    },
+                    "integration" : {
+                        "files" : {
+                            "/opt/promotably/api.zip" : {
+                                "source" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", "/", { "Ref" : "SourceZip" } ]]},
+                                "mode"    : "000644",
+                                "owner"   : "root",
+                                "group"   : "root"
+                            },
+                            "/usr/local/bin/lein" : {
+                                "source" : "https://raw.githubusercontent.com/technomancy/leiningen/stable/bin/lein\n",
+                                "mode" : "000755",
+                                "owner" : "root",
+                                "group" : "root"
+                            }
+                        },
+                        "commands" : {
+                            "00-integration" :{
+                                "env" : {
+                                    "ARTIFACT_BUCKET" : { "Ref": "ArtifactBucket" },
+                                    "DASHBOARD_INDEX_PATH" : { "Ref": "DashboardRef" },
+                                    "KINESIS_A" : { "Ref": "KinesisStreamA" },
+                                    "KINESIS_B" : { "Ref": "KinesisStreamB" },
+                                    "RDS_HOST" : { "Fn::GetAtt": [ "DBInstance", "Endpoint.Address"]},
+                                    "RDS_PORT" : { "Fn::GetAtt": [ "DBInstance", "Endpoint.Port"]},
+                                    "RDS_USER" : { "Ref": "DBUsername" },
+                                    "RDS_PW" : { "Ref": "DBPassword" },
+                                    "RDS_DB_NAME" : { "Ref": "DBName" },
+                                    "ENV" : { "Ref": "Environment" },
+                                    "STACKNAME" : { "Ref": "AWS::StackName" },
+                                    "MIDJE_COLORIZE" : "false"
+                                },
+                                "cwd" : "/opt/promotably",
+                                "ignoreErrors" : "false",
+                                "command" : { "Fn::Join" : [ "", [
+                                    "export REDIS_HOST=$(aws elasticache describe-cache-clusters ",
+                                      " --cache-cluster-id ", { "Ref" : "RedisCluster" },
+                                      " --show-cache-node-info --region ", { "Ref" : "AWS::Region" },
+                                      " --query 'CacheClusters[0].CacheNodes[0].Endpoint.Address'",
+                                      ")\n",
+                                    "export REDIS_PORT=$(aws elasticache describe-cache-clusters ",
+                                      " --cache-cluster-id ", { "Ref" : "RedisCluster" },
+                                      " --show-cache-node-info --region ", { "Ref" : "AWS::Region" },
+                                      " --query 'CacheClusters[0].CacheNodes[0].Endpoint.port'",
+                                      ")\n",
+                                    "\n",
+                                    "rm -rf api\n",
+                                    "unzip api.zip\n",
+                                    "echo API INTEGRATION TEST RESULTS > /tmp/test_output.txt\n",
+                                    "/usr/local/bin/lein midje api.integration.*",
+                                      " 2>&1 >> /tmp/test_output.txt\n",
+                                    "aws s3 cp /tmp/test_output.txt 's3://",
+                                      { "Ref" : "TestResultsBucket" }, "/",
+                                      { "Ref" : "AWS::StackName" }, ".txt'",
+                                      " --acl public-read\n",
+                                    "aws sns publish",
+                                      " --region ", { "Ref": "AWS::Region" },
+                                      " --topic-arn ", {"Ref": "TestResultsSNSTopicARN"},
+                                      " --message 'https://s3.amazonaws.com/", { "Ref" : "TestResultsBucket" },
+                                      "/", { "Ref" : "AWS::StackName" }, ".txt'\n"
+                                ]]}
+                            }
+                        }
+                    },
+                    "boot" : {
+                        "commands" : {
+                            "01-apidchkconfig" : {
+                                "command" : "chkconfig --add apid\n"
                             }
                         },
                         "services" : {
@@ -457,11 +580,9 @@
                 "IamInstanceProfile": { "Ref": "RootInstanceProfile" },
                 "UserData": { "Fn::Base64": { "Fn::Join": [ "", [
                     "#!/bin/bash -ex\n",
-                    "yum update -y\n",
-                    "yum update -y aws-cfn-bootstrap\n",
-                    "yum update -y aws-cli\n",
-                    "yum update -y curl\n",
-                    "yum install -y jsvc\n",
+                    "yum upgrade -y\n",
+
+                    "mkdir -p /opt/promotably/api\n",
 
                     "# Helper function.\n",
                     "",
@@ -469,107 +590,42 @@
                     "{\n",
                     "  /opt/aws/bin/cfn-signal -e 1 -r \"$1\"",
                     "         --stack ", { "Ref" : "AWS::StackName" },
-                    "         --resource APILaunchConfig ",
+                    "         --resource LaunchConfig ",
                     "         --region ", { "Ref" : "AWS::Region" }, "\n",
                     "  exit 1\n",
                     "}\n",
-
+                    "\n",
                     "/opt/aws/bin/cfn-init -s ", { "Ref": "AWS::StackId" },
-                      " -r APILaunchConfig --region ", { "Ref": "AWS::Region" },
-                      " || error_exit 'Failed to run cfn-init.'\n",
-
-                    "# Get build artifacts\n",
-                    "mkdir -p /opt/promotably/api\n",
-                    "aws s3 cp 's3://", { "Ref" : "ArtifactBucket" }, "/", { "Ref" : "ArtifactName" }, "' /opt/promotably/\n",
-                    "ln -snf /opt/promotably/", { "Ref" : "ArtifactName" }, "   /opt/promotably/api-current.jar\n",
-                    "aws s3 cp 's3://", { "Ref" : "ArtifactBucket" }, "/apid'  /etc/init.d\n",
-                    "chmod 000755 /etc/init.d/apid\n",
-                    "chkconfig --add apid\n",
-
-                    "# Nginx setup\n",
-                    "cp /tmp/nginx/default.conf /etc/nginx/conf.d/default.conf\n",
-                    "service nginx restart\n",
-
-                    "# Install lein\n",
-                    "curl https://raw.githubusercontent.com/technomancy/leiningen/stable/bin/lein > /usr/local/bin/lein\n",
-                    "chmod a+x /usr/local/bin/lein\n",
-
-                    "# Wait for it...\n",
-                    "while : ; do\n",
-                    "  [[ -f /tmp/cacheclusterconfig ]] && break\n",
-                    "  sleep 1\n",
-                    "done\n\n",
-
-                    "# Create API config\n",
-                    "echo '{' > /opt/promotably/api.conf\n",
-                    "echo \\\"ARTIFACT_BUCKET\\\"          \\\"", {"Ref": "ArtifactBucket"}, "\\\" >> /opt/promotably/api.conf\n",
-                    "echo \\\"DASHBOARD_INDEX_PATH\\\"     \\\"db/", {"Ref": "DashboardRef"}, "/index.html\\\" >> /opt/promotably/api.conf\n",
-                    "echo \\\"KINESIS_A\\\"                \\\"", {"Ref": "KinesisStreamA"}, "\\\" >> /opt/promotably/api.conf\n",
-                    "echo \\\"KINESIS_B\\\"                \\\"", {"Ref": "KinesisStreamB"}, "\\\" >> /opt/promotably/api.conf\n",
-                    "echo \\\"REDIS_HOST\\\"               \\\"$(grep Address /tmp/cacheclusterconfig  | cut -d: -f2 | cut -d\\\" -f2)\\\" >> /opt/promotably/api.conf\n",
-                    "echo \\\"REDIS_PORT\\\"               \\\"$(grep Port /tmp/cacheclusterconfig | cut -d: -f 2 | cut -d, -f1 | cut -d ' ' -f 2)\\\" >> /opt/promotably/api.conf\n",
-                    "echo \\\"RDS_HOST\\\"                 \\\"", {"Fn::GetAtt": [ "DBInstance", "Endpoint.Address"]}, "\\\" >> /opt/promotably/api.conf\n",
-                    "echo \\\"RDS_PORT\\\"                 \\\"", {"Fn::GetAtt": [ "DBInstance", "Endpoint.Port"]}, "\\\" >> /opt/promotably/api.conf\n",
-                    "echo \\\"RDS_USER\\\"                 \\\"", {"Ref": "DBUsername"}, "\\\" >> /opt/promotably/api.conf\n",
-                    "echo \\\"RDS_PW\\\"                   \\\"", {"Ref": "DBPassword"}, "\\\" >> /opt/promotably/api.conf\n",
-                    "echo \\\"RDS_DB_NAME\\\"              \\\"", {"Ref": "DBName"}, "\\\" >> /opt/promotably/api.conf\n",
-                    "echo \\\"ENV\\\"                      \\\"", {"Ref": "Environment"}, "\\\" >> /opt/promotably/api.conf\n",
-                    "echo \\\"LEIN_ROOT\\\"                \\\"yes\\\" >> /opt/promotably/api.conf\n",
-                    "echo \\\"STACKNAME\\\"                \\\"", { "Ref": "AWS::StackName" }, "\\\" >> /opt/promotably/api.conf\n",
-                    "echo '}' >> /opt/promotably/api.conf\n",
-
-                    "export ARTIFACT_BUCKET=", {"Ref": "ArtifactBucket"}, "\n",
-                    "export DASHBOARD_INDEX_PATH=db/", {"Ref": "DashboardRef"}, "/index.html\n",
-                    "export KINESIS_A=", {"Ref": "KinesisStreamA"}, "\n",
-                    "export KINESIS_B=", {"Ref": "KinesisStreamB"}, "\n",
-                    "export REDIS_HOST=$(grep Address /tmp/cacheclusterconfig  | cut -d: -f2 | cut -d\\\" -f2)\n",
-                    "export REDIS_PORT=$(grep Port /tmp/cacheclusterconfig | cut -d: -f 2 | cut -d, -f1 | cut -d ' ' -f 2)\n",
-                    "export RDS_HOST=", {"Fn::GetAtt": [ "DBInstance", "Endpoint.Address"]}, "\n",
-                    "export RDS_PORT=", {"Fn::GetAtt": [ "DBInstance", "Endpoint.Port"]}, "\n",
-                    "export RDS_USER=", {"Ref": "DBUsername"}, "\n",
-                    "export RDS_PW=", {"Ref": "DBPassword"}, "\n",
-                    "export RDS_DB_NAME=", {"Ref": "DBName"}, "\n",
-                    "export ENV=", {"Ref": "Environment"}, "\n",
-                    "export LEIN_ROOT=yes\n",
-                    "export STACKNAME=", { "Ref": "AWS::StackName" }, "\n",
-                    "export MIDJE_COLORIZE=false\n",
-
-                    "if [ \"$ENV\" == 'integration' ]; then\n",
-                    "   aws s3 cp s3://$ARTIFACT_BUCKET/", { "Ref" : "SourceZip" }, " /tmp/api.zip\n",
-                    "   cd /opt/promotably/api\n",
-                    "   unzip /tmp/api.zip\n",
-                    "   echo API INTEGRATION TEST RESULTS > /tmp/test_output.txt\n",
-                    "   /usr/local/bin/lein midje api.integration.*",
-                    "     2>&1 >> /tmp/test_output.txt\n",
-                    "   aws s3 cp /tmp/test_output.txt 's3://",
-                      { "Ref" : "TestResultsBucket" }, "/",
-                      { "Ref" : "AWS::StackName" }, ".txt'",
-                    " --acl public-read\n",
-                    "   aws sns publish  ",
-                    "     --region ", { "Ref": "AWS::Region" },
-                    "     --topic-arn ", {"Ref": "TestResultsSNSTopicARN"},
-                    "     --message 'https://s3.amazonaws.com/", { "Ref" : "TestResultsBucket" },
-                           "/", { "Ref" : "AWS::StackName" }, ".txt'\n",
-                    "fi\n\n",
-                    "service apid start\n",
-
+                      " -r LaunchConfig --region ", { "Ref": "AWS::Region" },
+                      " -c default error_exit 'Failed to run cfn-init - default'\n",
+                    "\n",
+                    "if [ '", { "Ref": "Environment" }, "' = 'integration' ]; then\n",
+                    "  /opt/aws/bin/cfn-init -s ", { "Ref": "AWS::StackId" },
+                      " -r LaunchConfig --region ", { "Ref": "AWS::Region" },
+                      " -c integration error_exit 'Failed to run cfn-init - integration'\n",
+                    "fi\n",
+                    "\n",
+                    "/opt/aws/bin/cfn-init -s ", { "Ref": "AWS::StackId" },
+                      " -r LaunchConfig --region ", { "Ref": "AWS::Region" },
+                      " -c boot error_exit 'Failed to run cfn-init - boot'\n",
+                    "\n",
                     "# All is well, so signal success.\n",
                     "/opt/aws/bin/cfn-signal -e 0 ",
                       " --stack ", { "Ref" : "AWS::StackName" },
-                      " --resource APILaunchConfig ",
+                      " --resource LaunchConfig ",
                       " --region ", { "Ref" : "AWS::Region" }, "\n"
                 ] ]} }
             }
         },
 
-        "APIInstanceGroup" : {
+        "LaunchGroup" : {
             "Type" : "AWS::AutoScaling::AutoScalingGroup",
             "Properties" : {
                 "AvailabilityZones" : { "Fn::If" : [ "UseAllAvailabilityZones",
                     { "Fn::GetAZs": "AWS::Region" },
                     { "Ref" : "AvailabilityZones" }
                 ] },
-                "LaunchConfigurationName" : { "Ref" : "APILaunchConfig" },
+                "LaunchConfigurationName" : { "Ref" : "LaunchConfig" },
                 "MinSize" : "1",
                 "MaxSize" : "1",
                 "DesiredCapacity" : 1,
@@ -616,7 +672,7 @@
         },
         "APIInstanceGroup" : {
             "Description" : "ASG of the API servers",
-            "Value" : { "Ref" : "APIInstanceGroup" }
+            "Value" : { "Ref" : "LaunchGroup" }
         },
         "URL": {
             "Description": "URL for testing",
