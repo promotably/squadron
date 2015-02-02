@@ -310,6 +310,7 @@
                         "base" : [ "base" ],
                         "dbinit" : [ "dbinit" ],
                         "boot" : [ "boot" ],
+                        "waitForHealthcheck" : [ "waitForHealthcheck" ],
                         "integration" : [ "integration" ],
                         "default" : [ { "ConfigSet" : "base" }, "dbinit" ]
                     },
@@ -443,7 +444,7 @@
                                       " --stack ", { "Ref" : "AWS::StackName" },
                                       " --resource LaunchConfig",
                                       " --region ", { "Ref" : "AWS::Region" },
-                                      " -c base,update\n",
+                                      " -c base,update,waitForHealthcheck\n",
                                     "runas=root\n"
                                 ] ]}
                             }
@@ -590,6 +591,22 @@
                                 ]]}
                             }
                         }
+                    },
+                    "waitForHealthcheck" : {
+                        "commands" : {
+                            "01-wait" : {
+                                "command" : { "Fn::Join" : [ "", [
+                                    "timeout_ts=$((`date +%s` + 600))\n",
+                                    "curl_cmd=\"curl -v --connect-timeout 10 --max-time 15 http://localhost:3000/health-check\"\n",
+                                    "while [ $(date +%s) -le $timeout_ts ] && sleep 10; do\n",
+                                    "  if $curl_cmd | grep -q \"I'm here\"; then\n",
+                                    "    exit 0\n",
+                                    "  fi\n",
+                                    "done\n",
+                                    "exit 1\n"
+                                ]]}
+                            }
+                        }
                     }
                 }
             },
@@ -605,42 +622,60 @@
 
                     "mkdir -p /opt/promotably/api\n",
 
-                    "# Helper function.\n",
-                    "",
+                    "# Helper functions\n",
                     "function error_exit\n",
                     "{\n",
-                    "  #/opt/aws/bin/cfn-signal -e 1 -r \"$1\"",
-                    "         --stack ", { "Ref" : "AWS::StackName" },
-                    "         --resource LaunchConfig ",
-                    "         --region ", { "Ref" : "AWS::Region" }, "\n",
+                    "  /opt/aws/bin/cfn-signal -e 1 -r \"$1\"",
+                      " --stack ", { "Ref" : "AWS::StackName" },
+                      " --resource LaunchGroup ",
+                      " --region ", { "Ref" : "AWS::Region" }, "\n",
                     "  exit 1\n",
                     "}\n",
-                    "\n",
-                    "/opt/aws/bin/cfn-init -s ", { "Ref": "AWS::StackId" },
-                      " -r LaunchConfig --region ", { "Ref": "AWS::Region" },
-                      " -c default || error_exit 'Failed to run cfn-init - default'\n",
-                    "\n",
-                    "if [ '", { "Ref": "Environment" }, "' = 'integration' ]; then\n",
+                    "function cfn_init\n",
+                    "{\n",
                     "  /opt/aws/bin/cfn-init -s ", { "Ref": "AWS::StackId" },
                       " -r LaunchConfig --region ", { "Ref": "AWS::Region" },
-                      " -c integration || error_exit 'Failed to run cfn-init - integration'\n",
-                    "fi\n",
-                    "\n",
-                    "/opt/aws/bin/cfn-init -s ", { "Ref": "AWS::StackId" },
-                      " -r LaunchConfig --region ", { "Ref": "AWS::Region" },
-                      " -c boot || error_exit 'Failed to run cfn-init - boot'\n",
-                    "\n",
-                    "# All is well, so signal success.\n",
-                    "#/opt/aws/bin/cfn-signal -e 0 ",
+                      " \"$@\"\n",
+                    "}\n",
+                    "function cfn_signal_ok\n",
+                    "{\n",
+                    "  /opt/aws/bin/cfn-signal -e 0 ",
                       " --stack ", { "Ref" : "AWS::StackName" },
-                      " --resource LaunchConfig ",
-                      " --region ", { "Ref" : "AWS::Region" }, "\n"
+                      " --resource LaunchGroup ",
+                      " --region ", { "Ref" : "AWS::Region" }, "\n",
+                    "}\n",
+                    "\n",
+                    "# Wrap this stuff so it runs in the backgroun\n",
+                    "((\n",
+                    "  cfn_init -c default || error_exit 'Failed to run cfn-init - default'\n",
+                    "\n",
+                    "  if [ '", { "Ref": "Environment" }, "' = 'integration' ]; then\n",
+                    "    # dont hold up stack creation for integration tests\n",
+                    "    cfn_signal_ok\n",
+                    "    cfn_init -c integration || error_exit 'Failed to run cfn-init - integration'\n",
+                    "  fi\n",
+                    "\n",
+                    "  cfn_init -c boot || error_exit 'Failed to run cfn-init - boot'\n",
+                    "  cfn_init -c waitForHealthcheck || error_exit 'Failed to run cfn-init - waitForHealthcheck'\n",
+                    "  cfn_signal_ok\n",
+                    ") > /tmp/cloud-init-bg.out 2>&1 ) &\n"
                 ] ]} }
             }
         },
 
         "LaunchGroup" : {
             "Type" : "AWS::AutoScaling::AutoScalingGroup",
+            "CreationPolicy": {
+                "ResourceSignal": { "Count": "1", "Timeout": "PT5M" }
+            },
+            "UpdatePolicy" : {
+                "AutoScalingRollingUpdate" : {
+                    "MinInstancesInService" : "1",
+                    "MaxBatchSize" : "1",
+                    "PauseTime" : "PT5M",
+                    "WaitOnResourceSignals" : "true"
+                }
+            },
             "Properties" : {
                 "AvailabilityZones" : { "Fn::If" : [ "UseAllAvailabilityZones",
                     { "Fn::GetAZs": "AWS::Region" },
@@ -648,7 +683,7 @@
                 ] },
                 "LaunchConfigurationName" : { "Ref" : "LaunchConfig" },
                 "MinSize" : "1",
-                "MaxSize" : "1",
+                "MaxSize" : "2",
                 "DesiredCapacity" : 1,
                 "VPCZoneIdentifier" : { "Ref" : "PrivateSubnets" },
                 "LoadBalancerNames" : [ { "Ref" : "APILoadBalancer" } ],
