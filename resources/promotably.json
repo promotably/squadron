@@ -29,6 +29,10 @@
             "Description" : "Filename of API source",
             "Type" : "String"
         },
+        "ScribeArtifact" : {
+            "Description" : "Path in ArtifactBucket to scribe uberjar",
+            "Type" : "String"
+        },
         "ScribeZip" : {
             "Description" : "Filename of Scribe source",
             "Type" : "String"
@@ -115,6 +119,7 @@
                 "TemplateURL" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "ScribeTemplate" } ] ]},
                 "Parameters" : {
                     "TestResultsSNSTopicARN" : { "Ref" : "TestResultsSNSTopicARN" },
+                    "ArtifactName" : { "Ref" : "ScribeArtifact" },
                     "ArtifactBucket" : { "Ref" : "ArtifactBucket" },
                     "SourceZip" : { "Ref" : "ScribeZip" },
                     "DBHost" : { "Fn::GetAtt" : [ "Api", "Outputs.DBHost" ] },
@@ -124,7 +129,10 @@
                     "DBPassword" : "promotably",
                     "KinesisStreamA" : { "Fn::GetAtt" : [ "Api", "Outputs.KinesisStreamA" ] },
                     "KinesisStreamB" : { "Fn::GetAtt" : [ "Api", "Outputs.KinesisStreamB" ] },
-                    "PublicSubnetId" : { "Fn::GetAtt" : [ "Network", "Outputs.PublicSubnetA" ] },
+                    "PublicSubnets" : { "Fn::Join" : [ ",", [
+                        { "Fn::GetAtt" : [ "Network", "Outputs.PublicSubnetA" ] },
+                        { "Fn::GetAtt" : [ "Network", "Outputs.PublicSubnetB" ] },
+                        { "Fn::GetAtt" : [ "Network", "Outputs.PublicSubnetC" ] } ]]},
                     "VpcId" : { "Fn::GetAtt" : [ "Network", "Outputs.VPCId" ] },
                     "Environment" : "integration",
                     "VpcDefaultSecurityGroup" : { "Fn::GetAtt" : [ "Network", "Outputs.VpcDefaultSecurityGroup" ] },

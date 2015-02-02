@@ -642,7 +642,7 @@
                     "  /opt/aws/bin/cfn-signal -e 0 ",
                       " --stack ", { "Ref" : "AWS::StackName" },
                       " --resource LaunchGroup ",
-                      " --region ", { "Ref" : "AWS::Region" }, "\n",
+                      " --region ", { "Ref" : "AWS::Region" }, " || true\n",
                     "}\n",
                     "\n",
                     "# Wrap this stuff so it runs in the backgroun\n",
@@ -687,7 +687,8 @@
                 "DesiredCapacity" : 1,
                 "VPCZoneIdentifier" : { "Ref" : "PrivateSubnets" },
                 "LoadBalancerNames" : [ { "Ref" : "APILoadBalancer" } ],
-                "Tags": [{ "Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ { "Ref" : "AWS::StackName" }, "api" ] ]}, "PropagateAtLaunch" : "true" }]
+                "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" }, "PropagateAtLaunch" : "true" },
+                         { "Key" : "Environment", "Value" : { "Ref" : "Environment" }, "PropagateAtLaunch" : "true" }]
             }
         }
     },
