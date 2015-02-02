@@ -371,12 +371,12 @@
                             "/opt/promotably/api.conf" : {
                                 "content" : { "Fn::Join" : [ "", [
                                     "{\n",
-                                    "\"ARTIFACT_BUCKET\" {{ARTIFACT_BUCKET}}\"\n",
-                                    "\"DASHBOARD_INDEX_PATH\" \"{{DASHBOARD_INDEX_PATH}}\"\n",
+                                    "\"ARTIFACT_BUCKET\" \"{{ARTIFACT_BUCKET}}\"\n",
+                                    "\"DASHBOARD_INDEX_PATH\" \"db/{{DASHBOARD_REF}}/index.html\"\n",
                                     "\"KINESIS_A\" \"{{KINESIS_A}}\"\n",
                                     "\"KINESIS_B\" \"{{KINESIS_B}}\"\n",
                                     "\"REDIS_HOST\" \"localhost\"\n",
-                                    "\"REDIS_POT\" \"6379\"\n",
+                                    "\"REDIS_PORT\" \"6379\"\n",
                                     "\"RDS_HOST\" \"{{RDS_HOST}}\"\n",
                                     "\"RDS_PORT\" \"{{RDS_PORT}}\"\n",
                                     "\"RDS_USER\" \"{{RDS_USER}}\"\n",
@@ -389,7 +389,7 @@
                                 ]]},
                                 "context" : {
                                     "ARTIFACT_BUCKET" : { "Ref": "ArtifactBucket" },
-                                    "DASHBOARD_INDEX_PATH" : { "Ref": "DashboardRef" },
+                                    "DASHBOARD_REF" : { "Ref": "DashboardRef" },
                                     "KINESIS_A" : { "Ref": "KinesisStreamA" },
                                     "KINESIS_B" : { "Ref": "KinesisStreamB" },
                                     "RDS_HOST" : { "Fn::GetAtt": [ "DBInstance", "Endpoint.Address"]},
@@ -407,18 +407,18 @@
                             "/usr/local/bin/get_cluster_config" : {
                                 "content" : { "Fn::Join" : [ "", [
                                     "#! /bin/bash\n",
-                                    "cache_host=$(aws elasticache describe-cache-clusters ",
+                                    "cache_host=$(aws elasticache describe-cache-clusters --output=text",
                                       " --cache-cluster-id ", { "Ref" : "RedisCluster" },
                                       " --show-cache-node-info --region ", { "Ref" : "AWS::Region" },
                                       " --query 'CacheClusters[0].CacheNodes[0].Endpoint.Address'",
                                       ")\n",
-                                    "cache_port=$(aws elasticache describe-cache-clusters ",
+                                    "cache_port=$(aws elasticache describe-cache-clusters --output=text",
                                       " --cache-cluster-id ", { "Ref" : "RedisCluster" },
                                       " --show-cache-node-info --region ", { "Ref" : "AWS::Region" },
-                                      " --query 'CacheClusters[0].CacheNodes[0].Endpoint.port'",
+                                      " --query 'CacheClusters[0].CacheNodes[0].Endpoint.Port'",
                                       ")\n",
-                                      "sed -i \"s/^\\\"REDIS_HOST\\\" .*$/\\\"REDIS_HOST\\\" $cache_host/\" /opt/promotably/api.conf\n",
-                                      "sed -i \"s/^\\\"REDIS_PORT\\\" .*$/\\\"REDIS_PORT\\\" $cache_port/\" /opt/promotably/api.conf\n"
+                                      "sed -i \"s/^\\\"REDIS_HOST\\\" .*$/\\\"REDIS_HOST\\\" \\\"$cache_host\\\"/\" /opt/promotably/api.conf\n",
+                                      "sed -i \"s/^\\\"REDIS_PORT\\\" .*$/\\\"REDIS_PORT\\\" \\\"$cache_port\\\"/\" /opt/promotably/api.conf\n"
                                 ] ]},
                                 "mode"    : "000755",
                                 "owner"   : "root",
@@ -449,7 +449,8 @@
                             }
                         },
                         "commands" : {
-                            "01-get-cluster-config" : { "command" : "/usr/local/bin/get_cluster_config" }
+                            "01-get-cluster-config" : { "command" : "/usr/local/bin/get_cluster_config" },
+                            "02-apidchkconfig" : { "command" : "chkconfig --add apid" }
                         }
                     },
                     "dbinit" : {
@@ -503,7 +504,7 @@
                             "00-integration" :{
                                 "env" : {
                                     "ARTIFACT_BUCKET" : { "Ref": "ArtifactBucket" },
-                                    "DASHBOARD_INDEX_PATH" : { "Ref": "DashboardRef" },
+                                    "DASHBOARD_INDEX_PATH" : { "Fn::Join" : [ "/", [ "db", { "Ref": "DashboardRef" }, "index.html" ]]},
                                     "KINESIS_A" : { "Ref": "KinesisStreamA" },
                                     "KINESIS_B" : { "Ref": "KinesisStreamB" },
                                     "RDS_HOST" : { "Fn::GetAtt": [ "DBInstance", "Endpoint.Address"]},
@@ -520,13 +521,13 @@
                                 "ignoreErrors" : "false",
                                 "command" : { "Fn::Join" : [ "", [
                                     "export REDIS_HOST=$(aws elasticache describe-cache-clusters ",
-                                      " --output=text\n",
+                                      " --output=text",
                                       " --cache-cluster-id ", { "Ref" : "RedisCluster" },
                                       " --show-cache-node-info --region ", { "Ref" : "AWS::Region" },
                                       " --query 'CacheClusters[0].CacheNodes[0].Endpoint.Address'",
                                       ")\n",
                                     "export REDIS_PORT=$(aws elasticache describe-cache-clusters ",
-                                      " --output=text\n",
+                                      " --output=text",
                                       " --cache-cluster-id ", { "Ref" : "RedisCluster" },
                                       " --show-cache-node-info --region ", { "Ref" : "AWS::Region" },
                                       " --query 'CacheClusters[0].CacheNodes[0].Endpoint.Port'",
@@ -559,11 +560,6 @@
                         }
                      },
                     "boot" : {
-                        "commands" : {
-                            "01-apidchkconfig" : {
-                                "command" : "chkconfig --add apid\n"
-                            }
-                        },
                         "services" : {
                             "sysvinit" : {
                                 "nginx" : {
