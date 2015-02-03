@@ -205,7 +205,7 @@
                     "S3AccessCreds" : {
                         "type" : "S3",
                         "roleName" : { "Ref" : "RootRole" },
-                        "buckets" : [ { "Ref" : "KeyBucket" } ]
+                        "buckets" : [ { "Ref" : "KeyBucket" }, { "Ref" : "ArtifactBucket" } ]
                     }
                 },
                 "AWS::CloudFormation::Init" : {
