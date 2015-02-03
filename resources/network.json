@@ -37,9 +37,7 @@
         "BastionInstanceType" : {
             "Description" : "Bastion Host EC2 instance type",
             "Type" : "String",
-            "Default" : "t1.micro",
-            "AllowedValues" : [ "t1.micro","m1.small","m1.medium","m1.large","m1.xlarge","m2.xlarge","m2.2xlarge","m2.4xlarge","m3.xlarge","m3.2xlarge","c1.medium","c1.xlarge","cc1.4xlarge","cc2.8xlarge","cg1.4xlarge"],
-            "ConstraintDescription" : "must be a valid EC2 instance type."
+            "Default" : "t2.micro"
         },
 
         "BastionKeyBucket" : {
@@ -57,6 +55,12 @@
         }
     },
 
+    "Conditions" : {
+        "SSHFrom" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "SSHFrom" }, "999.999.999.999/32" ] }] },
+        "Bastion" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "BastionKeyName" }, "None" ] }] },
+        "NATKeyName" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "NATKeyName" }, "None" ] }] }
+    },
+
     "Mappings" : {
 
         "config" : {
@@ -72,6 +76,24 @@
                 "PrivateSubnetA" : "10.236.0.0/20",
                 "PrivateSubnetB" : "10.236.16.0/20",
                 "PrivateSubnetC" : "10.236.32.0/20"
+            },
+            "us-east-1" : {
+                "ami" : "ami-ee6e2a86",
+                "azA" : "us-east-1a",
+                "azB" : "us-east-1c",
+                "azC" : "us-east-1d"
+            },
+            "us-west-2" : {
+                "ami" : "ami-c1c39af1",
+                "azA" : "us-west-2a",
+                "azB" : "us-west-2b",
+                "azC" : "us-west-2c"
+            },
+            "eu-west-2" : {
+                "ami" : "ami-8723aef0",
+                "azA" : "eu-west-1a",
+                "azB" : "eu-west-1b",
+                "azC" : "eu-west-1c"
             }
         },
 
@@ -79,25 +101,7 @@
             "us-east-1"      : { "AMI" : "ami-c6699baf" },
             "us-west-2"      : { "AMI" : "ami-52ff7262" },
             "eu-west-1"      : { "AMI" : "ami-0b5b6c7f" }
-        },
-
-        "BastionAMI" : {
-            "us-east-1" :      { "id" : "ami-83dee0ea" },
-            "us-west-2" :      { "id" : "ami-d0d8b8e0" },
-            "eu-west-1" :      { "id" : "ami-aa56a1dd" }
-        },
-
-        "PreferredAz" : {
-            "us-east-1" : { "A": "us-east-1a", "B": "us-east-1c", "C": "us-east-1d" },
-            "us-west-2" : { "A": "us-west-2a", "B": "us-west-2b", "C": "us-west-2c" },
-            "eu-west-1" : { "A": "eu-west-1a", "B": "eu-west-1b", "C": "eu-west-1c" }
         }
-    },
-
-    "Conditions" : {
-        "SSHFrom" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "SSHFrom" }, "999.999.999.999/32" ] }] },
-        "Bastion" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "BastionKeyName" }, "None" ] }] },
-        "NATKeyName" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "NATKeyName" }, "None" ] }] }
     },
 
     "Resources" : {
@@ -118,7 +122,7 @@
             "DependsOn" : "VPC",
             "Properties" : {
                 "VpcId" : { "Ref" : "VPC" },
-                "AvailabilityZone" : { "Fn::FindInMap" : [ "PreferredAz", { "Ref" : "AWS::Region" }, "A" ]},
+                "AvailabilityZone" : { "Fn::FindInMap" : [ "config", { "Ref" : "AWS::Region" }, "azA" ]},
                 "CidrBlock" : { "Fn::FindInMap" : [ "config", "cidr", "PublicSubnetA" ]},
                 "Tags" : [{ "Key" : "Application", "Value" : { "Ref" : "AWS::StackName" } },
                           { "Key" : "Network", "Value" : "PublicSubnetA" }]
@@ -130,7 +134,7 @@
             "DependsOn" : "VPC",
             "Properties" : {
                 "VpcId" : { "Ref" : "VPC" },
-                "AvailabilityZone" : { "Fn::FindInMap" : [ "PreferredAz", { "Ref" : "AWS::Region" }, "B" ]},
+                "AvailabilityZone" : { "Fn::FindInMap" : [ "config", { "Ref" : "AWS::Region" }, "azB" ]},
                 "CidrBlock" : { "Fn::FindInMap" : [ "config", "cidr", "PublicSubnetB" ]},
                 "Tags" : [{ "Key" : "Application", "Value" : { "Ref" : "AWS::StackName" } },
                           { "Key" : "Network", "Value" : "PublicSubnetB" }]
@@ -142,7 +146,7 @@
             "DependsOn" : "VPC",
             "Properties" : {
                 "VpcId" : { "Ref" : "VPC" },
-                "AvailabilityZone" : { "Fn::FindInMap" : [ "PreferredAz", { "Ref" : "AWS::Region" }, "C" ]},
+                "AvailabilityZone" : { "Fn::FindInMap" : [ "config", { "Ref" : "AWS::Region" }, "azC" ]},
                 "CidrBlock" : { "Fn::FindInMap" : [ "config", "cidr", "PublicSubnetC" ]},
                 "Tags" : [{ "Key" : "Application", "Value" : { "Ref" : "AWS::StackName" } },
                           { "Key" : "Network", "Value" : "PublicSubnetC" }]
@@ -362,7 +366,7 @@
             "DependsOn" : "VPC",
             "Properties" : {
                 "VpcId" : { "Ref" : "VPC" },
-                "AvailabilityZone" : { "Fn::FindInMap" : [ "PreferredAz", { "Ref" : "AWS::Region" }, "A" ]},
+                "AvailabilityZone" : { "Fn::FindInMap" : [ "config", { "Ref" : "AWS::Region" }, "azA" ]},
                 "CidrBlock" : { "Fn::FindInMap" : [ "config", "cidr", "PrivateSubnetA" ]},
                 "Tags" : [{ "Key" : "Application", "Value" : { "Ref" : "AWS::StackName" } },
                           { "Key" : "Network", "Value" : "PrivateSubnetA" }]
@@ -374,7 +378,7 @@
             "DependsOn" : "VPC",
             "Properties" : {
                 "VpcId" : { "Ref" : "VPC" },
-                "AvailabilityZone" : { "Fn::FindInMap" : [ "PreferredAz", { "Ref" : "AWS::Region" }, "B" ]},
+                "AvailabilityZone" : { "Fn::FindInMap" : [ "config", { "Ref" : "AWS::Region" }, "azB" ]},
                 "CidrBlock" : { "Fn::FindInMap" : [ "config", "cidr", "PrivateSubnetB" ]},
                 "Tags" : [{ "Key" : "Application", "Value" : { "Ref" : "AWS::StackName" } },
                           { "Key" : "Network", "Value" : "PrivateSubnetB" }]
@@ -386,7 +390,7 @@
             "DependsOn" : "VPC",
             "Properties" : {
                 "VpcId" : { "Ref" : "VPC" },
-                "AvailabilityZone" : { "Fn::FindInMap" : [ "PreferredAz", { "Ref" : "AWS::Region" }, "C" ]},
+                "AvailabilityZone" : { "Fn::FindInMap" : [ "config", { "Ref" : "AWS::Region" }, "azC" ]},
                 "CidrBlock" : { "Fn::FindInMap" : [ "config", "cidr", "PrivateSubnetC" ]},
                 "Tags" : [{ "Key" : "Application", "Value" : { "Ref" : "AWS::StackName" } },
                           { "Key" : "Network", "Value" : "PrivateSubnetC" }]
@@ -555,35 +559,44 @@
             }
         },
 
-        "BastionUser" : {
-            "Type" : "AWS::IAM::User",
+        "BastionRole": {
+            "Type" : "AWS::IAM::Role",
             "Properties" : {
-                "Path": "/",
-                "Policies": [{
-                    "PolicyName": "root",
-                    "PolicyDocument": {
-                        "Statement": [{
-                            "Effect":"Allow",
-                            "Action": [ "cloudformation:DescribeStackResource" ],
-                            "Resource":"*"
-                        },{
-                            "Effect" : "Allow",
-                            "Action": [ "s3:*" ],
-                            "Resource": [
-                                { "Fn::Join" : ["", ["arn:aws:s3:::", {"Ref" : "BastionKeyBucket"}]] },
-                                { "Fn::Join" : ["", ["arn:aws:s3:::", {"Ref" : "BastionKeyBucket"}, "/*"]] },
-                                { "Fn::Join" : ["", ["arn:aws:s3:::", {"Ref" : "BastionKeyBucket"}, "/", {"Ref" : "AWS::Region"}, "/*"]] }
-                            ]
-                        }]
-                    }
-                }]
+                "Path" : "/",
+                "AssumeRolePolicyDocument": {
+                    "Version" : "2012-10-17",
+                    "Statement" : [{
+                        "Effect" : "Allow",
+                        "Principal" : { "Service" : [ "ec2.amazonaws.com" ] },
+                        "Action" : [ "sts:AssumeRole" ]
+                    }]
+                }
             }
         },
 
-        "BastionUserKeys" : {
-            "Type" : "AWS::IAM::AccessKey",
+        "BastionPolicies" : {
+            "Type" : "AWS::IAM::Policy",
             "Properties" : {
-                "UserName" : { "Ref": "BastionUser" }
+                "PolicyName" : "root",
+                "PolicyDocument" : {
+                    "Version" : "2012-10-17",
+                    "Statement" : [{
+                        "Effect": "Allow",
+                        "Action": [ "s3:Get*" ],
+                        "Resource": [
+                            { "Fn::Join" : [ "", [ "arn:aws:s3:::", { "Ref" : "BastionKeyBucket" }, "/*" ] ] }
+                        ]
+                    }]
+                },
+                "Roles" : [ { "Ref": "BastionRole" } ]
+            }
+        },
+
+        "BastionInstanceProfile" : {
+            "Type" : "AWS::IAM::InstanceProfile",
+            "Properties" : {
+                "Path" : "/",
+                "Roles" : [ { "Ref": "BastionRole" } ]
             }
         },
 
@@ -607,24 +620,21 @@
             "Type" : "AWS::EC2::Instance",
             "Condition" : "Bastion",
             "Metadata" : {
+                "AWS::CloudFormation::Authentication" : {
+                    "S3AccessCreds" : {
+                        "type" : "S3",
+                        "roleName" : { "Ref" : "BastionRole" },
+                        "buckets" : [ { "Ref" : "BastionKeyBucket" } ]
+                    }
+                },
                 "AWS::CloudFormation::Init" : {
                     "config" : {
-                        "packages" : {
-                            "apt" : {
-                                "s3cmd" : []
-                            }
-                        },
                         "files" : {
-                            "/home/ubuntu/.s3cfg" : {
-                                "content" : { "Fn::Join" : ["", [
-                                    "[default]\n",
-                                    "access_key = ", { "Ref" : "BastionUserKeys" }, "\n",
-                                    "secret_key = ", { "Fn::GetAtt": ["BastionUserKeys", "SecretAccessKey"] }, "\n",
-                                    "use_https = True\n"
-                                ]]},
-                                "mode"   : "000644",
-                                "owner"  : "ubuntu",
-                                "group"  : "ubuntu"
+                            "/home/ec2-user/.ssh/id_rsa" : {
+                                "source" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "BastionKeyBucket" }, ".s3.amazonaws.com/", { "Ref" : "BastionKeyName" }, ".pem" ]]},
+                                "mode"    : "000600",
+                                "owner"   : "ec2-user",
+                                "group"   : "ec2-user"
                             }
                         }
                     }
@@ -634,18 +644,15 @@
                 "InstanceType" : { "Ref" : "BastionInstanceType" },
                 "KeyName"  : { "Ref" : "BastionKeyName" },
                 "SubnetId" : { "Ref" : "PublicSubnetA" },
-                "ImageId"  : { "Fn::FindInMap": [ "BastionAMI", { "Ref": "AWS::Region" }, "id" ] },
+                "ImageId" : { "Fn::FindInMap" : [ "config", { "Ref" : "AWS::Region" }, "ami" ]},
                 "SecurityGroupIds" : [{ "Ref" : "BastionSecurityGroup" }, { "Ref" : "VpcDefaultSecurityGroup" }],
+                "IamInstanceProfile" : { "Ref" : "BastionInstanceProfile" },
                 "UserData" : {
                     "Fn::Base64" : { "Fn::Join" : ["", [
                         "#!/bin/bash -ex\n",
-                        "apt-get -y install python-setuptools emacs\n",
-                        "easy_install https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz\n",
-                        "cfn-init --region ", { "Ref" : "AWS::Region" }, " -s ", { "Ref" : "AWS::StackId" }, " -r BastionHost",
-                          " --access-key ", { "Ref" : "BastionUserKeys" }, " --secret-key ",
-                          { "Fn::GetAtt" : ["BastionUserKeys", "SecretAccessKey"] }, "\n",
-                        "s3cmd sync -c /home/ubuntu/.s3cfg s3://", { "Ref" : "BastionKeyBucket" }, "/", { "Ref" : "AWS::Region" }, "/ /home/ubuntu/\n",
-                        "chmod 0400 /home/ubuntu/*.pem\n"
+                        "yum upgrade -y\n",
+                        "/opt/aws/bin/cfn-init -s ", { "Ref": "AWS::StackId" },
+                          " -r BastionHost --region ", { "Ref": "AWS::Region" }, "\n"
                     ]]}
                 },
                 "Tags": [{ "Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ { "Ref" : "AWS::StackName" }, "bastion" ] ]} }]
@@ -701,9 +708,9 @@
         "AvailabilityZones" : {
             "Description" : "List of availablity zones in which VPC is deployed",
             "Value" : { "Fn::Join" : [ ",", [
-                { "Fn::FindInMap" : [ "PreferredAz", { "Ref" : "AWS::Region" }, "A" ]},
-                { "Fn::FindInMap" : [ "PreferredAz", { "Ref" : "AWS::Region" }, "B" ]},
-                { "Fn::FindInMap" : [ "PreferredAz", { "Ref" : "AWS::Region" }, "C" ]}
+                { "Fn::FindInMap" : [ "config", { "Ref" : "AWS::Region" }, "azA" ]},
+                { "Fn::FindInMap" : [ "config", { "Ref" : "AWS::Region" }, "azB" ]},
+                { "Fn::FindInMap" : [ "config", { "Ref" : "AWS::Region" }, "azC" ]}
             ] ]}
         }
     }

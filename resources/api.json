@@ -22,15 +22,6 @@
             "Type" : "String",
             "Default" : "promotably-build-artifacts"
         },
-        "TestResultsBucket" : {
-            "Description" : "S3 Bucket where test runs are stored",
-            "Type" : "String",
-            "Default" : "promotably-test-results"
-        },
-        "TestResultsSNSTopicARN" : {
-            "Description" : "SNS Topic ARN for reporting test results",
-            "Type" : "String"
-        },
         "PublicSubnets" : {
             "Description" : "List of VPC public subnet IDs for the cluster. Note: must match up with the passed AvailabilityZones.",
             "Type" : "List<AWS::EC2::Subnet::Id>"
@@ -47,11 +38,6 @@
             "Description" : "Environment tag",
             "Type" : "String",
             "Default" : "integration"
-        },
-        "Role" : {
-            "Description" : "Role tag",
-            "Type" : "String",
-            "Default" : "api"
         },
         "VpcDefaultSecurityGroup" : {
             "Description" : "VPC default Security Group",
@@ -94,6 +80,14 @@
 
     "Conditions" : {
         "UseAllAvailabilityZones" : { "Fn::Equals" : [{ "Fn::Join" : [ "", { "Ref" : "AvailabilityZones" } ]}, "" ]}
+    },
+
+    "Mappings" : {
+        "config" : {
+            "us-east-1" : { "ami" : "ami-ee6e2a86" },
+            "us-west-2" : { "ami" : "ami-c1c39af1" },
+            "eu-west-2" : { "ami" : "ami-8723aef0" }
+        }
     },
 
     "Resources" : {
@@ -209,13 +203,8 @@
                         "Resource" : { "Fn::Join" : [ "", [ "arn:aws:kinesis:", { "Ref" : "AWS::Region" }, ":", { "Ref" : "AWS::AccountId" }, ":stream/", { "Ref" : "KinesisStreamB" } ]]}
                     },{
                         "Effect": "Allow",
-                        "Action": [ "sns:ListTopics", "sns:Publish" ],
-                        "Resource": "*"
-                    },{
-                        "Effect": "Allow",
-                        "Action": [ "s3:Get*", "s3:List*", "s3:Put*" ],
+                        "Action": [ "s3:Get*" ],
                         "Resource": [
-                            { "Fn::Join" : [ "", [ "arn:aws:s3:::", { "Ref" : "TestResultsBucket" }, "/*" ] ] },
                             { "Fn::Join" : [ "", [ "arn:aws:s3:::", { "Ref" : "ArtifactBucket" }, "/*" ] ] }
                         ]
                     },{
@@ -401,7 +390,7 @@
                                     "ENV" : { "Ref": "Environment" },
                                     "STACKNAME" : { "Ref": "AWS::StackName" }
                                 },
-                                "mode"    : "000755",
+                                "mode"    : "000644",
                                 "owner"   : "root",
                                 "group"   : "root"
                             },
@@ -499,13 +488,45 @@
                                 "mode"    : "000644",
                                 "owner"   : "root",
                                 "group"   : "root"
-                            }
-                        },
-                        "commands" : {
-                            "00-integration" :{
-                                "env" : {
+                            },
+                            "/opt/promotably/api-integration-test.sh" : {
+                                "content" : { "Fn::Join" : [ "", [
+                                    "#!/bin/bash -ex\n",
+                                    "\n",
+                                    "export ARTIFACT_BUCKET=\"{{ARTIFACT_BUCKET}}\"\n",
+                                    "export DASHBOARD_INDEX_PATH=\"db/{{DASHBOARD_REF}}/index.html\"\n",
+                                    "export KINESIS_A=\"{{KINESIS_A}}\"\n",
+                                    "export KINESIS_B=\"{{KINESIS_B}}\"\n",
+                                    "export REDIS_HOST=\"localhost\"\n",
+                                    "export REDIS_PORT=\"6379\"\n",
+                                    "export RDS_HOST=\"{{RDS_HOST}}\"\n",
+                                    "export RDS_PORT=\"{{RDS_PORT}}\"\n",
+                                    "export RDS_USER=\"{{RDS_USER}}\"\n",
+                                    "export RDS_PW=\"{{RDS_PW}}\"\n",
+                                    "export RDS_DB_NAME=\"{{RDS_DB_NAME}}\"\n",
+                                    "export ENV=\"{{ENV}}\"\n",
+                                    "export LEIN_ROOT=\"yes\"\n",
+                                    "export MIDJE_COLORIZE=\"false\"\n",
+                                    "export STACKNAME=\"{{STACKNAME}}\"\n",
+                                    "export REDIS_HOST=\"$(aws elasticache describe-cache-clusters ",
+                                      " --output=text",
+                                      " --cache-cluster-id ", { "Ref" : "RedisCluster" },
+                                      " --show-cache-node-info --region ", { "Ref" : "AWS::Region" },
+                                      " --query 'CacheClusters[0].CacheNodes[0].Endpoint.Address'",
+                                      ")\"\n",
+                                    "export REDIS_PORT=\"$(aws elasticache describe-cache-clusters ",
+                                      " --output=text",
+                                      " --cache-cluster-id ", { "Ref" : "RedisCluster" },
+                                      " --show-cache-node-info --region ", { "Ref" : "AWS::Region" },
+                                      " --query 'CacheClusters[0].CacheNodes[0].Endpoint.Port'",
+                                      ")\"\n",
+                                    "\n",
+                                    "/usr/local/bin/lein deps > /dev/null 2>&1\n",
+                                    "/usr/local/bin/lein midje api.integration.*\n"
+                                ]]},
+                                "context" : {
                                     "ARTIFACT_BUCKET" : { "Ref": "ArtifactBucket" },
-                                    "DASHBOARD_INDEX_PATH" : { "Fn::Join" : [ "/", [ "db", { "Ref": "DashboardRef" }, "index.html" ]]},
+                                    "DASHBOARD_REF" : { "Ref": "DashboardRef" },
                                     "KINESIS_A" : { "Ref": "KinesisStreamA" },
                                     "KINESIS_B" : { "Ref": "KinesisStreamB" },
                                     "RDS_HOST" : { "Fn::GetAtt": [ "DBInstance", "Endpoint.Address"]},
@@ -514,52 +535,29 @@
                                     "RDS_PW" : { "Ref": "DBPassword" },
                                     "RDS_DB_NAME" : { "Ref": "DBName" },
                                     "ENV" : { "Ref": "Environment" },
-                                    "STACKNAME" : { "Ref": "AWS::StackName" },
-                                    "MIDJE_COLORIZE" : "false",
-                                    "LEIN_ROOT" : "yes"
+                                    "STACKNAME" : { "Ref": "AWS::StackName" }
                                 },
+                                "mode"    : "000755",
+                                "owner"   : "root",
+                                "group"   : "root"
+                            }
+                        },
+                        "commands" : {
+                            "00-integration-prep" :{
                                 "cwd" : "/opt/promotably",
                                 "ignoreErrors" : "false",
                                 "command" : { "Fn::Join" : [ "", [
-                                    "export REDIS_HOST=$(aws elasticache describe-cache-clusters ",
-                                      " --output=text",
-                                      " --cache-cluster-id ", { "Ref" : "RedisCluster" },
-                                      " --show-cache-node-info --region ", { "Ref" : "AWS::Region" },
-                                      " --query 'CacheClusters[0].CacheNodes[0].Endpoint.Address'",
-                                      ")\n",
-                                    "export REDIS_PORT=$(aws elasticache describe-cache-clusters ",
-                                      " --output=text",
-                                      " --cache-cluster-id ", { "Ref" : "RedisCluster" },
-                                      " --show-cache-node-info --region ", { "Ref" : "AWS::Region" },
-                                      " --query 'CacheClusters[0].CacheNodes[0].Endpoint.Port'",
-                                      ")\n",
                                     "\n",
                                     "curl https://raw.githubusercontent.com/technomancy/leiningen/stable/bin/lein > /usr/local/bin/lein\n",
                                     "chmod 0755 /usr/local/bin/lein\n",
                                     "rm -rf api\n",
                                     "mkdir api\n",
                                     "cd api\n",
-                                    "unzip ../api.zip\n",
-                                    "echo API INTEGRATION TEST RESULTS > /tmp/test_output.txt\n",
-                                    "echo >> /tmp/test_output.txt\n",
-                                    "echo ENVIRONMENT >> /tmp/test_output.txt\n",
-                                    "env >> /tmp/test_output.txt\n",
-                                    "echo >> /tmp/test_output.txt\n",
-                                    "/usr/local/bin/lein midje api.integration.*",
-                                      " 2>&1 >> /tmp/test_output.txt\n",
-                                    "aws s3 cp /tmp/test_output.txt 's3://",
-                                      { "Ref" : "TestResultsBucket" }, "/",
-                                      { "Ref" : "AWS::StackName" }, ".txt'",
-                                      " --acl public-read\n",
-                                    "aws sns publish",
-                                      " --region ", { "Ref": "AWS::Region" },
-                                      " --topic-arn ", {"Ref": "TestResultsSNSTopicARN"},
-                                      " --message 'https://s3.amazonaws.com/", { "Ref" : "TestResultsBucket" },
-                                      "/", { "Ref" : "AWS::StackName" }, ".txt'\n"
+                                    "unzip ../api.zip\n"
                                 ]]}
                             }
                         }
-                     },
+                    },
                     "boot" : {
                         "services" : {
                             "sysvinit" : {
@@ -611,7 +609,7 @@
                 }
             },
             "Properties" : {
-                "ImageId" : "ami-b66ed3de",
+                "ImageId" : { "Fn::FindInMap" : [ "config", { "Ref" : "AWS::Region" }, "ami" ]},
                 "SecurityGroups" : [{ "Ref" : "APIServerSecurityGroup" }, { "Ref" : "VpcDefaultSecurityGroup" }],
                 "InstanceType" : "t2.small",
                 "KeyName": { "Ref": "KeyPair" },
@@ -650,13 +648,12 @@
                     "  cfn_init -c default || error_exit 'Failed to run cfn-init - default'\n",
                     "\n",
                     "  if [ '", { "Ref": "Environment" }, "' = 'integration' ]; then\n",
-                    "    # dont hold up stack creation for integration tests\n",
-                    "    cfn_signal_ok\n",
                     "    cfn_init -c integration || error_exit 'Failed to run cfn-init - integration'\n",
-                    "  fi\n",
+                    "  else\n",
                     "\n",
-                    "  cfn_init -c boot || error_exit 'Failed to run cfn-init - boot'\n",
-                    "  cfn_init -c waitForHealthcheck || error_exit 'Failed to run cfn-init - waitForHealthcheck'\n",
+                    "    cfn_init -c boot || error_exit 'Failed to run cfn-init - boot'\n",
+                    "    cfn_init -c waitForHealthcheck || error_exit 'Failed to run cfn-init - waitForHealthcheck'\n",
+                    "  fi\n",
                     "  cfn_signal_ok\n",
                     ") > /tmp/cloud-init-bg.out 2>&1 ) &\n"
                 ] ]} }
@@ -666,13 +663,13 @@
         "LaunchGroup" : {
             "Type" : "AWS::AutoScaling::AutoScalingGroup",
             "CreationPolicy": {
-                "ResourceSignal": { "Count": "1", "Timeout": "PT5M" }
+                "ResourceSignal": { "Count": "1", "Timeout": "PT15M" }
             },
             "UpdatePolicy" : {
                 "AutoScalingRollingUpdate" : {
                     "MinInstancesInService" : "1",
                     "MaxBatchSize" : "1",
-                    "PauseTime" : "PT5M",
+                    "PauseTime" : "PT15M",
                     "WaitOnResourceSignals" : "true"
                 }
             },

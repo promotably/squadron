@@ -8,19 +8,18 @@
             "Type" : "String",
             "Default" : "promotably-build-artifacts"
         },
+        "TestResultsBucket" : {
+            "Description" : "S3 Bucket where test runs are stored",
+            "Type" : "String",
+            "Default" : "promotably-test-results"
+        },
 
-        "NetworkTemplate" : {
-            "Description" : "Path in ArtifactBucket to network.json",
-            "Type" : "String"
+        "SquadronRef" : {
+            "Description" : "Git ref of Squadron build",
+            "Type" : "String",
+            "Default" : "latest"
         },
-        "ApiTemplate" : {
-            "Description" : "Path in ArtifactBucket to api.json",
-            "Type" : "String"
-        },
-        "ScribeTemplate" : {
-            "Description" : "Path in ArtifactBucket to sribe.json",
-            "Type" : "String"
-        },
+
         "ApiArtifact" : {
             "Description" : "Path in ArtifactBucket to api uberjar",
             "Type" : "String"
@@ -53,6 +52,12 @@
             "ConstraintDescription" : "can contain only alphanumeric characters, spaces, dashes and underscores."
         },
 
+        "KeyBucket" : {
+            "Description" : "Name of the bucket where EC2 Keypairs are stored.",
+            "Type" : "String",
+            "Default" : "promotably-keyvault"
+        },
+
         "TestResultsSNSTopicARN" : {
             "Description" : "Send Integration Test results to this SNS topic",
             "Type" : "String",
@@ -67,14 +72,18 @@
 
     "Resources" : {
 
+        "TestInstanceIPAddress" : {
+            "Type" : "AWS::EC2::EIP"
+        },
+
         "Network" : {
             "Type" : "AWS::CloudFormation::Stack",
             "Properties" : {
-                "TemplateURL" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "NetworkTemplate" } ] ]},
+                "TemplateURL" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/squadron/", { "Ref" : "SquadronRef" }, "/network.json" ] ]},
                 "Parameters" : {
                     "BastionKeyName" : { "Ref" : "SshKey" },
                     "NATKeyName" : { "Ref" : "SshKey" },
-                    "SSHFrom" : "0.0.0.0/0"
+                    "SSHFrom" : { "Fn::Join" : [ "/", [ { "Ref" : "TestInstanceIPAddress" }, "32" ]]}
                 },
                 "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}
             }
@@ -83,13 +92,12 @@
         "Api" : {
             "Type" : "AWS::CloudFormation::Stack",
             "Properties" : {
-                "TemplateURL" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "ApiTemplate" } ] ]},
+                "TemplateURL" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/squadron/", { "Ref" : "SquadronRef" }, "/api.json" ] ]},
                 "Parameters" : {
                     "DashboardRef" : { "Ref" : "DashboardRef" },
                     "ArtifactName" : { "Ref" : "ApiArtifact" },
                     "SourceZip" : { "Ref" : "ApiZip" },
                     "ArtifactBucket" : { "Ref" : "ArtifactBucket" },
-                    "TestResultsSNSTopicARN" : { "Ref" : "TestResultsSNSTopicARN" },
                     "PublicSubnets" : { "Fn::Join" : [ ",", [
                         { "Fn::GetAtt" : [ "Network", "Outputs.PublicSubnetA" ] },
                         { "Fn::GetAtt" : [ "Network", "Outputs.PublicSubnetB" ] },
@@ -116,9 +124,8 @@
         "Scribe" : {
             "Type" : "AWS::CloudFormation::Stack",
             "Properties" : {
-                "TemplateURL" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "ScribeTemplate" } ] ]},
+                "TemplateURL" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/squadron/", { "Ref" : "SquadronRef" }, "/scribe.json" ] ]},
                 "Parameters" : {
-                    "TestResultsSNSTopicARN" : { "Ref" : "TestResultsSNSTopicARN" },
                     "ArtifactName" : { "Ref" : "ScribeArtifact" },
                     "ArtifactBucket" : { "Ref" : "ArtifactBucket" },
                     "SourceZip" : { "Ref" : "ScribeZip" },
@@ -139,6 +146,120 @@
                     "KeyPair" : { "Ref" : "SshKey" }
                 },
                 "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}
+            }
+        },
+
+        "TestInstanceSecurityGroup" : {
+            "Type" : "AWS::EC2::SecurityGroup",
+            "Properties" : {
+                "GroupDescription" : { "Fn::Join" : [ "", [ { "Ref" : "AWS::StackName" }, " Test Instance" ] ]},
+                "SecurityGroupIngress" : [
+                    { "IpProtocol" : "tcp", "FromPort" : "22",  "ToPort" : "22",  "CidrIp" : "0.0.0.0/00" }
+                ]
+            }
+        },
+
+        "RootRole": {
+            "Type" : "AWS::IAM::Role",
+            "Properties" : {
+                "Path" : "/",
+                "AssumeRolePolicyDocument": {
+                    "Version" : "2012-10-17",
+                    "Statement" : [{
+                        "Effect" : "Allow",
+                        "Principal" : { "Service" : [ "ec2.amazonaws.com" ] },
+                        "Action" : [ "sts:AssumeRole" ]
+                    }]
+                }
+            }
+        },
+
+        "RolePolicies" : {
+            "Type" : "AWS::IAM::Policy",
+            "Properties" : {
+                "PolicyName" : "root",
+                "PolicyDocument" : {
+                    "Version" : "2012-10-17",
+                    "Statement" : [{
+                        "Effect": "Allow",
+                        "Action": "*",
+                        "Resource": "*"
+                    }]
+                },
+                "Roles" : [ { "Ref": "RootRole" } ]
+            }
+        },
+
+        "RootInstanceProfile" : {
+            "Type" : "AWS::IAM::InstanceProfile",
+            "Properties" : {
+                "Path" : "/",
+                "Roles" : [ { "Ref": "RootRole" } ]
+            }
+        },
+
+        "TestHost" : {
+            "Type" : "AWS::EC2::Instance",
+            "Metadata" : {
+                "AWS::CloudFormation::Authentication" : {
+                    "S3AccessCreds" : {
+                        "type" : "S3",
+                        "roleName" : { "Ref" : "RootRole" },
+                        "buckets" : [ { "Ref" : "KeyBucket" } ]
+                    }
+                },
+                "AWS::CloudFormation::Init" : {
+                    "config" : {
+                        "files" : {
+                            "/root/.ssh/id_rsa" : {
+                                "source" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "KeyBucket" }, ".s3.amazonaws.com/", { "Ref" : "SshKey" }, ".pem" ]]},
+                                "mode"    : "000600",
+                                "owner"   : "root",
+                                "group"   : "root"
+                            },
+                            "/root/run_tests.sh" : {
+                                "source" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/squadron/", { "Ref" : "SquadronRef" }, "/run_tests.sh" ]]},
+                                "mode"    : "000755",
+                                "owner"   : "root",
+                                "group"   : "root"
+                            }
+                        }
+                    }
+                }
+            },
+            "Properties" : {
+                "InstanceType" : "t2.micro",
+                "KeyName"  : { "Ref" : "SshKey" },
+                "ImageId" : "ami-b66ed3de",
+                "SecurityGroupIds" : [{ "Ref" : "TestInstanceSecurityGroup" }],
+                "IamInstanceProfile" : { "Ref" : "RootInstanceProfile" },
+                "UserData" : {
+                    "Fn::Base64" : { "Fn::Join" : ["", [
+                        "#!/bin/bash -ex\n",
+                        "yum upgrade -y\n",
+                        "/opt/aws/bin/cfn-init -s ", { "Ref": "AWS::StackId" },
+                          " -r TestHost --region ", { "Ref": "AWS::Region" }, "\n",
+                        "\n",
+                        "export aws_region=", { "Ref": "AWS::Region" }, "\n",
+                        "export promotably_stack=", { "Ref" : "AWS::StackName" }, "\n",
+                        "export network_stack=", { "Ref" : "Network" }, "\n",
+                        "export api_stack=", { "Ref" : "Api" }, "\n",
+                        "export scribe_stack=", { "Ref" : "Scribe" }, "\n",
+                        "export test_result_bucket=", { "Ref" : "TestResultsBucket" }, "\n",
+                        "export test_result_arn=", { "Ref" : "TestResultsSNSTopicARN" }, "\n",
+                        "screen -d -m -L -S integration_tests /root/run_tests.sh\n",
+                        "\n"
+                    ]]}
+                },
+                "Tags": [{ "Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ { "Ref" : "AWS::StackName" }, "testhost" ] ]} }]
+            }
+        },
+
+        "TestHostEIPAssocation" : {
+            "Type" : "AWS::EC2::EIPAssociation",
+            "Properties" : {
+                "EIP" : { "Ref" : "TestInstanceIPAddress" },
+                "InstanceId" : { "Ref" : "TestHost" }
             }
         }
     },
