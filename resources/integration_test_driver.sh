@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash
 
 run_tests() {
     if [ -z "$aws_region" ]; then
@@ -41,6 +41,8 @@ run_tests() {
 
     api_ip="$(aws ec2 describe-instances --region $aws_region --output=text --instance-ids $api_instance_id --query 'Reservations[0].Instances[0].PrivateIpAddress')"
     scribe_ip="$(aws ec2 describe-instances --region $aws_region --output=text --instance-ids $scribe_instance_id --query 'Reservations[0].Instances[0].PrivateIpAddress')"
+
+    [ -z "$api_ip" -o -z "$scribe_ip" ] && return 1
 
     ssh_cmd='ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -t'
 
@@ -86,8 +88,6 @@ run_tests() {
         ParameterKey=ArtifactName,UsePreviousValue=true \
         ParameterKey=SourceZip,UsePreviousValue=true \
         ParameterKey=KeyPair,UsePreviousValue=true \
-        ParameterKey=TestResultsSNSTopicARN,UsePreviousValue=true \
-        ParameterKey=TestResultsBucket,UsePreviousValue=true \
         ParameterKey=DBHost,UsePreviousValue=true \
         ParameterKey=DBPort,UsePreviousValue=true \
         ParameterKey=DBUsername,UsePreviousValue=true \
@@ -113,8 +113,6 @@ run_tests() {
         ParameterKey=SourceZip,UsePreviousValue=true \
         ParameterKey=DashboardRef,UsePreviousValue=true \
         ParameterKey=KeyPair,UsePreviousValue=true \
-        ParameterKey=TestResultsSNSTopicARN,UsePreviousValue=true \
-        ParameterKey=TestResultsBucket,UsePreviousValue=true \
         ParameterKey=DBUsername,UsePreviousValue=true \
         ParameterKey=DBPassword,UsePreviousValue=true \
         ParameterKey=DBName,UsePreviousValue=true \
@@ -135,16 +133,46 @@ run_tests() {
 
 echo -n > integration_test_results.txt
 if ! run_tests > run_tests.out 2>&1; then
-    echo 'SOMETHING WENT BOOM!' > temp
-    echo >> temp
-    cat integration_test_results.txt >> temp
-    mv temp integration_test_results.txt
+    email_subject_xtra=' - FAILURE'
 fi
 
 echo >> integration_test_results.txt
-aws s3 cp --acl public-read run_tests.out s3://$test_result_bucket/${promotably_stack}-shell-debug.txt
+aws s3 cp run_tests.out s3://$test_result_bucket/${promotably_stack}-shell-debug.txt
 echo "Integration tests shell debug output: s3://$test_result_bucket/${promotably_stack}-shell-debug.txt" >> integration_test_results.txt
 aws s3 cp integration_test_results.txt s3://$test_result_bucket/${promotably_stack}.txt
 
-aws sns publish --region $aws_region --topic-arn $test_result_arn \
-    https://s3.amazonaws.com/$test_result_bucket/${promotably_stack}.txt
+MESSAGE_ESCAPED_JSON=$(cat integration_test_results.txt)
+
+MESSAGE_ESCAPED_JSON=${MESSAGE_ESCAPED_JSON///} # remove carriage return
+MESSAGE_ESCAPED_JSON=${MESSAGE_ESCAPED_JSON//\\/\\\\} # \
+#MESSAGE_ESCAPED_JSON=${MESSAGE_ESCAPED_JSON//\//\\\/} # /
+#MESSAGE_ESCAPED_JSON=${MESSAGE_ESCAPED_JSON//\'/\\\'} # ' (not strictly needed ?)
+MESSAGE_ESCAPED_JSON=${MESSAGE_ESCAPED_JSON//\"/\\\"} # "
+MESSAGE_ESCAPED_JSON=${MESSAGE_ESCAPED_JSON//	/\\t} # \t (tab)
+MESSAGE_ESCAPED_JSON=${MESSAGE_ESCAPED_JSON//
+/\\\n} # \n (newline)
+#MESSAGE_ESCAPED_JSON=${MESSAGE_ESCAPED_JSON//^L/\\\f} # \f (form feed)
+#MESSAGE_ESCAPED_JSON=${MESSAGE_ESCAPED_JSON//^H/\\\b} # \b (backspace)
+
+cat << _END_ > "ses-message.json"
+{
+    "Subject": {
+        "Data": "Integration Test Results${email_subject_xtra}",
+        "Charset": "UTF-8"
+    },
+    "Body": {
+        "Text": {
+            "Data": "$MESSAGE_ESCAPED_JSON",
+            "Charset": "UTF-8"
+        }
+    }
+}
+_END_
+
+cat << _END_ > "ses-destination.json"
+{
+    "ToAddresses": ["integration-tests@promotably.com"]
+}
+_END_
+
+aws ses send-email --region $aws_region --from integration-tests@promotably.com --destination file://ses-destination.json --message file://ses-message.json
