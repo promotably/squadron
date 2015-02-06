@@ -228,7 +228,7 @@ MESSAGE_ESCAPED_JSON=${MESSAGE_ESCAPED_JSON//
 cat << _END_ > "ses-message.json"
 {
     "Subject": {
-        "Data": "[$ci_name $project $build_num] Integration Test Results${email_subject_xtra}",
+        "Data": "$project/$ci_name/$build_num - Integration Test Results${email_subject_xtra}",
         "Charset": "UTF-8"
     },
     "Body": {
