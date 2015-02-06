@@ -9,6 +9,10 @@ run_tests() {
         echo 'Fatal: $metadata_bucket is not set - foget to setup the environment?' >&2
         return 1
     fi
+    if [ -z "$key_bucket" ]; then
+        echo 'Fatal: $key_bucket is not set - foget to setup the environment?' >&2
+        return 1
+    fi
     if [ -z "$ci_name" ]; then
         echo 'Fatal: $metadata_bucket is not set - foget to setup the environment?' >&2
         return 1
@@ -250,4 +254,5 @@ aws ses send-email --region $aws_region --from integration-tests@promotably.com 
 if [ "$term_stack" = 'true' ]; then
     aws cloudformation delete-stack --region $aws_region --stack-name "$promotably_stack"
     aws ec2 delete-key-pair --region $aws_region --key-name "$ssh_key"
+    aws s3 rm "s3://$key_bucket/$ssh_key.pem"
 fi

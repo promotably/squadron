@@ -255,6 +255,7 @@
                     "\n",
                     "export artifact_bucket=", { "Ref" : "ArtifactBucket" }, "\n",
                     "export metadata_bucket=", { "Ref" : "MetaDataBucket" }, "\n",
+                    "export key_bucket=", { "Ref" : "KeyBucket" }, "\n",
                     "export project=", { "Ref" : "Project" }, "\n",
                     "export ci_name=", { "Ref" : "CiName" }, "\n",
                     "export build_num=", { "Ref" : "BuildNum" }, "\n",
