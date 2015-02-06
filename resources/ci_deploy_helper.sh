@@ -3,6 +3,7 @@
 # these should be set in the environment by our CI server
 : ${ARTIFACT_BUCKET:=p_tmp}
 : ${METADATA_BUCKET:=p_tmp}
+: ${KEY_BUCKET:=promotably-keyvault}
 
 # variables automatically setup by CodeShip
 # defaults for dev
@@ -92,8 +93,10 @@ for s3_file in api/$api_ref/standalone.jar api/$api_ref/source.zip api/$api_ref/
     aws s3 ls s3://$ARTIFACT_BUCKET/$CI_NAME/$s3_file > /dev/null
 done
 
-# TODO create temp ssh key
-ssh_key=vince-test
+ssh_key="$CI_NAME-$stack_name"
+aws ec2 create-key-pair --key-name "$ssh_key" --output=text --query KeyMaterial > $ssh_key.pem
+aws s3 cp $ssh_key.pem s3://$KEY_BUCKET/$ssh_key.pem
+rm $ssh_key.pem
 
 aws cloudformation create-stack --stack-name $stack_name --disable-rollback \
     --template-url https://$ARTIFACT_BUCKET.s3.amazonaws.com/$CI_NAME/squadron/$squadron_ref/cfn-integration-test.json \
