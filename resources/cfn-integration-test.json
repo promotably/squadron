@@ -1,6 +1,6 @@
 {
     "AWSTemplateFormatVersion" : "2010-09-09",
-    "Description" : "Promotably stacks",
+    "Description" : "Integration Test",
 
     "Parameters" : {
         "ArtifactBucket" : {
@@ -82,12 +82,43 @@
 
     "Resources" : {
 
+        "TestRole": {
+            "Type" : "AWS::IAM::Role",
+            "Properties" : {
+                "Path" : "/",
+                "AssumeRolePolicyDocument": {
+                    "Version" : "2012-10-17",
+                    "Statement" : [{
+                        "Effect" : "Allow",
+                        "Principal" : { "Service" : [ "ec2.amazonaws.com" ] },
+                        "Action" : [ "sts:AssumeRole" ]
+                    }]
+                },
+                "Policies" : [{
+                    "PolicyName" : "root",
+                    "PolicyDocument" : {
+                        "Version" : "2012-10-17",
+                        "Statement" : [{ "Effect": "Allow", "Action": "*", "Resource": "*" }]
+                    }
+                }]
+            }
+        },
+
+        "TestInstanceProfile" : {
+            "Type" : "AWS::IAM::InstanceProfile",
+            "Properties" : {
+                "Path" : "/",
+                "Roles" : [ { "Ref": "TestRole" } ]
+            }
+        },
+
         "TestInstanceIPAddress" : {
             "Type" : "AWS::EC2::EIP"
         },
 
         "Network" : {
             "Type" : "AWS::CloudFormation::Stack",
+            "DependsOn" : "TestInstanceProfile",
             "Properties" : {
                 "TemplateURL" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "CiName" }, "/squadron/", { "Ref" : "SquadronRef" }, "/cfn-network.json" ] ]},
                 "Parameters" : {
@@ -101,6 +132,7 @@
 
         "Api" : {
             "Type" : "AWS::CloudFormation::Stack",
+            "DependsOn" : "TestInstanceProfile",
             "Properties" : {
                 "TemplateURL" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "CiName" }, "/squadron/", { "Ref" : "SquadronRef" }, "/cfn-api.json" ] ]},
                 "Parameters" : {
@@ -132,6 +164,7 @@
 
         "Scribe" : {
             "Type" : "AWS::CloudFormation::Stack",
+            "DependsOn" : "TestInstanceProfile",
             "Properties" : {
                 "TemplateURL" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "CiName" }, "/squadron/", { "Ref" : "SquadronRef" }, "/cfn-scribe.json" ] ]},
                 "Parameters" : {
@@ -167,52 +200,13 @@
             }
         },
 
-        "RootRole": {
-            "Type" : "AWS::IAM::Role",
-            "Properties" : {
-                "Path" : "/",
-                "AssumeRolePolicyDocument": {
-                    "Version" : "2012-10-17",
-                    "Statement" : [{
-                        "Effect" : "Allow",
-                        "Principal" : { "Service" : [ "ec2.amazonaws.com" ] },
-                        "Action" : [ "sts:AssumeRole" ]
-                    }]
-                }
-            }
-        },
-
-        "RolePolicies" : {
-            "Type" : "AWS::IAM::Policy",
-            "Properties" : {
-                "PolicyName" : "root",
-                "PolicyDocument" : {
-                    "Version" : "2012-10-17",
-                    "Statement" : [{
-                        "Effect": "Allow",
-                        "Action": "*",
-                        "Resource": "*"
-                    }]
-                },
-                "Roles" : [ { "Ref": "RootRole" } ]
-            }
-        },
-
-        "RootInstanceProfile" : {
-            "Type" : "AWS::IAM::InstanceProfile",
-            "Properties" : {
-                "Path" : "/",
-                "Roles" : [ { "Ref": "RootRole" } ]
-            }
-        },
-
         "TestHost" : {
             "Type" : "AWS::EC2::Instance",
             "Metadata" : {
                 "AWS::CloudFormation::Authentication" : {
                     "S3AccessCreds" : {
                         "type" : "S3",
-                        "roleName" : { "Ref" : "RootRole" },
+                        "roleName" : { "Ref" : "TestRole" },
                         "buckets" : [ { "Ref" : "KeyBucket" }, { "Ref" : "ArtifactBucket" } ]
                     }
                 },
@@ -246,7 +240,7 @@
                 "KeyName"  : { "Ref" : "SshKey" },
                 "ImageId" : "ami-b66ed3de",
                 "SecurityGroupIds" : [{ "Ref" : "TestInstanceSecurityGroup" }],
-                "IamInstanceProfile" : { "Ref" : "RootInstanceProfile" },
+                "IamInstanceProfile" : { "Ref" : "TestInstanceProfile" },
                 "UserData" : { "Fn::Base64" : { "Fn::Join" : ["", [
                     "#!/bin/bash -ex\n",
                     "\n",
