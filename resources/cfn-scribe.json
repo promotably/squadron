@@ -9,12 +9,8 @@
             "Type" : "String",
             "Default" : "promotably-build-artifacts"
         },
-        "ArtifactName" : {
-            "Description" : "Filename of Scribe build jar",
-            "Type" : "String"
-        },
-        "SourceZip" : {
-            "Description" : "Filename of Scribe source",
+        "ArtifactPath" : {
+            "Description" : "Path in S3 bucket to standalone.jar, source.zip, scribed",
             "Type" : "String"
         },
         "DBHost": {
@@ -182,13 +178,13 @@
                         },
                         "files" : {
                             "/opt/promotably/scribe-current.jar" : {
-                                "source" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "ArtifactName" } ]]},
+                                "source" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "ArtifactPath" }, "/standalone.jar" ]]},
                                 "mode"    : "000644",
                                 "owner"   : "root",
                                 "group"   : "root"
                             },
                             "/etc/rc.d/init.d/scribed" : {
-                                "source" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/scribed" ]]},
+                                "source" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "ArtifactPath" }, "/scribed" ]]},
                                 "mode"    : "000755",
                                 "owner"   : "root",
                                 "group"   : "root"
@@ -261,7 +257,7 @@
                         },
                         "files" : {
                             "/opt/promotably/scribe.zip" : {
-                                "source" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "SourceZip" } ]]},
+                                "source" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "ArtifactPath" }, "/source.zip" ]]},
                                 "mode"    : "000644",
                                 "owner"   : "root",
                                 "group"   : "root"

@@ -100,9 +100,8 @@
                 "TemplateURL" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "CiName" }, "/squadron/", { "Ref" : "SquadronRef" }, "/cfn-api.json" ] ]},
                 "Parameters" : {
                     "DashboardRef" : { "Ref" : "DashboardRef" },
-                    "ArtifactName" : { "Fn::Join" : [ "/", [ { "Ref" : "CiName" }, "api", { "Ref" : "ApiRef" }, "standalone.jar" ] ]},
-                    "SourceZip" : { "Fn::Join" : [ "/", [ { "Ref" : "CiName" }, "api", { "Ref" : "ApiRef" }, "source.zip" ] ]},
                     "ArtifactBucket" : { "Ref" : "ArtifactBucket" },
+                    "ArtifactPath" : { "Fn::Join" : [ "/", [ { "Ref" : "CiName" }, "api", { "Ref" : "ApiRef" } ] ]},
                     "PublicSubnets" : { "Fn::Join" : [ ",", [
                         { "Fn::GetAtt" : [ "Network", "Outputs.PublicSubnetA" ] },
                         { "Fn::GetAtt" : [ "Network", "Outputs.PublicSubnetB" ] },
@@ -132,8 +131,7 @@
                 "TemplateURL" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "CiName" }, "/squadron/", { "Ref" : "SquadronRef" }, "/cfn-scribe.json" ] ]},
                 "Parameters" : {
                     "ArtifactBucket" : { "Ref" : "ArtifactBucket" },
-                    "ArtifactName" : { "Fn::Join" : [ "/", [ { "Ref" : "CiName" }, "scribe", { "Ref" : "ScribeRef" }, "standalone.jar" ] ]},
-                    "SourceZip" : { "Fn::Join" : [ "/", [ { "Ref" : "CiName" }, "scribe", { "Ref" : "ScribeRef" }, "source.zip" ] ]},
+                    "ArtifactPath" : { "Fn::Join" : [ "/", [ { "Ref" : "CiName" }, "scribe", { "Ref" : "ScribeRef" } ] ]},
                     "DBHost" : { "Fn::GetAtt" : [ "Api", "Outputs.DBHost" ] },
                     "DBPort" : { "Fn::GetAtt" : [ "Api", "Outputs.DBPort" ] },
                     "DBName" : "promotably",

@@ -85,8 +85,7 @@ run_tests() {
         --use-previous-template --capabilities CAPABILITY_IAM --parameters \
         ParameterKey=Environment,ParameterValue=staging \
         ParameterKey=ArtifactBucket,UsePreviousValue=true \
-        ParameterKey=ArtifactName,UsePreviousValue=true \
-        ParameterKey=SourceZip,UsePreviousValue=true \
+        ParameterKey=ArtifactPath,UsePreviousValue=true \
         ParameterKey=KeyPair,UsePreviousValue=true \
         ParameterKey=DBHost,UsePreviousValue=true \
         ParameterKey=DBPort,UsePreviousValue=true \
@@ -109,8 +108,7 @@ run_tests() {
         --use-previous-template --capabilities CAPABILITY_IAM --parameters \
         ParameterKey=Environment,ParameterValue=staging \
         ParameterKey=ArtifactBucket,UsePreviousValue=true \
-        ParameterKey=ArtifactName,UsePreviousValue=true \
-        ParameterKey=SourceZip,UsePreviousValue=true \
+        ParameterKey=ArtifactPath,UsePreviousValue=true \
         ParameterKey=DashboardRef,UsePreviousValue=true \
         ParameterKey=KeyPair,UsePreviousValue=true \
         ParameterKey=DBUsername,UsePreviousValue=true \
