@@ -53,7 +53,7 @@
             "Type" : "String",
             "Default": "None",
             "MinLength": "1",
-            "MaxLength": "64",
+            "MaxLength": "255",
             "AllowedPattern" : "[-_ a-zA-Z0-9]*",
             "ConstraintDescription" : "can contain only alphanumeric characters, spaces, dashes and underscores."
         },
