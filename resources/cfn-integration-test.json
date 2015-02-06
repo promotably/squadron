@@ -225,6 +225,12 @@
                                 "owner"   : "root",
                                 "group"   : "root"
                             },
+                            "/home/ec2-user/.ssh/id_rsa" : {
+                                "source" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "KeyBucket" }, ".s3.amazonaws.com/", { "Ref" : "SshKey" }, ".pem" ]]},
+                                "mode"    : "000600",
+                                "owner"   : "ec2-user",
+                                "group"   : "ec2-user"
+                            },
                             "/root/run_tests.sh" : {
                                 "source" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "CiName" }, "/squadron/", { "Ref" : "SquadronRef" }, "/integration_test_driver.sh" ]]},
                                 "mode"    : "000755",
