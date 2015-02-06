@@ -1,6 +1,39 @@
 #!/bin/bash
 
 run_tests() {
+    if [ -z "$artifact_bucket" ]; then
+        echo 'Fatal: $artifact_bucket is not set - foget to setup the environment?' >&2
+        return 1
+    fi
+    if [ -z "$metadata_bucket" ]; then
+        echo 'Fatal: $metadata_bucket is not set - foget to setup the environment?' >&2
+        return 1
+    fi
+    if [ -z "$ci_name" ]; then
+        echo 'Fatal: $metadata_bucket is not set - foget to setup the environment?' >&2
+        return 1
+    fi
+    if [ -z "$build_num" ]; then
+        echo 'Fatal: $metadata_bucket is not set - foget to setup the environment?' >&2
+        return 1
+    fi
+    if [ -z "$squadron_ref" ]; then
+        echo 'Fatal: $metadata_bucket is not set - foget to setup the environment?' >&2
+        return 1
+    fi
+    if [ -z "$api_ref" ]; then
+        echo 'Fatal: $metadata_bucket is not set - foget to setup the environment?' >&2
+        return 1
+    fi
+    if [ -z "$scribe_ref" ]; then
+        echo 'Fatal: $metadata_bucket is not set - foget to setup the environment?' >&2
+        return 1
+    fi
+    if [ -z "$dashboard_ref" ]; then
+        echo 'Fatal: $metadata_bucket is not set - foget to setup the environment?' >&2
+        return 1
+    fi
+
     if [ -z "$aws_region" ]; then
         echo 'Fatal: $aws_region is not set - foget to setup the environment?' >&2
         return 1
@@ -19,10 +52,6 @@ run_tests() {
     fi
     if [ -z "$scribe_stack" ]; then
         echo 'Fatal: $scribe_stack is not set - foget to setup the environment?' >&2
-        return 1
-    fi
-    if [ -z "$test_result_bucket" ]; then
-        echo 'Fatal: $test_result_bucket is not set - foget to setup the environment?' >&2
         return 1
     fi
     if [ -z "$test_result_email" ]; then
@@ -45,6 +74,12 @@ run_tests() {
     [ -z "$api_ip" -o -z "$scribe_ip" ] && return 1
 
     ssh_cmd='ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -t'
+
+    echo "Integration Test Stack: $promotably_stack" >> integration_test_results.txt
+    echo "Network Stack: $network_stack" >> integration_test_results.txt
+    echo "API Stack: $api_stack" >> integration_test_results.txt
+    echo "Scribe Stack: $scribe_stack" >> integration_test_results.txt
+    echo >> integration_test_results.txt
 
     echo 'API TEST RESULTS' >> integration_test_results.txt
     echo '------------------------------------------------------------------------------' >> integration_test_results.txt
@@ -133,7 +168,7 @@ echo -n > integration_test_results.txt
 if ! run_tests > run_tests.out 2>&1; then
     email_subject_xtra=' - FAILURE'
 else
-    if [ "$project" != 'None' -a "$build_num" != 'None' ]; then
+    if [ -n "$project" -a "$project" != 'None' -a "$build_num" != 'None' ]; then
         touch empty
         s3_url="s3://$metadata_bucket/validated-builds/$ci_name/$project/$(printf '%.12d' $build_num)"
         case "$project" in
@@ -144,10 +179,31 @@ else
     fi
 fi
 
-echo >> integration_test_results.txt
-aws s3 cp run_tests.out s3://$test_result_bucket/${promotably_stack}-shell-debug.txt
-echo "Integration tests shell debug output: s3://$test_result_bucket/${promotably_stack}-shell-debug.txt" >> integration_test_results.txt
-aws s3 cp integration_test_results.txt s3://$test_result_bucket/${promotably_stack}.txt
+if [ -n "$project" -a "$project" != 'None' -a "$build_num" != 'None' ]; then
+    echo >> integration_test_results.txt
+    s3_url="s3://$artifact_bucket/$ci_name/$project"
+    case "$project" in
+        squadron)
+            aws s3 cp run_tests.out "$s3_url/$squadron_ref/integration-test-shell-debug.txt"
+            echo "Integration test results: $s3_url/$squadron_ref/integration-test-results.txt" >> integration_test_results.txt
+            echo "Integration tests shell debug output: $s3_url/$squadron_ref/integration-test-shell-debug.txt" >> integration_test_results.txt
+            aws s3 cp integration_test_results.txt "$s3_url/$squadron_ref/integration-test-results.txt"
+            ;;
+        api)
+            aws s3 cp run_tests.out "$s3_url/$api_ref/integration-test-shell-debug.txt"
+            echo "Integration test results: $s3_url/$api_ref/integration-test-results.txt" >> integration_test_results.txt
+            echo "Integration tests shell debug output: $s3_url/$api_ref/integration-test-shell-debug.txt" >> integration_test_results.txt
+            aws s3 cp integration_test_results.txt "$s3_url/$api_ref/integration-test-results.txt"
+            ;;
+        scribe)
+            aws s3 cp run_tests.out "$s3_url/$scribe_ref/integration-test-shell-debug.txt"
+            echo "Integration test results: $s3_url/$scribe_ref/integration-test-results.txt" >> integration_test_results.txt
+            echo "Integration tests shell debug output: $s3_url/$scribe_ref/integration-test-shell-debug.txt" >> integration_test_results.txt
+            aws s3 cp integration_test_results.txt "$s3_url/$scribe_ref/integration-test-results.txt"
+            ;;
+    esac
+fi
+
 
 MESSAGE_ESCAPED_JSON=$(cat integration_test_results.txt)
 
@@ -165,7 +221,7 @@ MESSAGE_ESCAPED_JSON=${MESSAGE_ESCAPED_JSON//
 cat << _END_ > "ses-message.json"
 {
     "Subject": {
-        "Data": "Integration Test Results${email_subject_xtra}",
+        "Data": "[$ci_name $project $build_num] Integration Test Results${email_subject_xtra}",
         "Charset": "UTF-8"
     },
     "Body": {
