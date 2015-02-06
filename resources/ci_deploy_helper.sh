@@ -80,7 +80,7 @@ else
 fi
 
 # validate cfn templates
-for cfn in promotably network api scribe ; do
+for cfn in integration-test network api scribe ; do
     aws cloudformation validate-template --output=text \
         --template-url "https://$ARTIFACT_BUCKET.s3.amazonaws.com/$CI_NAME/squadron/$squadron_ref/cfn-${cfn}.json"
 done
@@ -95,7 +95,7 @@ done
 ssh_key=vince-test
 
 aws cloudformation create-stack --stack-name $stack_name --disable-rollback \
-    --template-url https://$ARTIFACT_BUCKET.s3.amazonaws.com/$CI_NAME/squadron/$squadron_ref/cfn-promotably.json \
+    --template-url https://$ARTIFACT_BUCKET.s3.amazonaws.com/$CI_NAME/squadron/$squadron_ref/cfn-integration-test.json \
     --capabilities CAPABILITY_IAM --parameters \
     ParameterKey=ArtifactBucket,ParameterValue=$ARTIFACT_BUCKET \
     ParameterKey=MetaDataBucket,ParameterValue=$METADATA_BUCKET \
