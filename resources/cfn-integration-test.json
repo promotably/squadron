@@ -68,8 +68,13 @@
             "Description" : "Send Integration Test results to this email",
             "Type" : "String",
             "Default" : "integration-tests@promotably.com"
+        },
+        "AutoTermStack" : {
+            "Description" : "Auto-delete stacks after successful test run",
+            "Type" : "String",
+            "Default" : "true",
+            "AllowedValues" : [ "true", "false" ]
         }
-
     },
 
     "Mappings" : {
@@ -259,12 +264,13 @@
                     "export dashboard_ref=", { "Ref" : "DashboardRef" }, "\n",
                     "\n",
                     "export aws_region=", { "Ref": "AWS::Region" }, "\n",
+                    "export ssh_key=", { "Ref" : "SshKey" }, "\n",
                     "export promotably_stack=", { "Ref" : "AWS::StackName" }, "\n",
                     "export network_stack=", { "Ref" : "Network" }, "\n",
                     "export api_stack=", { "Ref" : "Api" }, "\n",
                     "export scribe_stack=", { "Ref" : "Scribe" }, "\n",
-                    "export test_result_bucket=", { "Ref" : "ArtifactBucket" }, "\n",
                     "export test_result_email=", { "Ref" : "TestResultsEmail" }, "\n",
+                    "export auto_term=", { "Ref" : "AutoTermStack" }, "\n",
                     "\n",
                     "screen -d -m -L -S integration_tests /root/run_tests.sh\n",
                     "\n"

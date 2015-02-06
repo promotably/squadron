@@ -38,6 +38,10 @@ run_tests() {
         echo 'Fatal: $aws_region is not set - foget to setup the environment?' >&2
         return 1
     fi
+    if [ -z "$ssh_key" ]; then
+        echo 'Fatal: $ssh_key is not set - foget to setup the environment?' >&2
+        return 1
+    fi
     if [ -z "$promotably_stack" ]; then
         echo 'Fatal: $promotably_stack is not set - foget to setup the environment?' >&2
         return 1
@@ -177,6 +181,9 @@ else
             scribe)   aws s3 cp empty "$s3_url/$scribe_ref" ;;
         esac
     fi
+    if [ "$auto_term" = 'true' ]; then
+        term_stack='true'
+    fi
 fi
 
 if [ -n "$project" -a "$project" != 'None' -a "$build_num" != 'None' ]; then
@@ -240,4 +247,7 @@ cat << _END_ > "ses-destination.json"
 _END_
 
 aws ses send-email --region $aws_region --from integration-tests@promotably.com --destination file://ses-destination.json --message file://ses-message.json
-# TODO auto-delete stack after successful run
+if [ "$term_stack" = 'true' ]; then
+    aws cloudformation delete-stack --region $aws_region --stack-name "$promotably_stack"
+    aws ec2 delete-key-pair --region $aws_region --key-name "$ssh_key"
+fi
