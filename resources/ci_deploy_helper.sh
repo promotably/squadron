@@ -96,7 +96,7 @@ done
 ssh_key="$CI_NAME-$stack_name"
 aws ec2 create-key-pair --key-name "$ssh_key" --output=text --query KeyMaterial > $ssh_key.pem
 aws s3 cp $ssh_key.pem s3://$KEY_BUCKET/$ssh_key.pem
-rm $ssh_key.pem
+rm -f $ssh_key.pem
 
 aws cloudformation create-stack --stack-name $stack_name --disable-rollback \
     --template-url https://$ARTIFACT_BUCKET.s3.amazonaws.com/$CI_NAME/squadron/$squadron_ref/cfn-integration-test.json \
