@@ -85,6 +85,7 @@ for cfn in integration-test network api scribe ; do
         --template-url "https://$ARTIFACT_BUCKET.s3.amazonaws.com/$CI_NAME/squadron/$squadron_ref/cfn-${cfn}.json"
 done
 
+# TODO add dashboard_ref to this list
 # make sure other build artifacts are there
 for s3_file in api/$api_ref/standalone.jar api/$api_ref/source.zip api/$api_ref/apid \
                scribe/$scribe_ref/standalone.jar scribe/$scribe_ref/source.zip scribe/$scribe_ref/scribed ; do
