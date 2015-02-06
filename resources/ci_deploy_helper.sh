@@ -59,9 +59,19 @@ if [ -n "$PROJECT" ]; then
             ;;
         api)
             api_ref=$CI_COMMIT_ID
+            lein uberjar
+            git archive --format=zip -o target/api.zip $api_ref
+            aws s3 cp target/*standalone*jar "s3://$ARTIFACT_BUCKET/$CI_NAME/api/$api_ref/standalone.jar"
+            aws s3 cp target/api.zip "s3://$ARTIFACT_BUCKET/$CI_NAME/api/$api_ref/source.zip"
+            aws s3 cp resources/apid "s3://$ARTIFACT_BUCKET/$CI_NAME/api/$api_ref/apid"
             ;;
         scribe)
             scribe_ref=$CI_COMMIT_ID
+            lein uberjar
+            git archive --format=zip -o target/scribe.zip $scribe_ref
+            aws s3 cp target/*standalone*jar "s3://$ARTIFACT_BUCKET/$CI_NAME/scribe/$scribe_ref/standalone.jar"
+            aws s3 cp target/scribe.zip "s3://$ARTIFACT_BUCKET/$CI_NAME/scribe/$scribe_ref/source.zip"
+            aws s3 cp resources/scribed "s3://$ARTIFACT_BUCKET/$CI_NAME/scribe/$scribe_ref/scribed"
             ;;
         *)
             echo "Fatal: Unknown project $PROJECT" >&2
@@ -94,8 +104,9 @@ for s3_file in api/$api_ref/standalone.jar api/$api_ref/source.zip api/$api_ref/
 done
 
 ssh_key="$CI_NAME-$stack_name"
-aws ec2 create-key-pair --key-name "$ssh_key" --output=text --query KeyMaterial > $ssh_key.pem
-aws s3 cp $ssh_key.pem s3://$KEY_BUCKET/$ssh_key.pem
+if aws ec2 create-key-pair --key-name "$ssh_key" --output=text --query KeyMaterial > $ssh_key.pem; then
+    aws s3 cp $ssh_key.pem s3://$KEY_BUCKET/$ssh_key.pem
+fi
 rm -f $ssh_key.pem
 
 aws cloudformation create-stack --stack-name $stack_name --disable-rollback \
