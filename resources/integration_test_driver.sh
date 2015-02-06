@@ -25,8 +25,8 @@ run_tests() {
         echo 'Fatal: $test_result_bucket is not set - foget to setup the environment?' >&2
         return 1
     fi
-    if [ -z "$test_result_arn" ]; then
-        echo 'Fatal: $test_result_arn is not set - foget to setup the environment?' >&2
+    if [ -z "$test_result_email" ]; then
+        echo 'Fatal: $test_result_email is not set - foget to setup the environment?' >&2
         return 1
     fi
 
@@ -134,6 +134,16 @@ run_tests() {
 echo -n > integration_test_results.txt
 if ! run_tests > run_tests.out 2>&1; then
     email_subject_xtra=' - FAILURE'
+else
+    if [ "$project" != 'None' -a "$build_num" != 'None' ]; then
+        touch empty
+        s3_url="s3://$metadata_bucket/validated-builds/$ci_name/$project/$(printf '%.12d' $build_num)"
+        case "$project" in
+            squadron) aws s3 cp empty "$s3_url/$squadron_ref" ;;
+            api)      aws s3 cp empty "$s3_url/$api_ref" ;;
+            scribe)   aws s3 cp empty "$s3_url/$scribe_ref" ;;
+        esac
+    fi
 fi
 
 echo >> integration_test_results.txt
@@ -171,8 +181,9 @@ _END_
 
 cat << _END_ > "ses-destination.json"
 {
-    "ToAddresses": ["integration-tests@promotably.com"]
+    "ToAddresses": ["$test_result_email"]
 }
 _END_
 
 aws ses send-email --region $aws_region --from integration-tests@promotably.com --destination file://ses-destination.json --message file://ses-message.json
+# TODO auto-delete stack after successful run

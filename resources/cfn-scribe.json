@@ -370,10 +370,15 @@
                 "IamInstanceProfile": { "Ref": "RootInstanceProfile" },
                 "UserData": { "Fn::Base64": { "Fn::Join": [ "", [
                     "#!/bin/bash -ex\n",
-                    "yum upgrade -y\n",
-
+                    "\n",
+                    "# retry yum upgrade if it fails, otherwise keep going\n",
+                    "if ! yum upgrade -y; then\n",
+                    "  sleep 30\n",
+                    "  yum upgrade -y || true\n",
+                    "fi\n",
+                    "\n",
                     "mkdir -p /opt/promotably/scribe\n",
-
+                    "\n",
                     "# Helper functions\n",
                     "function error_exit\n",
                     "{\n",
@@ -385,7 +390,7 @@
                     "}\n",
                     "function cfn_init\n",
                     "{\n",
-                    "  /opt/aws/bin/cfn-init -s ", { "Ref": "AWS::StackId" },
+                    "  /opt/aws/bin/cfn-init -v -s ", { "Ref": "AWS::StackId" },
                       " -r LaunchConfig --region ", { "Ref": "AWS::Region" },
                       " \"$@\"\n",
                     "}\n",

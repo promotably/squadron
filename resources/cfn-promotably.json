@@ -8,32 +8,38 @@
             "Type" : "String",
             "Default" : "promotably-build-artifacts"
         },
-        "TestResultsBucket" : {
-            "Description" : "S3 Bucket where test runs are stored",
+        "MetaDataBucket" : {
+            "Description" : "S3 Bucket where build metadata is stored",
             "Type" : "String",
-            "Default" : "promotably-test-results"
+            "Default" : "promotably-build-metadata"
+        },
+        "Project" : {
+            "Description" : "Name of project being test",
+            "Type" : "String",
+            "Default" : "None",
+            "AllowedValues" : [ "None", "squadron", "api", "scribe" ]
+        },
+        "CiName" : {
+            "Description" : "Name of CI system (base path in ArtifactBucket)",
+            "Type" : "String",
+            "Default" : "codeship"
+        },
+        "BuildNum" : {
+            "Description" : "Build number",
+            "Type" : "String",
+            "Default" : "None"
         },
 
         "SquadronRef" : {
-            "Description" : "Git ref of Squadron build",
-            "Type" : "String",
-            "Default" : "latest"
-        },
-
-        "ApiArtifact" : {
-            "Description" : "Path in ArtifactBucket to api uberjar",
+            "Description" : "Ref of Squadron build to use",
             "Type" : "String"
         },
-        "ApiZip" : {
-            "Description" : "Filename of API source",
+        "ApiRef" : {
+            "Description" : "Ref of API build to use",
             "Type" : "String"
         },
-        "ScribeArtifact" : {
-            "Description" : "Path in ArtifactBucket to scribe uberjar",
-            "Type" : "String"
-        },
-        "ScribeZip" : {
-            "Description" : "Filename of Scribe source",
+        "ScribeRef" : {
+            "Description" : "Ref of Scribe build to use",
             "Type" : "String"
         },
         "DashboardRef" : {
@@ -58,11 +64,10 @@
             "Default" : "promotably-keyvault"
         },
 
-        "TestResultsSNSTopicARN" : {
-            "Description" : "Send Integration Test results to this SNS topic",
+        "TestResultsEmail" : {
+            "Description" : "Send Integration Test results to this email",
             "Type" : "String",
-            "Default" : "arn:aws:sns:us-east-1:955631477036:api-integration-tests",
-            "AllowedPattern" : "arn:aws:sns:[-_:a-zA-Z0-9]*"
+            "Default" : "integration-tests@promotably.com"
         }
 
     },
@@ -79,7 +84,7 @@
         "Network" : {
             "Type" : "AWS::CloudFormation::Stack",
             "Properties" : {
-                "TemplateURL" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/squadron/", { "Ref" : "SquadronRef" }, "/network.json" ] ]},
+                "TemplateURL" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "CiName" }, "/squadron/", { "Ref" : "SquadronRef" }, "/cfn-network.json" ] ]},
                 "Parameters" : {
                     "BastionKeyName" : { "Ref" : "SshKey" },
                     "NATKeyName" : { "Ref" : "SshKey" },
@@ -92,11 +97,11 @@
         "Api" : {
             "Type" : "AWS::CloudFormation::Stack",
             "Properties" : {
-                "TemplateURL" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/squadron/", { "Ref" : "SquadronRef" }, "/api.json" ] ]},
+                "TemplateURL" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "CiName" }, "/squadron/", { "Ref" : "SquadronRef" }, "/cfn-api.json" ] ]},
                 "Parameters" : {
                     "DashboardRef" : { "Ref" : "DashboardRef" },
-                    "ArtifactName" : { "Ref" : "ApiArtifact" },
-                    "SourceZip" : { "Ref" : "ApiZip" },
+                    "ArtifactName" : { "Fn::Join" : [ "/", [ { "Ref" : "CiName" }, "api", { "Ref" : "ApiRef" }, "standalone.jar" ] ]},
+                    "SourceZip" : { "Fn::Join" : [ "/", [ { "Ref" : "CiName" }, "api", { "Ref" : "ApiRef" }, "source.zip" ] ]},
                     "ArtifactBucket" : { "Ref" : "ArtifactBucket" },
                     "PublicSubnets" : { "Fn::Join" : [ ",", [
                         { "Fn::GetAtt" : [ "Network", "Outputs.PublicSubnetA" ] },
@@ -124,11 +129,11 @@
         "Scribe" : {
             "Type" : "AWS::CloudFormation::Stack",
             "Properties" : {
-                "TemplateURL" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/squadron/", { "Ref" : "SquadronRef" }, "/scribe.json" ] ]},
+                "TemplateURL" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "CiName" }, "/squadron/", { "Ref" : "SquadronRef" }, "/cfn-scribe.json" ] ]},
                 "Parameters" : {
-                    "ArtifactName" : { "Ref" : "ScribeArtifact" },
                     "ArtifactBucket" : { "Ref" : "ArtifactBucket" },
-                    "SourceZip" : { "Ref" : "ScribeZip" },
+                    "ArtifactName" : { "Fn::Join" : [ "/", [ { "Ref" : "CiName" }, "scribe", { "Ref" : "ScribeRef" }, "standalone.jar" ] ]},
+                    "SourceZip" : { "Fn::Join" : [ "/", [ { "Ref" : "CiName" }, "scribe", { "Ref" : "ScribeRef" }, "source.zip" ] ]},
                     "DBHost" : { "Fn::GetAtt" : [ "Api", "Outputs.DBHost" ] },
                     "DBPort" : { "Fn::GetAtt" : [ "Api", "Outputs.DBPort" ] },
                     "DBName" : "promotably",
@@ -218,7 +223,7 @@
                                 "group"   : "root"
                             },
                             "/root/run_tests.sh" : {
-                                "source" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/squadron/", { "Ref" : "SquadronRef" }, "/run_tests.sh" ]]},
+                                "source" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "CiName" }, "/squadron/", { "Ref" : "SquadronRef" }, "/integration_test_driver.sh" ]]},
                                 "mode"    : "000755",
                                 "owner"   : "root",
                                 "group"   : "root"
@@ -233,24 +238,39 @@
                 "ImageId" : "ami-b66ed3de",
                 "SecurityGroupIds" : [{ "Ref" : "TestInstanceSecurityGroup" }],
                 "IamInstanceProfile" : { "Ref" : "RootInstanceProfile" },
-                "UserData" : {
-                    "Fn::Base64" : { "Fn::Join" : ["", [
-                        "#!/bin/bash -ex\n",
-                        "yum upgrade -y\n",
-                        "/opt/aws/bin/cfn-init -s ", { "Ref": "AWS::StackId" },
-                          " -r TestHost --region ", { "Ref": "AWS::Region" }, "\n",
-                        "\n",
-                        "export aws_region=", { "Ref": "AWS::Region" }, "\n",
-                        "export promotably_stack=", { "Ref" : "AWS::StackName" }, "\n",
-                        "export network_stack=", { "Ref" : "Network" }, "\n",
-                        "export api_stack=", { "Ref" : "Api" }, "\n",
-                        "export scribe_stack=", { "Ref" : "Scribe" }, "\n",
-                        "export test_result_bucket=", { "Ref" : "TestResultsBucket" }, "\n",
-                        "export test_result_arn=", { "Ref" : "TestResultsSNSTopicARN" }, "\n",
-                        "screen -d -m -L -S integration_tests /root/run_tests.sh\n",
-                        "\n"
-                    ]]}
-                },
+                "UserData" : { "Fn::Base64" : { "Fn::Join" : ["", [
+                    "#!/bin/bash -ex\n",
+                    "\n",
+                    "# retry yum upgrade if it fails, otherwise keep going\n",
+                    "if ! yum upgrade -y; then\n",
+                    "  sleep 30\n",
+                    "  yum upgrade -y || true\n",
+                    "fi\n",
+                    "\n",
+                    "/opt/aws/bin/cfn-init -v -s ", { "Ref": "AWS::StackId" },
+                    " -r TestHost --region ", { "Ref": "AWS::Region" }, "\n",
+                    "\n",
+                    "export artifact_bucket=", { "Ref" : "ArtifactBucket" }, "\n",
+                    "export metadata_bucket=", { "Ref" : "MetaDataBucket" }, "\n",
+                    "export project=", { "Ref" : "Project" }, "\n",
+                    "export ci_name=", { "Ref" : "CiName" }, "\n",
+                    "export build_num=", { "Ref" : "BuildNum" }, "\n",
+                    "export squadron_ref=", { "Ref" : "SquadronRef" }, "\n",
+                    "export api_ref=", { "Ref" : "ApiRef" }, "\n",
+                    "export scribe_ref=", { "Ref" : "ScribeRef" }, "\n",
+                    "export dashboard_ref=", { "Ref" : "DashboardRef" }, "\n",
+                    "\n",
+                    "export aws_region=", { "Ref": "AWS::Region" }, "\n",
+                    "export promotably_stack=", { "Ref" : "AWS::StackName" }, "\n",
+                    "export network_stack=", { "Ref" : "Network" }, "\n",
+                    "export api_stack=", { "Ref" : "Api" }, "\n",
+                    "export scribe_stack=", { "Ref" : "Scribe" }, "\n",
+                    "export test_result_bucket=", { "Ref" : "ArtifactBucket" }, "\n",
+                    "export test_result_email=", { "Ref" : "TestResultsEmail" }, "\n",
+                    "\n",
+                    "screen -d -m -L -S integration_tests /root/run_tests.sh\n",
+                    "\n"
+                ]]} },
                 "Tags": [{ "Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ { "Ref" : "AWS::StackName" }, "testhost" ] ]} }]
             }
         },

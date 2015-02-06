@@ -647,14 +647,18 @@
                 "ImageId" : { "Fn::FindInMap" : [ "config", { "Ref" : "AWS::Region" }, "ami" ]},
                 "SecurityGroupIds" : [{ "Ref" : "BastionSecurityGroup" }, { "Ref" : "VpcDefaultSecurityGroup" }],
                 "IamInstanceProfile" : { "Ref" : "BastionInstanceProfile" },
-                "UserData" : {
-                    "Fn::Base64" : { "Fn::Join" : ["", [
-                        "#!/bin/bash -ex\n",
-                        "yum upgrade -y\n",
-                        "/opt/aws/bin/cfn-init -s ", { "Ref": "AWS::StackId" },
-                          " -r BastionHost --region ", { "Ref": "AWS::Region" }, "\n"
-                    ]]}
-                },
+                "UserData" : { "Fn::Base64" : { "Fn::Join" : ["", [
+                    "#!/bin/bash -ex\n",
+                    "\n",
+                    "# retry yum upgrade if it fails, otherwise keep going\n",
+                    "if ! yum upgrade -y; then\n",
+                    "  sleep 30\n",
+                    "  yum upgrade -y || true\n",
+                    "fi\n",
+                    "\n",
+                    "/opt/aws/bin/cfn-init -v -s ", { "Ref": "AWS::StackId" },
+                       " -r BastionHost --region ", { "Ref": "AWS::Region" }, "\n"
+                ]]} },
                 "Tags": [{ "Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ { "Ref" : "AWS::StackName" }, "bastion" ] ]} }]
             }
         }
