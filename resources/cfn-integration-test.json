@@ -235,6 +235,7 @@
                     }
                 }
             },
+            "CreationPolicy": { "ResourceSignal": { "Timeout": "PT15M" } },
             "Properties" : {
                 "InstanceType" : "t2.micro",
                 "KeyName"  : { "Ref" : "SshKey" },
@@ -274,6 +275,10 @@
                     "export auto_term=", { "Ref" : "AutoTermStack" }, "\n",
                     "\n",
                     "screen -d -m -L -S integration_tests /root/run_tests.sh\n",
+                    "/opt/aws/bin/cfn-signal -e $? ",
+                      " --stack ", { "Ref" : "AWS::StackName" },
+                      " --resource TestHost ",
+                      " --region ", { "Ref" : "AWS::Region" }, "\n",
                     "\n"
                 ]]} },
                 "Tags": [{ "Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ { "Ref" : "AWS::StackName" }, "testhost" ] ]} }]
@@ -290,6 +295,14 @@
     },
 
     "Outputs" : {
+        "TestHost" : {
+            "Description" : "InstanceId of TestHost",
+            "Value" : { "Ref" : "TestHost" }
+        },
+        "TestHostEIP" : {
+            "Description" : "Public IP of TestHost",
+            "Value" : { "Ref" : "TestHostIPAddress" }
+        }
     }
 
 }
