@@ -112,7 +112,7 @@
             }
         },
 
-        "TestInstanceIPAddress" : {
+        "TestHostIPAddress" : {
             "Type" : "AWS::EC2::EIP"
         },
 
@@ -124,7 +124,7 @@
                 "Parameters" : {
                     "BastionKeyName" : { "Ref" : "SshKey" },
                     "NATKeyName" : { "Ref" : "SshKey" },
-                    "SSHFrom" : { "Fn::Join" : [ "/", [ { "Ref" : "TestInstanceIPAddress" }, "32" ]]}
+                    "SSHFrom" : { "Fn::Join" : [ "/", [ { "Ref" : "TestHostIPAddress" }, "32" ]]}
                 },
                 "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}
             }
@@ -288,7 +288,7 @@
         "TestHostEIPAssocation" : {
             "Type" : "AWS::EC2::EIPAssociation",
             "Properties" : {
-                "EIP" : { "Ref" : "TestInstanceIPAddress" },
+                "EIP" : { "Ref" : "TestHostIPAddress" },
                 "InstanceId" : { "Ref" : "TestHost" }
             }
         }
