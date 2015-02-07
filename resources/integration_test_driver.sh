@@ -84,6 +84,7 @@ run_tests() {
     ssh_cmd='ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -t'
 
     echo "Integration Test Stack: $promotably_stack" >> integration_test_results.txt
+    echo >> integration_test_results.txt
     echo "Network Stack: $network_stack" >> integration_test_results.txt
     echo "API Stack: $api_stack" >> integration_test_results.txt
     echo "Scribe Stack: $scribe_stack" >> integration_test_results.txt
