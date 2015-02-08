@@ -174,7 +174,10 @@ run_tests() {
 }
 
 echo -n > integration_test_results.txt
-if ! run_tests > run_tests.out 2>&1; then
+run_tests > run_tests.out 2>&1
+test_rc=$?
+
+if [ $test_rc -ne 0  ] || grep -q 'java.lang.[A-Za-z0-9_.-]*Exception' integration_test_results.txt; then
     email_subject_xtra=' - FAILURE'
 else
     if [ -n "$project" -a "$project" != 'None' -a "$build_num" != 'None' ]; then
