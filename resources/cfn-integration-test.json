@@ -130,6 +130,23 @@
             }
         },
 
+        "Redis" : {
+            "Type" : "AWS::CloudFormation::Stack",
+            "DependsOn" : "TestInstanceProfile",
+            "Properties" : {
+                "TemplateURL" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "CiName" }, "/squadron/", { "Ref" : "SquadronRef" }, "/cfn-redis.json" ] ]},
+                "Parameters" : {
+                    "PrivateSubnets" : { "Fn::Join" : [ ",", [
+                        { "Fn::GetAtt" : [ "Network", "Outputs.PrivateSubnetA" ] },
+                        { "Fn::GetAtt" : [ "Network", "Outputs.PrivateSubnetB" ] },
+                        { "Fn::GetAtt" : [ "Network", "Outputs.PrivateSubnetC" ] } ]]},
+                    "VpcId" : { "Fn::GetAtt" : [ "Network", "Outputs.VPCId" ] },
+                    "Environment" : "integration"
+                },
+                "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}
+            }
+        },
+
         "Api" : {
             "Type" : "AWS::CloudFormation::Stack",
             "DependsOn" : "TestInstanceProfile",
@@ -152,6 +169,8 @@
                     "VpcDefaultSecurityGroup" : { "Fn::GetAtt" : [ "Network", "Outputs.VpcDefaultSecurityGroup" ] },
                     "NATSecurityGroup" : { "Fn::GetAtt" : [ "Network", "Outputs.NATSecurityGroup" ] },
                     "KeyPair" : { "Ref" : "SshKey" },
+                    "RedisCluster" : { "Fn::GetAtt" : [ "Redis", "Outputs.RedisCluster" ] },
+                    "RedisClientSecGrp" : { "Fn::GetAtt" : [ "Redis", "Outputs.RedisClientSecGrp" ] },
                     "DBName" : "promotably",
                     "DBUsername" : "promotably",
                     "DBPassword" : "promotably",

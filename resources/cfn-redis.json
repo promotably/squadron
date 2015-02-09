@@ -1,0 +1,88 @@
+{
+    "AWSTemplateFormatVersion" : "2010-09-09",
+    "Description" : "ElastiCache Redis",
+
+    "Parameters" : {
+
+        "PrivateSubnets" : {
+            "Description" : "List of VPC private subnet IDs for the cluster. Note: must match up with the passed AvailabilityZones.",
+            "Type" : "List<AWS::EC2::Subnet::Id>"
+        },
+        "VpcId" : {
+            "Description" : "VPC associated with the provided subnets",
+            "Type" : "AWS::EC2::VPC::Id"
+        },
+        "Environment" : {
+            "Description" : "Environment tag",
+            "Type" : "String",
+            "Default" : "integration"
+        }
+    },
+
+    "Mappings" : {
+        "config" : {
+            "integration" : {
+                "nodeType" : "cache.t2.micro"
+            },
+            "staging" : {
+                "nodeType" : "cache.t2.micro"
+            }
+        }
+    },
+
+    "Resources" : {
+
+        "ElasticacheSubnetGroup" : {
+            "Type" : "AWS::ElastiCache::SubnetGroup",
+            "Properties" : {
+                "Description" : "Cache Subnet Group",
+                "SubnetIds" : { "Ref" : "PrivateSubnets" }
+            }
+        },
+
+        "ClientSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription" : { "Fn::Join" : [ " - ", [ { "Ref" : "AWS::StackName" }, "clients" ]]},
+                "VpcId" : { "Ref" : "VpcId" }
+            }
+        },
+
+        "SecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription" : { "Ref" : "AWS::StackName" },
+                "VpcId" : { "Ref" : "VpcId" },
+                "SecurityGroupIngress": [{
+                    "IpProtocol": "tcp",
+                    "FromPort": "6379",
+                    "ToPort": "6379",
+                    "SourceSecurityGroupId": { "Ref": "ClientSecurityGroup" }
+                }]
+            }
+        },
+
+        "RedisCluster": {
+            "Type": "AWS::ElastiCache::CacheCluster",
+            "Properties": {
+                "AutoMinorVersionUpgrade": "true",
+                "Engine": "redis",
+                "CacheNodeType": { "Fn::FindInMap" : [ "config", { "Ref" : "Environment" }, "nodeType" ]},
+                "NumCacheNodes": "1",
+                "CacheSubnetGroupName": { "Ref": "ElasticacheSubnetGroup" },
+                "VpcSecurityGroupIds": [{ "Ref" : "SecurityGroup" }]
+            }
+        }
+    },
+
+    "Outputs" : {
+        "RedisCluster" : {
+            "Description" : "Redis ElastiCache Cluster",
+            "Value" : { "Ref" : "RedisCluster" }
+        },
+        "RedisClientSecGrp" : {
+            "Description" : "Security group in which to place Redis clients",
+            "Value" : { "Fn::GetAtt" : [ "ClientSecurityGroup", "GroupId" ]}
+        }
+    }
+}

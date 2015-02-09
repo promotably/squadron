@@ -155,6 +155,8 @@ run_tests() {
         ParameterKey=ArtifactPath,UsePreviousValue=true \
         ParameterKey=DashboardRef,UsePreviousValue=true \
         ParameterKey=KeyPair,UsePreviousValue=true \
+        ParameterKey=RedisCluster,UsePreviousValue=true \
+        ParameterKey=RedisClientSecGrp,UsePreviousValue=true \
         ParameterKey=DBUsername,UsePreviousValue=true \
         ParameterKey=DBPassword,UsePreviousValue=true \
         ParameterKey=DBName,UsePreviousValue=true \
