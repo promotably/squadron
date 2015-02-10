@@ -457,8 +457,8 @@
                                       " --query 'CacheClusters[0].CacheNodes[0].Endpoint.Port'",
                                       ")\"\n",
                                     "\n",
-                                    "/usr/local/bin/lein deps > /dev/null 2>&1\n",
-                                    "/usr/local/bin/lein midje api.integration.*\n"
+                                    "timeout -k 5m 30m /usr/local/bin/lein deps > /dev/null 2>&1\n",
+                                    "timeout -k 5m 30m /usr/local/bin/lein midje api.integration.*\n"
                                 ]]},
                                 "context" : {
                                     "ARTIFACT_BUCKET" : { "Ref": "ArtifactBucket" },
