@@ -253,6 +253,10 @@
             }
         },
 
+        "InstanceWaitHandle" : {
+            "Type" : "AWS::CloudFormation::WaitConditionHandle"
+        },
+
         "TestHost" : {
             "Type" : "AWS::EC2::Instance",
             "Metadata" : {
@@ -288,7 +292,6 @@
                     }
                 }
             },
-            "CreationPolicy": { "ResourceSignal": { "Timeout": "PT15M" } },
             "Properties" : {
                 "InstanceType" : "t2.micro",
                 "KeyName"  : { "Ref" : "SshKey" },
@@ -328,10 +331,8 @@
                     "export auto_term=", { "Ref" : "AutoTermStack" }, "\n",
                     "\n",
                     "screen -d -m -L -S integration_tests /root/run_tests.sh\n",
-                    "/opt/aws/bin/cfn-signal -e $? ",
-                      " --stack ", { "Ref" : "AWS::StackName" },
-                      " --resource TestHost ",
-                      " --region ", { "Ref" : "AWS::Region" }, "\n",
+                    "/opt/aws/bin/cfn-signal -e $? --region ",
+                      { "Ref" : "AWS::Region" }, " ", { "Ref" : "InstanceWaitHandle" }, "\n",
                     "\n"
                 ]]} },
                 "Tags": [{ "Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ { "Ref" : "AWS::StackName" }, "testhost" ] ]} }]
@@ -343,6 +344,15 @@
             "Properties" : {
                 "EIP" : { "Ref" : "TestHostIPAddress" },
                 "InstanceId" : { "Ref" : "TestHost" }
+            }
+        },
+
+        "InstanceWait" : {
+            "Type" : "AWS::CloudFormation::WaitCondition",
+            "DependsOn" : "TestHost",
+            "Properties" : {
+                "Handle" : { "Ref" : "InstanceWaitHandle" },
+                "Timeout" : "900"
             }
         }
     },
