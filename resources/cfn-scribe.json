@@ -283,8 +283,8 @@
                                     "export MIDJE_COLORIZE=\"false\"\n",
                                     "export STACKNAME=\"{{STACKNAME}}\"\n",
                                     "\n",
-                                    "timeout -k 5m 30m /usr/local/bin/lein deps > /dev/null 2>&1\n",
-                                    "timeout -k 5m 30m /usr/local/bin/lein midje scribe.integration.*\n"
+                                    "/usr/local/bin/lein deps > /dev/null 2>&1\n",
+                                    "/usr/local/bin/lein midje scribe.integration.*\n"
                                 ]]},
                                 "context" : {
                                     "ARTIFACT_BUCKET" : { "Ref": "ArtifactBucket" },
