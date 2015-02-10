@@ -164,6 +164,8 @@ run_tests() {
         ParameterKey=DBUsername,UsePreviousValue=true \
         ParameterKey=DBPassword,UsePreviousValue=true \
         ParameterKey=DBClientSecGrp,UsePreviousValue=true \
+        ParameterKey=KinesisStreamA,UsePreviousValue=true \
+        ParameterKey=KinesisStreamB,UsePreviousValue=true \
         ParameterKey=VpcId,UsePreviousValue=true \
         ParameterKey=VpcDefaultSecurityGroup,UsePreviousValue=true \
         ParameterKey=NATSecurityGroup,UsePreviousValue=true \

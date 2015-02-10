@@ -168,6 +168,15 @@
             }
         },
 
+        "Kinesis" : {
+            "Type" : "AWS::CloudFormation::Stack",
+            "DependsOn" : "TestInstanceProfile",
+            "Properties" : {
+                "TemplateURL" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "CiName" }, "/squadron/", { "Ref" : "SquadronRef" }, "/cfn-kinesis.json" ] ]},
+                "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}
+            }
+        },
+
         "Api" : {
             "Type" : "AWS::CloudFormation::Stack",
             "DependsOn" : "TestInstanceProfile",
@@ -197,7 +206,9 @@
                     "DBName" : { "Fn::GetAtt" : [ "Rds", "Outputs.DBName" ] },
                     "DBUsername" : "promotably",
                     "DBPassword" : "promotably",
-                    "DBClientSecGrp" : { "Fn::GetAtt" : [ "Rds", "Outputs.DBClientSecGrp" ] }
+                    "DBClientSecGrp" : { "Fn::GetAtt" : [ "Rds", "Outputs.DBClientSecGrp" ] },
+                    "KinesisStreamA" : { "Fn::GetAtt" : [ "Kinesis", "Outputs.KinesisStreamA" ] },
+                    "KinesisStreamB" : { "Fn::GetAtt" : [ "Kinesis", "Outputs.KinesisStreamB" ] }
                 },
                 "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}
             }
@@ -217,8 +228,8 @@
                     "DBUsername" : "promotably",
                     "DBPassword" : "promotably",
                     "DBClientSecGrp" : { "Fn::GetAtt" : [ "Rds", "Outputs.DBClientSecGrp" ] },
-                    "KinesisStreamA" : { "Fn::GetAtt" : [ "Api", "Outputs.KinesisStreamA" ] },
-                    "KinesisStreamB" : { "Fn::GetAtt" : [ "Api", "Outputs.KinesisStreamB" ] },
+                    "KinesisStreamA" : { "Fn::GetAtt" : [ "Kinesis", "Outputs.KinesisStreamA" ] },
+                    "KinesisStreamB" : { "Fn::GetAtt" : [ "Kinesis", "Outputs.KinesisStreamB" ] },
                     "PublicSubnets" : { "Fn::Join" : [ ",", [
                         { "Fn::GetAtt" : [ "Network", "Outputs.PublicSubnetA" ] },
                         { "Fn::GetAtt" : [ "Network", "Outputs.PublicSubnetB" ] },

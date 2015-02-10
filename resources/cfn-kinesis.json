@@ -1,0 +1,33 @@
+{
+    "AWSTemplateFormatVersion" : "2010-09-09",
+    "Description" : "Kinesis Streams",
+
+    "Resources" : {
+
+        "KinesisStreamA" : {
+            "Type" : "AWS::Kinesis::Stream",
+            "Properties" : {
+                "ShardCount" : "2"
+            }
+        },
+
+        "KinesisStreamB" : {
+            "Type" : "AWS::Kinesis::Stream",
+            "Properties" : {
+                "ShardCount" : "2"
+            }
+        }
+    },
+
+    "Outputs" : {
+
+        "KinesisStreamA" : {
+            "Description" : "Kinesis Stream A",
+            "Value" : { "Ref" : "KinesisStreamA" }
+        },
+        "KinesisStreamB" : {
+            "Description" : "Kinesis Stream B",
+            "Value" : { "Ref" : "KinesisStreamB" }
+        }
+    }
+}
