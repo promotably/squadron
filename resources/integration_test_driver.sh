@@ -81,7 +81,7 @@ run_tests() {
 
     [ -z "$api_ip" -o -z "$scribe_ip" ] && return 1
 
-    ssh_cmd='timeout -k 5m 30m ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -t'
+    ssh_cmd='ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -t'
 
     echo "Integration Test Stack: $promotably_stack" >> integration_test_results.txt
     echo >> integration_test_results.txt
