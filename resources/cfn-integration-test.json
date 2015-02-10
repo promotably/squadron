@@ -147,6 +147,27 @@
             }
         },
 
+        "Rds" : {
+            "Type" : "AWS::CloudFormation::Stack",
+            "DependsOn" : "TestInstanceProfile",
+            "Properties" : {
+                "TemplateURL" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "CiName" }, "/squadron/", { "Ref" : "SquadronRef" }, "/cfn-postgres.json" ] ]},
+                "Parameters" : {
+                    "PrivateSubnets" : { "Fn::Join" : [ ",", [
+                        { "Fn::GetAtt" : [ "Network", "Outputs.PrivateSubnetA" ] },
+                        { "Fn::GetAtt" : [ "Network", "Outputs.PrivateSubnetB" ] },
+                        { "Fn::GetAtt" : [ "Network", "Outputs.PrivateSubnetC" ] } ]]},
+                    "VpcId" : { "Fn::GetAtt" : [ "Network", "Outputs.VPCId" ] },
+                    "Environment" : "integration",
+                    "DBName" : "promotably",
+                    "DBUsername" : "promotably",
+                    "DBPassword" : "promotably",
+                    "DBAllocatedStorage" : "10"
+                },
+                "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}
+            }
+        },
+
         "Api" : {
             "Type" : "AWS::CloudFormation::Stack",
             "DependsOn" : "TestInstanceProfile",
@@ -171,11 +192,12 @@
                     "KeyPair" : { "Ref" : "SshKey" },
                     "RedisCluster" : { "Fn::GetAtt" : [ "Redis", "Outputs.RedisCluster" ] },
                     "RedisClientSecGrp" : { "Fn::GetAtt" : [ "Redis", "Outputs.RedisClientSecGrp" ] },
-                    "DBName" : "promotably",
+                    "DBHost" : { "Fn::GetAtt" : [ "Rds", "Outputs.DBHost" ] },
+                    "DBPort" : { "Fn::GetAtt" : [ "Rds", "Outputs.DBPort" ] },
+                    "DBName" : { "Fn::GetAtt" : [ "Rds", "Outputs.DBName" ] },
                     "DBUsername" : "promotably",
                     "DBPassword" : "promotably",
-                    "DBClass" : "db.m3.medium",
-                    "DBAllocatedStorage" : "10"
+                    "DBClientSecGrp" : { "Fn::GetAtt" : [ "Rds", "Outputs.DBClientSecGrp" ] }
                 },
                 "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}
             }
@@ -189,11 +211,12 @@
                 "Parameters" : {
                     "ArtifactBucket" : { "Ref" : "ArtifactBucket" },
                     "ArtifactPath" : { "Fn::Join" : [ "/", [ { "Ref" : "CiName" }, "scribe", { "Ref" : "ScribeRef" } ] ]},
-                    "DBHost" : { "Fn::GetAtt" : [ "Api", "Outputs.DBHost" ] },
-                    "DBPort" : { "Fn::GetAtt" : [ "Api", "Outputs.DBPort" ] },
-                    "DBName" : "promotably",
+                    "DBHost" : { "Fn::GetAtt" : [ "Rds", "Outputs.DBHost" ] },
+                    "DBPort" : { "Fn::GetAtt" : [ "Rds", "Outputs.DBPort" ] },
+                    "DBName" : { "Fn::GetAtt" : [ "Rds", "Outputs.DBName" ] },
                     "DBUsername" : "promotably",
                     "DBPassword" : "promotably",
+                    "DBClientSecGrp" : { "Fn::GetAtt" : [ "Rds", "Outputs.DBClientSecGrp" ] },
                     "KinesisStreamA" : { "Fn::GetAtt" : [ "Api", "Outputs.KinesisStreamA" ] },
                     "KinesisStreamB" : { "Fn::GetAtt" : [ "Api", "Outputs.KinesisStreamB" ] },
                     "PublicSubnets" : { "Fn::Join" : [ ",", [

@@ -1,0 +1,122 @@
+{
+    "AWSTemplateFormatVersion" : "2010-09-09",
+    "Description" : "RDS Postgres",
+
+    "Parameters" : {
+
+        "PrivateSubnets" : {
+            "Description" : "List of VPC private subnet IDs for the cluster. Note: must match up with the passed AvailabilityZones.",
+            "Type" : "List<AWS::EC2::Subnet::Id>"
+        },
+        "VpcId" : {
+            "Description" : "VPC associated with the provided subnets",
+            "Type" : "AWS::EC2::VPC::Id"
+        },
+        "Environment" : {
+            "Description" : "Environment tag",
+            "Type" : "String",
+            "Default" : "integration"
+        },
+
+        "DBName": {
+            "Description": "Database name",
+            "Type": "String"
+        },
+        "DBUsername": {
+            "Description": "Database username",
+            "Type": "String"
+        },
+        "DBPassword": {
+            "Description": "Database password",
+            "Type": "String"
+        },
+        "DBClass": {
+            "Description": "Database instance class",
+            "Type": "String",
+            "Default" : "default"
+        },
+        "DBAllocatedStorage": {
+            "Description": "Database allocated storage",
+            "Type": "String"
+        }
+    },
+
+    "Conditions" : {
+        "DefaultDBClass" : { "Fn::Equals" : [ { "Ref" : "DBClass" }, "default" ]}
+    },
+
+    "Mappings" : {
+        "config" : {
+            "integration" : {
+                "dbClass" : "db.t1.micro"
+            },
+            "staging" : {
+                "dbClass" : "db.t1.micro"
+            }
+        }
+    },
+
+    "Resources" : {
+
+        "DBSubnetGroup" : {
+            "Type" : "AWS::RDS::DBSubnetGroup",
+            "Properties" : {
+                "DBSubnetGroupDescription" : { "Ref" : "AWS::StackName" },
+                "SubnetIds" : { "Ref" : "PrivateSubnets" },
+                "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" } }]
+            }
+        },
+
+        "ClientSecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "VpcId" : { "Ref" : "VpcId" },
+                "GroupDescription" : { "Fn::Join" : [ " - ", [ { "Ref" : "AWS::StackName" }, "clients" ] ]}
+            }
+        },
+
+        "SecurityGroup": {
+            "Type": "AWS::RDS::DBSecurityGroup",
+            "Properties": {
+                "EC2VpcId" : { "Ref" : "VpcId" },
+                "DBSecurityGroupIngress": { "EC2SecurityGroupId": { "Ref": "ClientSecurityGroup" } },
+                "GroupDescription" : { "Ref" : "AWS::StackName" }
+            }
+        },
+
+        "DBInstance" : {
+            "Type": "AWS::RDS::DBInstance",
+            "Properties": {
+                "DBName"            : { "Ref" : "DBName" },
+                "Engine"            : "postgres",
+                "MasterUsername"    : { "Ref" : "DBUsername" },
+                "MasterUserPassword": { "Ref" : "DBPassword" },
+                "DBInstanceClass"   : { "Fn::If" : [ "DefaultDBClass",
+                                        { "Fn::FindInMap" : [ "config", { "Ref" : "Environment" }, "dbClass" ]},
+                                        { "Ref" : "DBClass" } ]},
+                "DBSecurityGroups"  : [{ "Ref" : "SecurityGroup" }],
+                "AllocatedStorage"  : { "Ref" : "DBAllocatedStorage" },
+                "DBSubnetGroupName" : { "Ref" : "DBSubnetGroup" }
+            }
+        }
+    },
+
+    "Outputs" : {
+        "DBName" : {
+            "Description" : "Database Name",
+            "Value" : { "Ref" : "DBName" }
+        },
+        "DBHost" : {
+            "Description" : "RDS Hostname",
+            "Value" : { "Fn::GetAtt" : [ "DBInstance", "Endpoint.Address" ]}
+        },
+        "DBPort" : {
+            "Description" : "RDS Port",
+            "Value" : { "Fn::GetAtt": [ "DBInstance", "Endpoint.Port" ]}
+        },
+        "DBClientSecGrp" : {
+            "Description" : "Security group in which to place RDS clients",
+            "Value" : { "Fn::GetAtt" : [ "ClientSecurityGroup", "GroupId" ]}
+        }
+    }
+}

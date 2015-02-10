@@ -64,6 +64,14 @@
             "Description": "Database name",
             "Type": "String"
         },
+        "DBHost": {
+            "Description": "RDS Host",
+            "Type": "String"
+        },
+        "DBPort": {
+            "Description": "RDS Port",
+            "Type": "String"
+        },
         "DBUsername": {
             "Description": "Database username",
             "Type": "String"
@@ -72,13 +80,9 @@
             "Description": "Database password",
             "Type": "String"
         },
-        "DBClass": {
-            "Description": "Database instance class",
-            "Type": "String"
-        },
-        "DBAllocatedStorage": {
-            "Description": "Database allocated storage",
-            "Type": "String"
+        "DBClientSecGrp" : {
+            "Description" : "Name of Redis Cluster client security group",
+            "Type" : "String"
         }
     },
 
@@ -95,38 +99,6 @@
     },
 
     "Resources" : {
-
-        "DBSubnetGroup" : {
-            "Type" : "AWS::RDS::DBSubnetGroup",
-            "Properties" : {
-                "DBSubnetGroupDescription" : { "Fn::Join" : [ "", [ { "Ref" : "AWS::StackName" }, " RDS" ] ]},
-                "SubnetIds" : { "Ref" : "PrivateSubnets" },
-                "Tags": [{ "Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ { "Ref" : "AWS::StackName" }, "dbsubetnetgroup" ] ]} }]
-            }
-        },
-
-        "DBInstance" : {
-            "Type": "AWS::RDS::DBInstance",
-            "Properties": {
-                "DBName"            : { "Ref" : "DBName" },
-                "Engine"            : "postgres",
-                "MasterUsername"    : { "Ref" : "DBUsername" },
-                "MasterUserPassword": { "Ref" : "DBPassword" },
-                "DBInstanceClass"   : { "Ref" : "DBClass" },
-                "DBSecurityGroups"  : [{ "Ref" : "DBSecurityGroup" }],
-                "AllocatedStorage"  : { "Ref" : "DBAllocatedStorage" },
-                "DBSubnetGroupName" : { "Ref" : "DBSubnetGroup" }
-            }
-        },
-
-        "DBSecurityGroup": {
-            "Type": "AWS::RDS::DBSecurityGroup",
-            "Properties": {
-                "EC2VpcId" : { "Ref" : "VpcId" },
-                "DBSecurityGroupIngress": { "EC2SecurityGroupId": { "Ref": "APIServerSecurityGroup" } },
-                "GroupDescription" : { "Fn::Join" : [ "", [ { "Ref" : "AWS::StackName" }, " api" ] ]}
-            }
-        },
 
         "KinesisStreamA" : {
             "Type" : "AWS::Kinesis::Stream",
@@ -352,8 +324,8 @@
                                     "DASHBOARD_REF" : { "Ref": "DashboardRef" },
                                     "KINESIS_A" : { "Ref": "KinesisStreamA" },
                                     "KINESIS_B" : { "Ref": "KinesisStreamB" },
-                                    "RDS_HOST" : { "Fn::GetAtt": [ "DBInstance", "Endpoint.Address"]},
-                                    "RDS_PORT" : { "Fn::GetAtt": [ "DBInstance", "Endpoint.Port"]},
+                                    "RDS_HOST" : { "Ref" : "DBHost" },
+                                    "RDS_PORT" : { "Ref" : "DBPort" },
                                     "RDS_USER" : { "Ref": "DBUsername" },
                                     "RDS_PW" : { "Ref": "DBPassword" },
                                     "RDS_DB_NAME" : { "Ref": "DBName" },
@@ -440,8 +412,8 @@
                                 "env" : { "PGPASSWORD" : {"Ref": "DBPassword"} },
                                 "command" : { "Fn::Join": [ "", [
                                     "psql -f /tmp/postgres_setup.sql -h ",
-                                    { "Fn::GetAtt" : [ "DBInstance", "Endpoint.Address" ]}, " -p ",
-                                    { "Fn::GetAtt": [ "DBInstance", "Endpoint.Port" ]}, " -U ", {"Ref": "DBUsername"}, "\n"
+                                    { "Ref" : "DBHost" }, " -p ",
+                                    { "Ref" : "DBPort" }, " -U ", {"Ref": "DBUsername"}, "\n"
                                 ] ]}
                             }
                         }
@@ -499,8 +471,8 @@
                                     "DASHBOARD_REF" : { "Ref": "DashboardRef" },
                                     "KINESIS_A" : { "Ref": "KinesisStreamA" },
                                     "KINESIS_B" : { "Ref": "KinesisStreamB" },
-                                    "RDS_HOST" : { "Fn::GetAtt": [ "DBInstance", "Endpoint.Address"]},
-                                    "RDS_PORT" : { "Fn::GetAtt": [ "DBInstance", "Endpoint.Port"]},
+                                    "RDS_HOST" : { "Ref" : "DBHost" },
+                                    "RDS_PORT" : { "Ref" : "DBPort" },
                                     "RDS_USER" : { "Ref": "DBUsername" },
                                     "RDS_PW" : { "Ref": "DBPassword" },
                                     "RDS_DB_NAME" : { "Ref": "DBName" },
@@ -580,7 +552,8 @@
             },
             "Properties" : {
                 "ImageId" : { "Fn::FindInMap" : [ "config", { "Ref" : "AWS::Region" }, "ami" ]},
-                "SecurityGroups" : [{ "Ref" : "APIServerSecurityGroup" }, { "Ref" : "VpcDefaultSecurityGroup" }, { "Ref" : "RedisClientSecGrp"}],
+                "SecurityGroups" : [{ "Ref" : "APIServerSecurityGroup" }, { "Ref" : "VpcDefaultSecurityGroup" },
+                                    { "Ref" : "RedisClientSecGrp" }, { "Ref" : "DBClientSecGrp" }],
                 "InstanceType" : "t2.small",
                 "KeyName": { "Ref": "KeyPair" },
                 "IamInstanceProfile": { "Ref": "RootInstanceProfile" },
@@ -674,18 +647,6 @@
         "KinesisStreamB" : {
             "Description" : "Kinesis Stream B",
             "Value" : { "Ref" : "KinesisStreamB" }
-        },
-        "DBHost" : {
-            "Description" : "RDS Host",
-            "Value" : {"Fn::GetAtt": [ "DBInstance", "Endpoint.Address"]}
-        },
-        "DBPort" : {
-            "Description" : "RDS Port",
-            "Value" : {"Fn::GetAtt": [ "DBInstance", "Endpoint.Port"]}
-        },
-        "DBInstance" : {
-            "Description" : "Main Postgres Database",
-            "Value" : { "Ref" : "DBInstance" }
         },
         "KinesisStreamA" : {
             "Description" : "The name of the Kinesis Stream. This was autogenerated by the Kinesis Resource named 'KinesisStreamA'",

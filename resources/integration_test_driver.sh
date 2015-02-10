@@ -131,11 +131,12 @@ run_tests() {
         ParameterKey=ArtifactBucket,UsePreviousValue=true \
         ParameterKey=ArtifactPath,UsePreviousValue=true \
         ParameterKey=KeyPair,UsePreviousValue=true \
+        ParameterKey=DBName,UsePreviousValue=true \
         ParameterKey=DBHost,UsePreviousValue=true \
         ParameterKey=DBPort,UsePreviousValue=true \
         ParameterKey=DBUsername,UsePreviousValue=true \
         ParameterKey=DBPassword,UsePreviousValue=true \
-        ParameterKey=DBName,UsePreviousValue=true \
+        ParameterKey=DBClientSecGrp,UsePreviousValue=true \
         ParameterKey=KinesisStreamA,UsePreviousValue=true \
         ParameterKey=KinesisStreamB,UsePreviousValue=true \
         ParameterKey=VpcId,UsePreviousValue=true \
@@ -157,11 +158,12 @@ run_tests() {
         ParameterKey=KeyPair,UsePreviousValue=true \
         ParameterKey=RedisCluster,UsePreviousValue=true \
         ParameterKey=RedisClientSecGrp,UsePreviousValue=true \
+        ParameterKey=DBName,UsePreviousValue=true \
+        ParameterKey=DBHost,UsePreviousValue=true \
+        ParameterKey=DBPort,UsePreviousValue=true \
         ParameterKey=DBUsername,UsePreviousValue=true \
         ParameterKey=DBPassword,UsePreviousValue=true \
-        ParameterKey=DBName,UsePreviousValue=true \
-        ParameterKey=DBClass,UsePreviousValue=true \
-        ParameterKey=DBAllocatedStorage,UsePreviousValue=true \
+        ParameterKey=DBClientSecGrp,UsePreviousValue=true \
         ParameterKey=VpcId,UsePreviousValue=true \
         ParameterKey=VpcDefaultSecurityGroup,UsePreviousValue=true \
         ParameterKey=NATSecurityGroup,UsePreviousValue=true \
