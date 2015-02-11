@@ -85,9 +85,28 @@ run_tests() {
 
     echo "Integration Test Stack: $promotably_stack" >> integration_test_results.txt
     echo >> integration_test_results.txt
-    echo "Network Stack: $network_stack" >> integration_test_results.txt
-    echo "API Stack: $api_stack" >> integration_test_results.txt
-    echo "Scribe Stack: $scribe_stack" >> integration_test_results.txt
+    echo "Network Stack:  $network_stack" >> integration_test_results.txt
+    echo "API Stack:      $api_stack" >> integration_test_results.txt
+    echo "Scribe Stack:   $scribe_stack" >> integration_test_results.txt
+    echo >> integration_test_results.txt
+
+    echo 'NETWORK TESTS' >> integration_test_results.txt
+    echo '------------------------------------------------------------------------------' >> integration_test_results.txt
+    # NTPD
+    ntpserver=$(grep '^server' /etc/ntp.conf | head -n 1 | awk '{print $2}')
+    echo "Test NTP to $ntpserver" >> integration_test_results.txt
+    $ssh_cmd ec2-user@$bastion_ip "$ssh_cmd $api_ip \"sudo sh -c 'service ntpd stop > /dev/null && ntpdate $ntpserver && service ntpd start > /dev/null && service ntpd status'\"" >> integration_test_results.txt 2>&1 || return $?
+    $ssh_cmd ec2-user@$bastion_ip "$ssh_cmd $scribe_ip \"sudo sh -c 'service ntpd stop > /dev/null && ntpdate $ntpserver && service ntpd start > /dev/null && service ntpd status'\"" >> integration_test_results.txt 2>&1 || return $?
+    # HTTP
+    echo "Test HTTP to http://checkip.amazonaws.com/" >> integration_test_results.txt
+    $ssh_cmd ec2-user@$bastion_ip "$ssh_cmd $api_ip \"curl -v --fail --connect-timeout 15 --max-time 30 http://checkip.amazonaws.com/\"" >> integration_test_results.txt 2>&1 || return $?
+    $ssh_cmd ec2-user@$bastion_ip "$ssh_cmd $scribe_ip \"curl -v --fail --connect-timeout 15 --max-time 30 http://checkip.amazonaws.com/\"" >> integration_test_results.txt 2>&1 || return $?
+    # HTTPS
+    echo "Test HTTPS to https://www.google.com/" >> integration_test_results.txt
+    $ssh_cmd ec2-user@$bastion_ip "$ssh_cmd $api_ip \"curl -v --fail --connect-timeout 15 --max-time 30 https://www.google.com/ > /dev/null\"" >> integration_test_results.txt 2>&1 || return $?
+    $ssh_cmd ec2-user@$bastion_ip "$ssh_cmd $scribe_ip \"curl -v --fail --connect-timeout 15 --max-time 30 https://www.google.com > /dev/null\"" >> integration_test_results.txt 2>&1 || return $?
+
+    echo >> integration_test_results.txt
     echo >> integration_test_results.txt
 
     echo 'API TEST RESULTS' >> integration_test_results.txt
@@ -225,6 +244,9 @@ if [ -n "$project" -a "$project" != 'None' -a "$build_num" != 'None' ]; then
     esac
 fi
 
+# remove SSH warnings
+sed -i '/Warning: Permanently added .* to the list of known hosts/d' integration_test_results.txt
+sed -i '/Connection to .* closed/d' integration_test_results.txt
 
 MESSAGE_ESCAPED_JSON=$(cat integration_test_results.txt)
 
