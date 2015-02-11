@@ -95,7 +95,8 @@
     },
 
     "Conditions" : {
-        "UseAllAvailabilityZones" : { "Fn::Equals" : [{ "Fn::Join" : [ "", { "Ref" : "AvailabilityZones" } ]}, "" ]}
+        "UseAllAvailabilityZones" : { "Fn::Equals" : [{ "Fn::Join" : [ "", { "Ref" : "AvailabilityZones" } ]}, "" ]},
+        "IsIntegration" : { "Fn::Equals" : [ { "Ref" : "Environment" }, "integration" ]}
     },
 
     "Mappings" : {
@@ -182,7 +183,8 @@
                 "GroupDescription" : { "Ref" : "AWS::StackName" },
                 "VpcId" : { "Ref" : "VpcId" },
                 "SecurityGroupIngress" : [
-                    { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "SourceSecurityGroupId" : { "Ref" : "ELBSecurityGroup" } }
+                    { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "SourceSecurityGroupId" : { "Ref" : "ELBSecurityGroup" } },
+                    { "IpProtocol" : "tcp", "FromPort" : "3000", "ToPort" : "3000", "SourceSecurityGroupId" : { "Ref" : "ELBSecurityGroup" } }
                 ]
             }
         },
@@ -206,7 +208,14 @@
                     "InstancePort" : "80",
                     "Protocol" : "TCP",
                     "InstanceProtocol" : "TCP"
-                }]
+                }],
+                "HealthCheck": {
+                    "Target": "HTTP:3000/health-check",
+                    "HealthyThreshold": "3",
+                    "UnhealthyThreshold": "3",
+                    "Interval": "10",
+                    "Timeout": "5"
+                }
             }
         },
 
@@ -615,8 +624,11 @@
                 "MinSize" : "1",
                 "MaxSize" : "2",
                 "DesiredCapacity" : 1,
+                "HealthCheckGracePeriod" : "300",
+                "Cooldown" : "600",
                 "VPCZoneIdentifier" : { "Ref" : "PrivateSubnets" },
                 "LoadBalancerNames" : [ { "Ref" : "APILoadBalancer" } ],
+                "HealthCheckType" : { "Fn::If" : [ "IsIntegration", "EC2", "ELB" ]},
                 "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" }, "PropagateAtLaunch" : "true" },
                          { "Key" : "Environment", "Value" : { "Ref" : "Environment" }, "PropagateAtLaunch" : "true" }]
             }
