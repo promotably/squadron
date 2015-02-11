@@ -3,6 +3,8 @@
 This project is designed to deploy the Promotably application(s) into
 the cloud in a repeatable, automatable way.
 
+TODO: Update README. This is woefully out of date.
+
 ## Theory of operations
 
 Leverage Cloudformation.  We maintain several inter-related stacks:
