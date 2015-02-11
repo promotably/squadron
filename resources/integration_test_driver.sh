@@ -249,6 +249,10 @@ cat << _END_ > "ses-message.json"
         "Text": {
             "Data": "$MESSAGE_ESCAPED_JSON",
             "Charset": "UTF-8"
+        },
+        "Html": {
+            "Data": "<html><body><pre style=\"font-family: consolas,monospace;font-size:10pt\">$MESSAGE_ESCAPED_JSON</pre></body></html>",
+            "Charset": "UTF-8"
         }
     }
 }
