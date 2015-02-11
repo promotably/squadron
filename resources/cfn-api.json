@@ -165,10 +165,10 @@
             }
         },
 
-        "LbSecurityGroup" : {
+        "ELBSecurityGroup" : {
             "Type" : "AWS::EC2::SecurityGroup",
             "Properties" : {
-                "GroupDescription" : { "Fn::Join" : [ "", [ { "Ref" : "AWS::StackName" }, " api ELB " ] ]},
+                "GroupDescription" : { "Fn::Join" : [ " - ", [ { "Ref" : "AWS::StackName" }, "ELB " ] ]},
                 "VpcId" : { "Ref" : "VpcId" },
                 "SecurityGroupIngress" : [
                     { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "CidrIp": "0.0.0.0/0" }
@@ -176,13 +176,13 @@
             }
         },
 
-        "APIServerSecurityGroup" : {
+        "SecurityGroup" : {
             "Type" : "AWS::EC2::SecurityGroup",
             "Properties" : {
-                "GroupDescription" : { "Fn::Join" : [ "", [ { "Ref" : "AWS::StackName" }, " api" ] ]},
+                "GroupDescription" : { "Ref" : "AWS::StackName" },
                 "VpcId" : { "Ref" : "VpcId" },
                 "SecurityGroupIngress" : [
-                    { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "SourceSecurityGroupId" : { "Ref" : "LbSecurityGroup" } }
+                    { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "SourceSecurityGroupId" : { "Ref" : "ELBSecurityGroup" } }
                 ]
             }
         },
@@ -191,7 +191,7 @@
             "Type" : "AWS::ElasticLoadBalancing::LoadBalancer",
             "Properties" : {
                 "Subnets": { "Ref": "PublicSubnets" },
-                "SecurityGroups": [{ "Ref": "LbSecurityGroup" }],
+                "SecurityGroups": [{ "Ref": "ELBSecurityGroup" }],
                 "Policies" : [{
                     "PolicyName" : "EnableProxyProtocol",
                     "PolicyType" : "ProxyProtocolPolicyType",
@@ -537,7 +537,7 @@
             },
             "Properties" : {
                 "ImageId" : { "Fn::FindInMap" : [ "config", { "Ref" : "AWS::Region" }, "ami" ]},
-                "SecurityGroups" : [{ "Ref" : "APIServerSecurityGroup" }, { "Ref" : "VpcDefaultSecurityGroup" },
+                "SecurityGroups" : [{ "Ref" : "SecurityGroup" }, { "Ref" : "VpcDefaultSecurityGroup" },
                                     { "Ref" : "RedisClientSecGrp" }, { "Ref" : "DBClientSecGrp" }],
                 "InstanceType" : "t2.small",
                 "KeyName": { "Ref": "KeyPair" },
