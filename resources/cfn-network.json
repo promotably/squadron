@@ -49,9 +49,7 @@
         "NATInstanceType" : {
             "Description" : "NET Device EC2 instance type",
             "Type" : "String",
-            "Default" : "m1.small",
-            "AllowedValues" : [ "t1.micro","m1.small","m1.medium","m1.large","m1.xlarge","m2.xlarge","m2.2xlarge","m2.4xlarge","m3.xlarge","m3.2xlarge","c1.medium","c1.xlarge","cc1.4xlarge","cc2.8xlarge","cg1.4xlarge"],
-            "ConstraintDescription" : "must be a valid EC2 instance type."
+            "Default" : "t2.micro"
         }
     },
 
@@ -95,12 +93,6 @@
                 "azB" : "eu-west-1b",
                 "azC" : "eu-west-1c"
             }
-        },
-
-        "AWSNATAMI" : {
-            "us-east-1"      : { "AMI" : "ami-c6699baf" },
-            "us-west-2"      : { "AMI" : "ami-52ff7262" },
-            "eu-west-1"      : { "AMI" : "ami-0b5b6c7f" }
         }
     },
 
@@ -540,11 +532,26 @@
             "Type" : "AWS::EC2::Instance",
             "Properties" : {
                 "InstanceType" : { "Ref" : "NATInstanceType" },
-                "SubnetId" : { "Ref" : "PublicSubnetA" },
+                "SubnetId" : { "Ref" : "PublicSubnetB" },
                 "KeyName"  : { "Fn::If" : [ "NATKeyName", { "Ref" : "NATKeyName" }, { "Ref" : "AWS::NoValue" } ] },
                 "SourceDestCheck" : "false",
-                "ImageId" : { "Fn::FindInMap" : [ "AWSNATAMI", { "Ref" : "AWS::Region" }, "AMI" ]},
+                "ImageId" : { "Fn::FindInMap" : [ "config", { "Ref" : "AWS::Region" }, "ami" ]},
                 "SecurityGroupIds" : [{ "Ref" : "NATSecurityGroup" }, { "Ref" : "VpcDefaultSecurityGroup" }],
+                "UserData" : { "Fn::Base64" : { "Fn::Join" : ["", [
+                    "#!/bin/bash -ex\n",
+                    "\n",
+                    "iptables -t nat -A POSTROUTING -o eth0 -s ",
+                        { "Fn::FindInMap" : [ "config", "cidr", "PrivateAll" ]},
+                        " -j MASQUERADE\n",
+                    "sysctl -w net.ipv4.ip_forward=1\n",
+                    "\n",
+                    "# retry yum upgrade if it fails, otherwise keep going\n",
+                    "if ! yum upgrade -y; then\n",
+                    "  sleep 30\n",
+                    "  yum upgrade -y || true\n",
+                    "fi\n",
+                    "\n"
+                ]]} },
                 "Tags": [{ "Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ { "Ref" : "AWS::StackName" }, "nat" ] ]} }]
             }
         },
