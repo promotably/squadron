@@ -53,9 +53,7 @@ if [ -n "$PROJECT" ]; then
             fi
 
             squadron_ref=$CI_COMMIT_ID
-            for file in $(dirname $0)/../resources/*; do
-                aws s3 cp "$file" "s3://$ARTIFACT_BUCKET/$CI_NAME/squadron/$squadron_ref/"
-            done
+            aws s3 sync "$(dirname $0)/../resources/" "s3://$ARTIFACT_BUCKET/$CI_NAME/squadron/$squadron_ref/"
             ;;
         api)
             api_ref=$CI_COMMIT_ID
