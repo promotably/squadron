@@ -324,6 +324,7 @@
                     "export api_stack=", { "Ref" : "Api" }, "\n",
                     "export scribe_stack=", { "Ref" : "Scribe" }, "\n",
                     "export test_result_email=", { "Ref" : "TestResultsEmail" }, "\n",
+                    "export elb_url=", { "Fn::GetAtt" : [ "Api", "Outputs.URL" ] }, "\n",
                     "export auto_term=", { "Ref" : "AutoTermStack" }, "\n",
                     "\n",
                     "screen -d -m -L -S integration_tests /root/run_tests.sh\n",

@@ -66,6 +66,10 @@ run_tests() {
         echo 'Fatal: $test_result_email is not set - foget to setup the environment?' >&2
         return 1
     fi
+    if [ -z "$elb_url" ]; then
+        echo 'Fatal: $elb_url is not set - foget to setup the environment?' >&2
+        return 1
+    fi
 
     set +x
 
@@ -196,6 +200,12 @@ run_tests() {
 
     echo >> integration_test_results.txt
     echo "API STACK STATUS AFTER UPDATE TO STAGING: $api_stack_status" >> integration_test_results.txt
+
+    # give ELB time to validate health checks
+    sleep 60
+    echo >> integration_test_results.txt
+    echo "Validating api health-check: $elb_url/health-check"
+    curl -v --connect-timeout 10 --max-time 15 "$elb_url/health-check" >> integration_test_results.txt 2>&1
 }
 
 echo -n > integration_test_results.txt
