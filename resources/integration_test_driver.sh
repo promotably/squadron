@@ -167,11 +167,6 @@ run_tests() {
         ParameterKey=AvailabilityZones,UsePreviousValue=true \
         ParameterKey=PublicSubnets,UsePreviousValue=true || return $?
 
-    scribe_stack_status=$(get_stack_status $scribe_stack)
-
-    echo >> integration_test_results.txt
-    echo "SCRIBE STACK STATUS AFTER UPDATE TO STAGING: $scribe_stack_status" >> integration_test_results.txt
-
     aws cloudformation update-stack --region $aws_region --stack-name $api_stack \
         --use-previous-template --capabilities CAPABILITY_IAM --parameters \
         ParameterKey=Environment,ParameterValue=staging \
@@ -195,6 +190,11 @@ run_tests() {
         ParameterKey=AvailabilityZones,UsePreviousValue=true \
         ParameterKey=PublicSubnets,UsePreviousValue=true \
         ParameterKey=PrivateSubnets,UsePreviousValue=true || return $?
+
+    scribe_stack_status=$(get_stack_status $scribe_stack)
+
+    echo >> integration_test_results.txt
+    echo "SCRIBE STACK STATUS AFTER UPDATE TO STAGING: $scribe_stack_status" >> integration_test_results.txt
 
     api_stack_status=$(get_stack_status $api_stack)
 
