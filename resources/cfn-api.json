@@ -207,7 +207,7 @@
                 }],
                 "Listeners" : [{
                     "LoadBalancerPort" : "443",
-                    "Protocol" : "HTTPS",
+                    "Protocol" : "SSL",
                     "InstancePort" : "80",
                     "InstanceProtocol" : "TCP",
                     "SSLCertificateId" : { "Fn::Join" : [ "", [
