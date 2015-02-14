@@ -210,10 +210,10 @@
                     "Protocol" : "HTTPS",
                     "InstancePort" : "80",
                     "InstanceProtocol" : "TCP",
-                    "SSLCertificateId" : { "Fn::Join" : [ "",
+                    "SSLCertificateId" : { "Fn::Join" : [ "", [
                         "arn:aws:iam::", { "Ref" : "AWS::AccountId" },
                         ":server-certificate/", { "Fn::FindInMap" : [ "config", "ssl", "name" ]}
-                        ]}
+                        ]]}
                     }
                 ],
                 "HealthCheck": {
