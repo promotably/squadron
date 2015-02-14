@@ -103,7 +103,9 @@
         "config" : {
             "us-east-1" : { "ami" : "ami-ee6e2a86" },
             "us-west-2" : { "ami" : "ami-c1c39af1" },
-            "eu-west-2" : { "ami" : "ami-8723aef0" }
+            "eu-west-2" : { "ami" : "ami-8723aef0" },
+
+            "ssl" : { "name" : "wildcard-promotably.com-1423699200-2016-02-12" }
         }
     },
 
@@ -172,7 +174,7 @@
                 "GroupDescription" : { "Fn::Join" : [ " - ", [ { "Ref" : "AWS::StackName" }, "ELB " ] ]},
                 "VpcId" : { "Ref" : "VpcId" },
                 "SecurityGroupIngress" : [
-                    { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "CidrIp": "0.0.0.0/0" }
+                    { "IpProtocol" : "tcp", "FromPort" : "443", "ToPort" : "443", "CidrIp": "0.0.0.0/0" }
                 ]
             }
         },
@@ -189,7 +191,7 @@
             }
         },
 
-        "APILoadBalancer" : {
+        "LoadBalancer" : {
             "Type" : "AWS::ElasticLoadBalancing::LoadBalancer",
             "Properties" : {
                 "Subnets": { "Ref": "PublicSubnets" },
@@ -204,11 +206,16 @@
                     "InstancePorts" : ["80"]
                 }],
                 "Listeners" : [{
-                    "LoadBalancerPort" : "80",
+                    "LoadBalancerPort" : "443",
+                    "Protocol" : "HTTPS",
                     "InstancePort" : "80",
-                    "Protocol" : "TCP",
-                    "InstanceProtocol" : "TCP"
-                }],
+                    "InstanceProtocol" : "TCP",
+                    "SSLCertificateId" : { "Fn::Join" : [ "",
+                        "arn:aws:iam::", { "Ref" : "AWS::AccountId" },
+                        ":server-certificate/", { "Fn::FindInMap" : [ "config", "ssl", "name" ]}
+                        ]}
+                    }
+                ],
                 "HealthCheck": {
                     "Target": "HTTP:3000/health-check",
                     "HealthyThreshold": "3",
@@ -627,7 +634,7 @@
                 "HealthCheckGracePeriod" : "300",
                 "Cooldown" : "600",
                 "VPCZoneIdentifier" : { "Ref" : "PrivateSubnets" },
-                "LoadBalancerNames" : [ { "Ref" : "APILoadBalancer" } ],
+                "LoadBalancerNames" : [ { "Ref" : "LoadBalancer" } ],
                 "HealthCheckType" : { "Fn::If" : [ "IsIntegration", "EC2", "ELB" ]},
                 "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" }, "PropagateAtLaunch" : "true" },
                          { "Key" : "Environment", "Value" : { "Ref" : "Environment" }, "PropagateAtLaunch" : "true" }]
@@ -643,7 +650,7 @@
         },
         "URL": {
             "Description": "URL for testing",
-            "Value": { "Fn::Join": [ "", [ "http://", { "Fn::GetAtt": [ "APILoadBalancer", "DNSName" ] } ] ] }
+            "Value": { "Fn::Join": [ "", [ "https://", { "Fn::GetAtt": [ "LoadBalancer", "DNSName" ] } ] ] }
         }
     }
 }
