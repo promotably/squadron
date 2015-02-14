@@ -639,6 +639,20 @@
                 "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" }, "PropagateAtLaunch" : "true" },
                          { "Key" : "Environment", "Value" : { "Ref" : "Environment" }, "PropagateAtLaunch" : "true" }]
             }
+        },
+
+        "ElbDnsRecord" : {
+            "Type" : "AWS::Route53::RecordSet",
+            "Properties" : {
+                "HostedZoneName" : "promotably.com.",
+                "Name" : { "Fn::Join" : [ "", [ { "Ref" : "AWS::StackName" }, ".promotably.com." ]]},
+                "Type" : "A",
+                "AliasTarget" : {
+                  "DNSName" : { "Fn::GetAtt": [ "LoadBalancer", "DNSName" ] },
+                  "EvaluateTargetHealth" : "true",
+                  "HostedZoneId" : { "Fn::GetAtt": [ "LoadBalancer", "CanonicalHostedZoneNameID" ] }
+                }
+            }
         }
     },
 
@@ -650,7 +664,7 @@
         },
         "URL": {
             "Description": "URL for testing",
-            "Value": { "Fn::Join": [ "", [ "https://", { "Fn::GetAtt": [ "LoadBalancer", "DNSName" ] } ] ] }
+            "Value": { "Fn::Join": [ "", [ "https://", { "Ref" : "AWS::StackName" }, ".promotably.com" ]]}
         }
     }
 }
