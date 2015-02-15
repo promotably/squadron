@@ -35,12 +35,18 @@
             "Default" : "999.999.999.999/32",
             "AllowedPattern" : "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
             "ConstraintDescription" : "must be a valid CIDR range of the form x.x.x.x/x."
+        },
+        "Environment" : {
+            "Description" : "Environment tag",
+            "Type" : "String",
+            "Default" : "none"
         }
     },
 
     "Conditions" : {
         "SSHFrom" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "SSHFrom" }, "999.999.999.999/32" ] }] },
-        "KeyName" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "KeyName" }, "None" ] }] }
+        "KeyName" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "KeyName" }, "None" ] }] },
+        "IsNotIntegration" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "Environment" }, "integration" ]}] }
     },
 
     "Mappings" : {
@@ -227,6 +233,7 @@
         },
 
         "DnsRecord" : {
+            "Condition" : "IsNotIntegration",
             "Type" : "AWS::Route53::RecordSet",
             "Properties" : {
                 "HostedZoneName" : "promotably.net.",
