@@ -122,7 +122,7 @@
             "Properties" : {
                 "TemplateURL" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "CiName" }, "/squadron/", { "Ref" : "SquadronRef" }, "/cfn-woo.json" ] ]},
                 "Parameters" : {
-                    "Name" : { "Ref" : "SshKey" },
+                    "KeyName" : { "Ref" : "SshKey" },
                     "SSHFrom" : { "Fn::Join" : [ "/", [ { "Ref" : "TestHostIPAddress" }, "32" ]]}
                 },
                 "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}
