@@ -1,0 +1,348 @@
+{
+    "AWSTemplateFormatVersion" : "2010-09-09",
+    "Description" : "Jenkins",
+
+    "Parameters" : {
+        "SnapshotId" : {
+            "Description" : "Snapshot to use for Jenkins master",
+            "Type" : "String",
+            "Default" : "none"
+        },
+        "VolumeSize" : {
+            "Description" : "Size (GB) of EBS Volume to create (if SnapshotId is not specified)",
+            "Type" : "String",
+            "MinLength" : "1",
+            "MaxLength" : "3",
+            "Default" : "30",
+            "AllowedPattern" : "[0-9]*"
+        },
+        "DnsRecord" : {
+            "Description" : "Short name of DNS record to create",
+            "Type" : "String",
+            "Default" : "jenkins"
+        },
+        "KeyName" : {
+            "Description" : "Name of an EC2 KeyPair to enable SSH access to the host (default is no ssh key)",
+            "Type" : "String",
+            "Default": "None",
+            "MinLength": "1",
+            "MaxLength": "255",
+            "AllowedPattern" : "[-_ a-zA-Z0-9]*",
+            "ConstraintDescription" : "can contain only alphanumeric characters, spaces, dashes and underscores."
+        },
+        "SSHFrom" : {
+            "Description" : "Lockdown SSH access to the bastion host (default is no access)",
+            "Type" : "String",
+            "MinLength": "9",
+            "MaxLength": "18",
+            "Default" : "999.999.999.999/32",
+            "AllowedPattern" : "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+            "ConstraintDescription" : "must be a valid CIDR range of the form x.x.x.x/x."
+        }
+    },
+
+    "Conditions" : {
+        "SSHFrom" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "SSHFrom" }, "999.999.999.999/32" ] }] },
+        "KeyName" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "KeyName" }, "None" ] }] },
+        "Snapshot" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "SnapshotId" }, "none" ]} ]}
+    },
+
+    "Mappings" : {
+        "config" : {
+            "us-east-1" : {
+                "ami" : "ami-ee6e2a86",
+                "az" :  "us-east-1c"
+            },
+            "us-west-2" : {
+                "ami" : "ami-c1c39af1",
+                "az" :  "us-west-2a"
+            },
+            "eu-west-2" : {
+                "ami" : "ami-8723aef0",
+                "az" :  "eu-west-2a"
+            },
+
+            "ssl" : { "name" : "wildcard-promotably.com-1423699200-2016-02-12" }
+        }
+    },
+
+    "Resources" : {
+
+        "Role": {
+            "Type" : "AWS::IAM::Role",
+            "Properties" : {
+                "Path" : "/",
+                "AssumeRolePolicyDocument": {
+                    "Version" : "2012-10-17",
+                    "Statement" : [{
+                        "Effect" : "Allow",
+                        "Principal" : { "Service" : [ "ec2.amazonaws.com" ] },
+                        "Action" : [ "sts:AssumeRole" ]
+                    }]
+                },
+                "Policies" : [{
+                    "PolicyName" : "root",
+                    "PolicyDocument" : {
+                        "Version" : "2012-10-17",
+                        "Statement" : [{ "Effect": "Allow", "Action": "*", "Resource": "*" }]
+                    }
+                }]
+            }
+        },
+
+        "InstanceProfile" : {
+            "Type" : "AWS::IAM::InstanceProfile",
+            "Properties" : {
+                "Path" : "/",
+                "Roles" : [ { "Ref": "Role" } ]
+            }
+        },
+
+        "ELBSecurityGroup" : {
+            "Type" : "AWS::EC2::SecurityGroup",
+            "Properties" : {
+                "GroupDescription" : { "Fn::Join" : [ " - ", [ { "Ref" : "AWS::StackName" }, "ELB " ] ]},
+                "SecurityGroupIngress" : [
+                    { "IpProtocol" : "tcp", "FromPort" : "443", "ToPort" : "443", "CidrIp": "0.0.0.0/0" }
+                ]
+            }
+        },
+
+        "SecurityGroup" : {
+            "Type" : "AWS::EC2::SecurityGroup",
+            "Properties" : {
+                "GroupDescription" : { "Ref" : "AWS::StackName" },
+                "SecurityGroupIngress" : [
+                    { "IpProtocol" : "tcp", "FromPort" : "8080", "ToPort" : "8080", "SourceSecurityGroupName" : { "Ref" : "ELBSecurityGroup" } }
+                ]
+            }
+        },
+
+        "SshIngress" : {
+            "Type" : "AWS::EC2::SecurityGroupIngress",
+            "Condition" : "SSHFrom",
+            "Properties" : {
+                "GroupName" : { "Ref" : "SecurityGroup" },
+                "IpProtocol" : "tcp",
+                "CidrIp" : { "Ref" : "SSHFrom" },
+                "FromPort" : "22", "ToPort" : "22"
+            }
+        },
+
+        "LoadBalancer" : {
+            "Type" : "AWS::ElasticLoadBalancing::LoadBalancer",
+            "Properties" : {
+                "AvailabilityZones": [{ "Fn::FindInMap" : [ "config", { "Ref" : "AWS::Region" }, "az" ] }],
+                "SecurityGroups" : [ { "Fn::GetAtt" : [ "ELBSecurityGroup", "GroupId" ]} ],
+                "Listeners" : [{
+                    "LoadBalancerPort" : "443",
+                    "Protocol" : "HTTPS",
+                    "InstancePort" : "8080",
+                    "InstanceProtocol" : "HTTP",
+                    "SSLCertificateId" : { "Fn::Join" : [ "", [
+                        "arn:aws:iam::", { "Ref" : "AWS::AccountId" },
+                        ":server-certificate/", { "Fn::FindInMap" : [ "config", "ssl", "name" ]}
+                        ]]}
+                    }
+                ],
+                "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" } },
+                         { "Key" : "Environment", "Value" : "ci" }]
+            }
+        },
+
+        "Volume" : {
+            "Type":"AWS::EC2::Volume",
+            "DeletionPolicy" : "Snapshot",
+            "Properties" : {
+                "VolumeType" : "gp2",
+                "AvailabilityZone": { "Fn::FindInMap" : [ "config", { "Ref" : "AWS::Region" }, "az" ] },
+                "Size" : { "Fn::If" : [ "Snapshot",
+                    { "Ref" : "AWS::NoValue" },
+                    { "Ref" : "VolumeSize" }
+                ]},
+                "SnapshotId" : { "Fn::If" : [ "Snapshot",
+                    { "Ref" : "SnapshotId" },
+                    { "Ref" : "AWS::NoValue" }
+                ]},
+                "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" } },
+                         { "Key" : "Environment", "Value" : "ci" }]
+            }
+        },
+
+        "LaunchConfig" : {
+            "Type" : "AWS::AutoScaling::LaunchConfiguration",
+            "Metadata" : {
+                "AWS::CloudFormation::Init" : {
+                    "configSets" : {
+                        "base" : [ "base" ],
+                        "jenkins" : [ "jenkins" ],
+                        "default" : [ { "ConfigSet" : "base" }, { "ConfigSet" : "jenkins" } ]
+                    },
+                    "base" : {
+                        "packages" : {
+                            "yum" : {
+                                "java-1.7.0-openjdk" : []
+                            }
+                        },
+                        "files" : {
+                            "/etc/yum.repos.d/jenkins.repo" : {
+                                "source" : "http://pkg.jenkins-ci.org/redhat-stable/jenkins.repo",
+                                "mode"   : "000644",
+                                "owner"  : "root",
+                                "group"  : "root"
+                            },
+                            "/root/wait-for-volume.sh" : {
+                                "content" : { "Fn::Join" : [ "", [
+                                    "#!/bin/bash -ex\n",
+                                    "\n",
+                                    ". /etc/profile.d/aws-apitools-common.sh\n",
+                                    "instance_id=$(ec2-metadata -i | awk '{print $2}')\n",
+                                    "\n",
+                                    "while [ \"$(aws ec2 describe-volumes --volume-ids {{VOL}}",
+                                      " --region {{REGION}} --query 'Volumes[0].State' --output=text)\"",
+                                      " != 'available' ]; do\n",
+                                    "  sleep 10\n",
+                                    "done\n",
+                                    "\n",
+                                    "aws ec2 attach-volume --region {{REGION}} --volume-id {{VOL}}",
+                                      " --instance-id $instance_id --device /dev/sdf --output=text\n",
+                                    "\n",
+                                    "while [ \"$(aws ec2 describe-volumes --volume-ids {{VOL}}",
+                                      " --region {{REGION}} --query 'Volumes[0].Attachments[0].InstanceId' --output=text)\"",
+                                      " != \"$instance_id\" ]; do\n",
+                                    "  sleep 10\n",
+                                    "done\n",
+                                    "\n",
+                                    "while [ ! -e /dev/xvdf ]; do\n",
+                                    "  sleep 1\n",
+                                    "done\n",
+                                    "if ! blkid /dev/xvdf; then\n",
+                                    "  mkfs.ext4 -L /ebs -m 0 /dev/xvdf\n",
+                                    "fi\n"
+                                ]]},
+                                "context" : {
+                                    "VOL" : { "Ref" : "Volume" },
+                                    "REGION" : { "Ref" : "AWS::Region" }
+                                },
+                                "mode"   : "000755",
+                                "owner"  : "root",
+                                "group"  : "root"
+                            }
+                        },
+                        "commands" : {
+                            "00-wait-for-volume" : {
+                                "command" : "/root/wait-for-volume.sh"
+                            },
+                            "10-import-jenkins-rpm-key" : {
+                                "command" : "rpm --import http://pkg.jenkins-ci.org/redhat-stable/jenkins-ci.org.key"
+                            }
+                        }
+                    },
+                    "jenkins" : {
+                        "packages" : {
+                            "yum" : {
+                                "jenkins" : []
+                            }
+                        },
+                        "commands" : {
+                            "00-setup-jenkins" : {
+                                "command" : { "Fn::Join" : [ "", [
+                                    "mkdir /ebs\n",
+                                    "mount -L /ebs /ebs\n",
+                                    "if [ ! -d /ebs/jenkins ]; then\n",
+                                    "  mkdir -p /ebs/jenkins /ebs/jenkins-logs\n",
+                                    "  chown -R jenkins:jenkins /ebs/*\n",
+                                    "fi  \n",
+                                    "\n",
+                                    "cd /var/log/\n",
+                                    "rm -rf jenkins\n",
+                                    "ln -s /ebs/jenkins-logs jenkins\n",
+                                    "\n",
+                                    "memtotal=$(sed -rn 's,^MemTotal:\\s+([0-9]+) kB$,\\1,p' /proc/meminfo)\n",
+                                    "if [ -n \"$memtotal\" ]; then\n",
+                                    "    sed -i \"s,^JENKINS_JAVA_OPTIONS=\\\"\\([^\\\"]*\\)\\\"$,JENKINS_JAVA_OPTIONS=\\\"-Xmx$(($memtotal * 8 / 10240))m \\1\\\",\" /etc/sysconfig/jenkins\n",
+                                    "fi\n",
+                                    "\n",
+                                    "sed -i 's,^JENKINS_HOME=.*$,JENKINS_HOME=\"/ebs/jenkins\",' /etc/sysconfig/jenkins\n"
+                                ]]}
+                            }
+                        },
+                        "services" : {
+                            "sysvinit" : {
+                                "jenkins" : {
+                                    "enabled" : "true",
+                                    "ensureRunning" : "true",
+                                    "files" : [ "/etc/sysconfig/jenkins" ]
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "Properties" : {
+                "ImageId" : { "Fn::FindInMap" : [ "config", { "Ref" : "AWS::Region" }, "ami" ]},
+                "SecurityGroups" : [{ "Ref" : "SecurityGroup" }],
+                "IamInstanceProfile": { "Ref": "InstanceProfile" },
+                "InstanceType" : "t2.small",
+                "KeyName"  : { "Fn::If" : [ "KeyName",
+                    { "Ref" : "KeyName" }, { "Ref" : "AWS::NoValue" } ]},
+                "UserData" : { "Fn::Base64" : { "Fn::Join" : ["", [
+                    "#!/bin/bash -ex\n",
+                    "\n",
+                    "# retry yum upgrade if it fails, otherwise keep going\n",
+                    "if ! yum upgrade -y; then\n",
+                    "  sleep 30\n",
+                    "  yum upgrade -y || true\n",
+                    "fi\n",
+                    "\n",
+                    "/opt/aws/bin/cfn-init -v -s ", { "Ref": "AWS::StackId" },
+                    " -r LaunchConfig --region ", { "Ref": "AWS::Region" }, "\n",
+                    "\n"
+                ]]} }
+            }
+        },
+
+        "LaunchGroup" : {
+            "Type" : "AWS::AutoScaling::AutoScalingGroup",
+            "Properties" : {
+                "AvailabilityZones": [{ "Fn::FindInMap" : [ "config", { "Ref" : "AWS::Region" }, "az" ] }],
+                "LaunchConfigurationName" : { "Ref" : "LaunchConfig" },
+                "MinSize" : "0",
+                "MaxSize" : "1",
+                "DesiredCapacity" : 1,
+                "HealthCheckGracePeriod" : "300",
+                "Cooldown" : "600",
+                "LoadBalancerNames" : [ { "Ref" : "LoadBalancer" } ],
+                "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" }, "PropagateAtLaunch" : "true" },
+                         { "Key" : "Environment", "Value" : "ci", "PropagateAtLaunch" : "true" }]
+            }
+        },
+
+        "ElbDnsRecord" : {
+            "Type" : "AWS::Route53::RecordSet",
+            "Properties" : {
+                "HostedZoneName" : "promotably.com.",
+                "Name" : { "Fn::Join" : [ "", [ { "Ref" : "DnsRecord" }, ".promotably.com." ]]},
+                "Type" : "A",
+                "AliasTarget" : {
+                    "DNSName" : { "Fn::GetAtt": [ "LoadBalancer", "DNSName" ] },
+                    "EvaluateTargetHealth" : "true",
+                    "HostedZoneId" : { "Fn::GetAtt": [ "LoadBalancer", "CanonicalHostedZoneNameID" ] }
+                }
+            }
+        }
+    },
+
+    "Outputs" : {
+        "LaunchGroup" : {
+            "Description" : "ASG of the API servers",
+            "Value" : { "Ref" : "LaunchGroup" }
+        },
+        "URL": {
+            "Description": "URL for testing",
+            "Value": { "Fn::Join" : [ "", [ "https://", { "Ref" : "ElbDnsRecord" } ]]}
+        }
+    }
+}
+
+
