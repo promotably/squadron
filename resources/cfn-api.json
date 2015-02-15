@@ -91,12 +91,19 @@
         "KinesisStreamB" : {
             "Description" : "The name of the Kinesis Stream B",
             "Type" : "String"
+        },
+        "DnsOverride" : {
+            "Description" : "Override the Route53 record created for the ELB ('disable' for no record creation)",
+            "Type" : "String",
+            "Default" : "default"
         }
     },
 
     "Conditions" : {
         "UseAllAvailabilityZones" : { "Fn::Equals" : [{ "Fn::Join" : [ "", { "Ref" : "AvailabilityZones" } ]}, "" ]},
-        "IsIntegration" : { "Fn::Equals" : [ { "Ref" : "Environment" }, "integration" ]}
+        "IsIntegration" : { "Fn::Equals" : [ { "Ref" : "Environment" }, "integration" ]},
+        "CreateDns" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "DnsOverride" }, "disable" ]} ]},
+        "DnsOverride" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "DnsOverride" }, "default" ]} ]}
     },
 
     "Mappings" : {
@@ -244,7 +251,7 @@
                         "boot" : [ "boot" ],
                         "waitForHealthcheck" : [ "waitForHealthcheck" ],
                         "integration" : [ "integration" ],
-                        "default" : [ { "ConfigSet" : "base" }, "dbinit" ]
+                        "default" : [ { "ConfigSet" : "base" }, { "ConfigSet" : "dbinit" } ]
                     },
                     "base" : {
                         "packages" : {
@@ -643,14 +650,18 @@
 
         "ElbDnsRecord" : {
             "Type" : "AWS::Route53::RecordSet",
+            "Condition" : "CreateDns",
             "Properties" : {
                 "HostedZoneName" : "promotably.com.",
-                "Name" : { "Fn::Join" : [ "", [ { "Ref" : "AWS::StackName" }, ".promotably.com." ]]},
+                "Name" : { "Fn::Join" : [ "", [
+                    { "Fn::If" : [ "DnsOverride", { "Ref" : "DnsOverride" }, { "Ref" : "AWS::StackName" } ]},
+                    ".promotably.com."
+                ]]},
                 "Type" : "A",
                 "AliasTarget" : {
-                  "DNSName" : { "Fn::GetAtt": [ "LoadBalancer", "DNSName" ] },
-                  "EvaluateTargetHealth" : "true",
-                  "HostedZoneId" : { "Fn::GetAtt": [ "LoadBalancer", "CanonicalHostedZoneNameID" ] }
+                    "DNSName" : { "Fn::GetAtt": [ "LoadBalancer", "DNSName" ] },
+                    "EvaluateTargetHealth" : "true",
+                    "HostedZoneId" : { "Fn::GetAtt": [ "LoadBalancer", "CanonicalHostedZoneNameID" ] }
                 }
             }
         }
@@ -664,7 +675,10 @@
         },
         "URL": {
             "Description": "URL for testing",
-            "Value": { "Fn::Join": [ "", [ "https://", { "Ref" : "AWS::StackName" }, ".promotably.com" ]]}
+            "Value": { "Fn::If" : [ "CreateDns",
+                { "Fn::Join" : [ "", [ "https://", { "Ref" : "ElbDnsRecord" }, ".promotably.com" ]]},
+                { "Fn::Join" : [ "", [ "https://", { "Fn::GetAtt": [ "LoadBalancer", "DNSName" ] } ]]}
+            ]}
         }
     }
 }

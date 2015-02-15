@@ -74,6 +74,11 @@
             "Type" : "String",
             "Default" : "true",
             "AllowedValues" : [ "true", "false" ]
+        },
+        "ApiDnsName" : {
+            "Description" : "Hostname for Api DNS record",
+            "Type" : "String",
+            "Default" : "default"
         }
     },
 
@@ -124,7 +129,7 @@
                 "Parameters" : {
                     "KeyName" : { "Ref" : "SshKey" },
                     "SSHFrom" : { "Fn::Join" : [ "/", [ { "Ref" : "TestHostIPAddress" }, "32" ]]},
-                    "Environment" : "integration"
+                    "DnsOverride" : "disable"
                 },
                 "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}
             }
@@ -222,7 +227,8 @@
                     "DBPassword" : "promotably",
                     "DBClientSecGrp" : { "Fn::GetAtt" : [ "Rds", "Outputs.DBClientSecGrp" ] },
                     "KinesisStreamA" : { "Fn::GetAtt" : [ "Kinesis", "Outputs.KinesisStreamA" ] },
-                    "KinesisStreamB" : { "Fn::GetAtt" : [ "Kinesis", "Outputs.KinesisStreamB" ] }
+                    "KinesisStreamB" : { "Fn::GetAtt" : [ "Kinesis", "Outputs.KinesisStreamB" ] },
+                    "DnsOverride" : { "Ref" : "ApiDnsName" }
                 },
                 "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}
             }

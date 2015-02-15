@@ -189,7 +189,8 @@ run_tests() {
         ParameterKey=NATSecurityGroup,UsePreviousValue=true \
         ParameterKey=AvailabilityZones,UsePreviousValue=true \
         ParameterKey=PublicSubnets,UsePreviousValue=true \
-        ParameterKey=PrivateSubnets,UsePreviousValue=true || return $?
+        ParameterKey=PrivateSubnets,UsePreviousValue=true \
+        ParameterKey=DnsOverride,UsePreviousValue=true || return $?
 
     scribe_stack_status=$(get_stack_status $scribe_stack)
 
