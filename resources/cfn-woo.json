@@ -1,0 +1,243 @@
+{
+    "AWSTemplateFormatVersion" : "2010-09-09",
+    "Description" : "Woo Store",
+
+    "Parameters" : {
+        "WpVersion" : {
+            "Description" : "Version of Wordpress to install",
+            "Type" : "String",
+            "Default" : "latest"
+        },
+        "WooVersion" : {
+            "Description" : " Version of WooCommerce to install",
+            "Type" : "String",
+            "Default" : "latest"
+        },
+        "InstanceType" : {
+            "Description" : "EC2 Instance-Type",
+            "Type" : "String",
+            "Default" : "t2.small"
+        },
+        "KeyName" : {
+            "Description" : "Name of an EC2 KeyPair to enable SSH access to the host (default is no ssh key)",
+            "Type" : "String",
+            "Default": "None",
+            "MinLength": "1",
+            "MaxLength": "255",
+            "AllowedPattern" : "[-_ a-zA-Z0-9]*",
+            "ConstraintDescription" : "can contain only alphanumeric characters, spaces, dashes and underscores."
+        },
+        "SSHFrom" : {
+            "Description" : "Lockdown SSH access to the bastion host (default is no access)",
+            "Type" : "String",
+            "MinLength": "9",
+            "MaxLength": "18",
+            "Default" : "999.999.999.999/32",
+            "AllowedPattern" : "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+            "ConstraintDescription" : "must be a valid CIDR range of the form x.x.x.x/x."
+        }
+    },
+
+    "Conditions" : {
+        "SSHFrom" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "SSHFrom" }, "999.999.999.999/32" ] }] },
+        "KeyName" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "KeyName" }, "None" ] }] }
+    },
+
+    "Mappings" : {
+        "config" : {
+            "us-east-1" : { "ami" : "ami-ee6e2a86" },
+            "us-west-2" : { "ami" : "ami-c1c39af1" },
+            "eu-west-2" : { "ami" : "ami-8723aef0" }
+        }
+    },
+
+
+    "Resources" : {
+
+        "SecurityGroup" : {
+            "Type" : "AWS::EC2::SecurityGroup",
+            "Properties" : {
+                "GroupDescription" : { "Ref" : "AWS::StackName" },
+                "SecurityGroupIngress" : [
+                    { "IpProtocol" : "tcp", "FromPort" : "80",  "ToPort" : "80",  "CidrIp" : "0.0.0.0/0" }
+                ]
+            }
+        },
+
+        "SshIngress" : {
+            "Type" : "AWS::EC2::SecurityGroupIngress",
+            "Condition" : "SSHFrom",
+            "Properties" : {
+                "GroupName" : { "Ref" : "SecurityGroup" },
+                "IpProtocol" : "tcp",
+                "CidrIp" : { "Ref" : "SSHFrom" },
+                "FromPort" : "22", "ToPort" : "22"
+            }
+        },
+
+        "Instance" : {
+            "Type" : "AWS::EC2::Instance",
+            "Metadata" : {
+                "AWS::CloudFormation::Init" : {
+                    "config" : {
+                        "packages" : {
+                            "yum" : {
+                                "httpd" : [],
+                                "mysql" : [],
+                                "mysql-server" : [],
+                                "php" : [],
+                                "php-mysql" : [],
+                                "php-gd" : [],
+                                "php-pspell" : [],
+                                "php-snmp" : [],
+                                "php-xml" : [],
+                                "php-xmlrpc" : [],
+                                "php-pecl-apc" : [],
+                                "php-pecl-memcache" : []
+                            }
+                        },
+                        "files" : {
+                            "/var/www/html/index.html" : {
+                                "content" : "<!doctype html><html><head></head><body></body></html>\n",
+                                "mode"    : "000644",
+                                "owner"   : "root",
+                                "group"   : "root"
+                            },
+                            "/etc/httpd/conf.d/wordpress.conf" : {
+                                "content" : { "Fn::Join" : [ "", [
+                                    "Alias /rebelstore /var/www/wordpress\n",
+                                    "\n",
+                                    "<Directory /var/www/wordpress>\n",
+                                    "    DirectoryIndex index.php index.html\n",
+                                    "    Options Indexes FollowSymLinks MultiViews\n",
+                                    "    AllowOverride All\n",
+                                    "    Order allow,deny\n",
+                                    "    Allow from All\n",
+                                    "</Directory>\n"
+                                ]]},
+                                "mode"    : "000644",
+                                "owner"   : "root",
+                                "group"   : "root"
+                            },
+                            "/tmp/db-init.mysql" : {
+                                "content" : { "Fn::Join" : [ "", [
+                                    "DROP DATABASE IF EXISTS test;\n",
+                                    "DROP DATABASE IF EXISTS wordpress;\n",
+                                    "CREATE DATABASE wordpress;\n",
+                                    "GRANT ALL ON wordpress.* TO 'wordpress'@'localhost' IDENTIFIED BY 'pr0m0tably'\n"
+                                ]]}
+                            },
+                            "/tmp/install.sh" : {
+                                "content" : { "Fn::Join" : [ "", [
+                                    "#!/bin/bash\n",
+                                    "set -ex\n",
+                                    "\n",
+                                    "if [ '{{WP_VER}}' = 'latest' ]; then\n",
+                                    "  curl -L -o /tmp/wordpress.tar.gz https://wordpress.org/latest.tar.gz\n",
+                                    "else\n",
+                                    "  curl -L -o /tmp/wordpress.tar.gz http://wordpress.org/wordpress-{{WP_VER}}.tar.gz\n",
+                                    "fi\n",
+                                    "if [ '{{WOO_VER}}' = 'latest' ]; then\n",
+                                    "  curl -L -o /tmp/woo.zip http://downloads.wordpress.org/plugin/woocommerce.zip\n",
+                                    "else\n",
+                                    "  curl -L -o /tmp/woo.zip https://github.com/woothemes/woocommerce/archive/{{WOO_VER}}.zip\n",
+                                    "fi\n",
+                                    "\n",
+                                    "rm -rf /var/www/wordpress /tmp/extract\n",
+                                    "mkdir /tmp/extract && cd /tmp/extract\n",
+                                    "tar xzf /tmp/wordpress.tar.gz\n",
+                                    "mv * /var/www/wordpress\n",
+                                    "unzip /tmp/woo.zip\n",
+                                    "mv * /var/www/wordpress/wp-content/plugins/woocommerce\n",
+                                    "\n",
+                                    "cp /var/www/wordpress/wp-config-sample.php /var/www/wordpress/wp-config.php\n",
+                                    "sed -i 's/database_name_here/wordpress/' /var/www/wordpress/wp-config.php\n",
+                                    "sed -i 's/username_here/wordpress/' /var/www/wordpress/wp-config.php\n",
+                                    "sed -i 's/password_here/pr0m0tably/' /var/www/wordpress/wp-config.php\n",
+                                    "\n",
+                                    "sed -i \"s|define('AUTH_KEY'.*$|define('AUTH_KEY', '$(openssl rand -base64 32)');|\" /var/www/wordpress/wp-config.php\n",
+                                    "sed -i \"s|define('SECURE_AUTH_KEY'.*$|define('SECURE_AUTH_KEY', '$(openssl rand -base64 32)');|\" /var/www/wordpress/wp-config.php\n",
+                                    "sed -i \"s|define('LOGGED_IN_KEY'.*$|define('LOGGED_IN_KEY', '$(openssl rand -base64 32)');|\" /var/www/wordpress/wp-config.php\n",
+                                    "sed -i \"s|define('NONCE_KEY'.*$|define('NONCE_KEY', '$(openssl rand -base64 32)');|\" /var/www/wordpress/wp-config.php\n",
+                                    "sed -i \"s|define('AUTH_SALT'.*$|define('AUTH_SALT', '$(openssl rand -base64 32)');|\" /var/www/wordpress/wp-config.php\n",
+                                    "sed -i \"s|define('SECURE_AUTH_SALT'.*$|define('SECURE_AUTH_SALT', '$(openssl rand -base64 32)');|\" /var/www/wordpress/wp-config.php\n",
+                                    "sed -i \"s|define('LOGGED_IN_SALT'.*$|define('LOGGED_IN_SALT', '$(openssl rand -base64 32)');|\" /var/www/wordpress/wp-config.php\n",
+                                    "sed -i \"s|define('NONCE_SALT'.*$|define('NONCE_SALT', '$(openssl rand -base64 32)');|\" /var/www/wordpress/wp-config.php\n",
+                                    "\n",
+                                    "chown -R apache:apache /var/www/wordpress\n",
+                                    "\n",
+                                    "service mysqld start\n",
+                                    "mysql -u root < /tmp/db-init.mysql\n",
+                                    "mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -uroot mysql\n",
+                                    "\n",
+                                    "rm -rf /tmp/extract\n"
+                                ]]},
+                                "context" : {
+                                    "WP_VER" : { "Ref" : "WpVersion" },
+                                    "WOO_VER" : { "Ref" : "WooVersion" }
+                                },
+                                "mode"    : "000755",
+                                "owner"   : "root",
+                                "group"   : "root"
+                            }
+                        },
+                        "commands" : {
+                            "00-setup-wordpress" : {
+                                "command" : "/tmp/install.sh"
+                            }
+                        },
+                        "services" : {
+                            "sysvinit" : {
+                                "httpd" : {
+                                    "enabled" : "true",
+                                    "ensureRunning" : "true",
+                                    "files" : [ "/etc/httpd/conf.d/wordpress.conf" ],
+                                    "sources" : [ "/var/www/wordpress" ]
+                                },
+                                "mysqld" : {
+                                    "enabled" : "true",
+                                    "ensureRunning" : "true"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "Properties" : {
+                "InstanceType" : { "Ref" : "InstanceType" },
+                "KeyName"  : { "Fn::If" : [ "KeyName",
+                    { "Ref" : "KeyName" }, { "Ref" : "AWS::NoValue" } ]},
+                "ImageId" : { "Fn::FindInMap" : [ "config", { "Ref" : "AWS::Region" }, "ami" ]},
+                "SecurityGroupIds" : [{ "Ref" : "SecurityGroup" }],
+                "UserData" : { "Fn::Base64" : { "Fn::Join" : ["", [
+                    "#!/bin/bash -ex\n",
+                    "\n",
+                    "# retry yum upgrade if it fails, otherwise keep going\n",
+                    "if ! yum upgrade -y; then\n",
+                    "  sleep 30\n",
+                    "  yum upgrade -y || true\n",
+                    "fi\n",
+                    "\n",
+                    "/opt/aws/bin/cfn-init -v -s ", { "Ref": "AWS::StackId" },
+                    " -r Instance --region ", { "Ref": "AWS::Region" }, "\n",
+                    "\n"
+                ]]} },
+                "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" } }]
+            }
+        },
+
+        "DnsRecord" : {
+            "Type" : "AWS::Route53::RecordSet",
+            "Properties" : {
+                "HostedZoneName" : "promotably.net.",
+                "Name" : { "Fn::Join" : [ "", [ { "Ref" : "AWS::StackName" }, ".promotably.net." ]]},
+                "Type" : "CNAME",
+                "TTL" : "120",
+                "ResourceRecords" : [ { "Fn::GetAtt": [ "Instance", "PublicDnsName" ] } ]
+            }
+        }
+    },
+
+    "Outputs" : {
+    }
+}
