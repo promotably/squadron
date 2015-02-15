@@ -116,6 +116,19 @@
             "Type" : "AWS::EC2::EIP"
         },
 
+        "Woo" : {
+            "Type" : "AWS::CloudFormation::Stack",
+            "DependsOn" : "TestInstanceProfile",
+            "Properties" : {
+                "TemplateURL" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "CiName" }, "/squadron/", { "Ref" : "SquadronRef" }, "/cfn-woo.json" ] ]},
+                "Parameters" : {
+                    "Name" : { "Ref" : "SshKey" },
+                    "SSHFrom" : { "Fn::Join" : [ "/", [ { "Ref" : "TestHostIPAddress" }, "32" ]]}
+                },
+                "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}
+            }
+        },
+
         "Network" : {
             "Type" : "AWS::CloudFormation::Stack",
             "DependsOn" : "TestInstanceProfile",
