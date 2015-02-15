@@ -229,7 +229,9 @@
                     "UnhealthyThreshold": "3",
                     "Interval": "10",
                     "Timeout": "5"
-                }
+                },
+                "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" } },
+                         { "Key" : "Environment", "Value" : { "Ref" : "Environment" } }]
             }
         },
 
