@@ -18,26 +18,31 @@
             "Default" : "integration"
         },
 
-        "DBName": {
-            "Description": "Database name",
-            "Type": "String"
+        "DBName" : {
+            "Description" : "Database name",
+            "Type" : "String"
         },
-        "DBUsername": {
-            "Description": "Database username",
-            "Type": "String"
+        "DBUsername" : {
+            "Description" : "Database username",
+            "Type" : "String"
         },
-        "DBPassword": {
-            "Description": "Database password",
-            "Type": "String"
+        "DBPassword" : {
+            "Description" : "Database password",
+            "Type" : "String"
         },
-        "DBClass": {
-            "Description": "Database instance class",
-            "Type": "String",
+        "DBClass" : {
+            "Description" : "Database instance class",
+            "Type" : "String",
             "Default" : "default"
         },
-        "DBAllocatedStorage": {
-            "Description": "Database allocated storage",
-            "Type": "String"
+        "DBAllocatedStorage" : {
+            "Description" : "Database allocated storage",
+            "Type" : "String"
+        },
+        "DBSnapshotId" : {
+            "Description" : "DB Snapshot to restore from",
+            "Type" : "String",
+            "Default" : ""
         }
     },
 
@@ -48,10 +53,14 @@
     "Mappings" : {
         "config" : {
             "integration" : {
-                "dbClass" : "db.t1.micro"
+                "dbClass" : "db.t1.micro",
+                "multiAZ" : "false",
+                "backupRetention" : "0"
             },
             "staging" : {
-                "dbClass" : "db.t1.micro"
+                "dbClass" : "db.t1.micro",
+                "multiAZ" : "false",
+                "backupRetention" : "7"
             }
         }
     },
@@ -91,12 +100,15 @@
                 "Engine"            : "postgres",
                 "MasterUsername"    : { "Ref" : "DBUsername" },
                 "MasterUserPassword": { "Ref" : "DBPassword" },
+                "MultiAZ" : { "Fn::FindInMap" : [ "config", { "Ref" : "Environment" }, "multiAZ" ]},
                 "DBInstanceClass"   : { "Fn::If" : [ "DefaultDBClass",
                                         { "Fn::FindInMap" : [ "config", { "Ref" : "Environment" }, "dbClass" ]},
                                         { "Ref" : "DBClass" } ]},
                 "DBSecurityGroups"  : [{ "Ref" : "SecurityGroup" }],
                 "AllocatedStorage"  : { "Ref" : "DBAllocatedStorage" },
-                "DBSubnetGroupName" : { "Ref" : "DBSubnetGroup" }
+                "DBSubnetGroupName" : { "Ref" : "DBSubnetGroup" },
+                "BackupRetentionPeriod" : { "Fn::FindInMap" : [ "config", { "Ref" : "Environment" }, "backupRetention" ]},
+                "DBSnapshotIdentifier" : { "Ref" : "DBSnapshotId" }
             }
         }
     },
