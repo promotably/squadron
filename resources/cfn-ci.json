@@ -145,6 +145,13 @@
                         ]]}
                     }
                 ],
+                "HealthCheck" : {
+                    "Target" : "TCP:8080",
+                    "Interval" : "15",
+                    "Timeout" : "10",
+                    "HealthyThreshold" : "2",
+                    "UnhealthyThreshold" : "2"
+                },
                 "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" } },
                          { "Key" : "Environment", "Value" : "ci" }]
             }
