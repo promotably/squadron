@@ -117,15 +117,15 @@ run_tests() {
     # give Jenkins times to come online
     sleep 30
     echo >> integration_test_results.txt
-    echo "Validating Jenkins came online: $ci_url/"
+    echo "Validating Jenkins came online: $ci_url/" >> integration_test_results.txt
     timeout_ts=$((`date +%s` + 1800))
-    curl_cmd="curl -v --connect-timeout 10 --max-time 15 \"$ci_url/\""
+    curl_cmd="curl -v --fail --connect-timeout 10 --max-time 15 $ci_url/"
     while [ $(date +%s) -le $timeout_ts ] && sleep 10; do
         if $curl_cmd | grep -qi jenkins; then
             break
         fi
     done
-    $curl_cmd >> integration_test_results.txt 2>&1
+    $curl_cmd >> integration_test_results.txt 2>&1 || return $?
     echo >> integration_test_results.txt
     echo >> integration_test_results.txt
 
@@ -223,13 +223,13 @@ run_tests() {
     echo >> integration_test_results.txt
     echo "Validating api health-check: $elb_url/health-check"
     timeout_ts=$((`date +%s` + 1800))
-    curl_cmd="curl -v --connect-timeout 10 --max-time 15 $elb_url/health-check"
+    curl_cmd="curl -v --fail --connect-timeout 10 --max-time 15 $elb_url/health-check"
     while [ $(date +%s) -le $timeout_ts ] && sleep 10; do
         if $curl_cmd | grep -q "I'm here"; then
             break
         fi
     done
-    $curl_cmd >> integration_test_results.txt 2>&1
+    $curl_cmd >> integration_test_results.txt 2>&1 || return $?
 }
 
 echo -n > integration_test_results.txt
