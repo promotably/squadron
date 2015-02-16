@@ -70,6 +70,10 @@ run_tests() {
         echo 'Fatal: $elb_url is not set - foget to setup the environment?' >&2
         return 1
     fi
+    if [ -z "$ci_url" ]; then
+        echo 'Fatal: $ci_url is not set - foget to setup the environment?' >&2
+        return 1
+    fi
 
     set +x
 
@@ -110,6 +114,18 @@ run_tests() {
     $ssh_cmd ec2-user@$bastion_ip "$ssh_cmd $api_ip \"curl -v --fail --connect-timeout 15 --max-time 30 https://www.google.com/ > /dev/null\"" >> integration_test_results.txt 2>&1 || return $?
     $ssh_cmd ec2-user@$bastion_ip "$ssh_cmd $scribe_ip \"curl -v --fail --connect-timeout 15 --max-time 30 https://www.google.com > /dev/null\"" >> integration_test_results.txt 2>&1 || return $?
 
+    # give Jenkins times to come online
+    sleep 30
+    echo >> integration_test_results.txt
+    echo "Validating Jenkins came online: $ci_url/"
+    timeout_ts=$((`date +%s` + 1800))
+    curl_cmd="curl -v --connect-timeout 10 --max-time 15 \"$ci_url/\""
+    while [ $(date +%s) -le $timeout_ts ] && sleep 10; do
+        if $curl_cmd | grep -qi jenkins; then
+            break
+        fi
+    done
+    $curl_cmd >> integration_test_results.txt 2>&1
     echo >> integration_test_results.txt
     echo >> integration_test_results.txt
 
