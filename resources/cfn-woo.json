@@ -40,6 +40,21 @@
             "Description" : "Override the Route53 record created for the ELB ('disable' for no record creation)",
             "Type" : "String",
             "Default" : "default"
+        },
+        "DbBackupBucket" : {
+            "Description" : "Bucket to send database dumps to",
+            "Type" : "String",
+            "Default" : "promotably-persist"
+        },
+        "DbBackupBucketPrefix" : {
+            "Description" : "Base path in DbBackupBucket ['None' to disable backup]",
+            "Type" : "String",
+            "Default" : "dbdumps/woo-store"
+        },
+        "DbImportFile" : {
+            "Description" : "Object in DbBackupBucket to use for database import",
+            "Type" : "String",
+            "Default" : "None"
         }
     },
 
@@ -47,7 +62,9 @@
         "SSHFrom" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "SSHFrom" }, "999.999.999.999/32" ] }] },
         "KeyName" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "KeyName" }, "None" ] }] },
         "CreateDns" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "DnsOverride" }, "disable" ]} ]},
-        "DnsOverride" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "DnsOverride" }, "default" ]} ]}
+        "DnsOverride" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "DnsOverride" }, "default" ]} ]},
+        "DbDump" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "DbBackupBucketPrefix" }, "None" ] }] },
+        "DbImport" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "DbImportFile" }, "None" ] }] }
     },
 
     "Mappings" : {
@@ -60,6 +77,50 @@
 
 
     "Resources" : {
+
+        "Role": {
+            "Type" : "AWS::IAM::Role",
+            "Properties" : {
+                "Path" : "/",
+                "AssumeRolePolicyDocument": {
+                    "Version" : "2012-10-17",
+                    "Statement" : [{
+                        "Effect" : "Allow",
+                        "Principal" : { "Service" : [ "ec2.amazonaws.com" ] },
+                        "Action" : [ "sts:AssumeRole" ]
+                    }]
+                },
+                "Policies" : [{
+                    "PolicyName" : "dbbackup",
+                    "PolicyDocument" : {
+                        "Version" : "2012-10-17",
+                        "Statement" : [{
+                            "Effect": "Allow",
+                            "Action": [ "s3:ListBucket" ],
+                            "Resource": [ { "Fn::Join" : [ "", [ "arn:aws:s3:::", { "Ref" : "DbBackupBucket" } ] ] } ]
+                        },{ "Fn::If" : [ "DbDump", {
+                                "Effect": "Allow",
+                                "Action": [ "s3:PutObject" ],
+                                "Resource": [ { "Fn::Join" : [ "", [ "arn:aws:s3:::", { "Ref" : "DbBackupBucket" }, "/", { "Ref" : "DbBackupBucketPrefix" }, "/*" ]]} ]
+                            }, { "Ref" : "AWS::NoValue" } ]
+                        },{ "Fn::If" : [ "DbImport", {
+                                "Effect": "Allow",
+                                "Action": [ "s3:GetObject" ],
+                                "Resource": [ { "Fn::Join" : [ "", [ "arn:aws:s3:::", { "Ref" : "DbBackupBucket" }, "/", { "Ref" : "DbImportFile" } ]]} ]
+                            }, { "Ref" : "AWS::NoValue" } ]
+                        }]
+                    }
+                }]
+            }
+        },
+
+        "InstanceProfile" : {
+            "Type" : "AWS::IAM::InstanceProfile",
+            "Properties" : {
+                "Path" : "/",
+                "Roles" : [ { "Ref": "Role" } ]
+            }
+        },
 
         "SecurityGroup" : {
             "Type" : "AWS::EC2::SecurityGroup",
@@ -85,8 +146,50 @@
         "Instance" : {
             "Type" : "AWS::EC2::Instance",
             "Metadata" : {
+                "AWS::CloudFormation::Authentication" : {
+                    "S3AccessCreds" : {
+                        "type" : "S3",
+                        "roleName" : { "Ref" : "Role" },
+                        "buckets" : [ { "Ref" : "DbBackupBucket" } ]
+                    }
+                },
                 "AWS::CloudFormation::Init" : {
-                    "config" : {
+                    "configSets" : {
+                        "base" : [ "base" ],
+                        "dbinit" : [ "dbinit" ],
+                        "dbimport" : [ "dbimport" ]
+                    },
+                    "dbinit" : {
+                        "files" : {
+                            "/tmp/db.mysql" : {
+                                "content" : { "Fn::Join" : [ "", [
+                                    "DROP DATABASE IF EXISTS test;\n",
+                                    "DROP DATABASE IF EXISTS wordpress;\n",
+                                    "CREATE DATABASE wordpress;\n",
+                                    "GRANT ALL ON wordpress.* TO 'wordpress'@'localhost' IDENTIFIED BY 'pr0m0tably'\n"
+                                ]]},
+                                "mode"    : "000644",
+                                "owner"   : "root",
+                                "group"   : "root"
+                            }
+                        }
+                    },
+                    "dbinit" : {
+                        "files" : {
+                            "/tmp/db.mysql.gz" : {
+                                "source" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "DbBackupBucket" }, ".s3.amazonaws.com/", { "Ref" : "DbImportFile" } ]]},
+                                "mode"    : "000644",
+                                "owner"   : "root",
+                                "group"   : "root"
+                            }
+                        },
+                        "commands" : {
+                            "00-unzip-dumpfile" : {
+                                "command" : "gunzip /tmp/db.mysql.gz"
+                            }
+                        }
+                    },
+                    "base" : {
                         "packages" : {
                             "yum" : {
                                 "httpd" : [],
@@ -125,14 +228,6 @@
                                 "mode"    : "000644",
                                 "owner"   : "root",
                                 "group"   : "root"
-                            },
-                            "/tmp/db-init.mysql" : {
-                                "content" : { "Fn::Join" : [ "", [
-                                    "DROP DATABASE IF EXISTS test;\n",
-                                    "DROP DATABASE IF EXISTS wordpress;\n",
-                                    "CREATE DATABASE wordpress;\n",
-                                    "GRANT ALL ON wordpress.* TO 'wordpress'@'localhost' IDENTIFIED BY 'pr0m0tably'\n"
-                                ]]}
                             },
                             "/tmp/install.sh" : {
                                 "content" : { "Fn::Join" : [ "", [
@@ -174,7 +269,7 @@
                                     "chown -R apache:apache /var/www/wordpress\n",
                                     "\n",
                                     "service mysqld start\n",
-                                    "mysql -u root < /tmp/db-init.mysql\n",
+                                    "mysql -u root < /tmp/db.mysql\n",
                                     "mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -uroot mysql\n",
                                     "\n",
                                     "rm -rf /tmp/extract\n"
@@ -182,6 +277,101 @@
                                 "context" : {
                                     "WP_VER" : { "Ref" : "WpVersion" },
                                     "WOO_VER" : { "Ref" : "WooVersion" }
+                                },
+                                "mode"    : "000755",
+                                "owner"   : "root",
+                                "group"   : "root"
+                            },
+                            "/etc/rc.d/init.d/dbbackup" : {
+                                "content" : { "Fn::Join" : [ "", [
+                                    "#!/bin/bash\n",
+                                    "\n",
+                                    "# final logrotate\n",
+                                    "#\n",
+                                    "# chkconfig: 2345 30 35\n",
+                                    "# description:  perform database dump before mysql is turned off\n",
+                                    "#\n",
+                                    "\n",
+                                    "# source function library\n",
+                                    ". /etc/rc.d/init.d/functions\n",
+                                    "broken_lock_file_for_centos=/var/lock/subsys/db_backup\n",
+                                    "\n",
+                                    "start() {\n",
+                                    "    echo -n $\"Database Backup: \"\n",
+                                    "    touch \"$broken_lock_file_for_centos\"\n",
+                                    "    success\n",
+                                    "    echo\n",
+                                    "}\n",
+                                    "\n",
+                                    "status() {\n",
+                                    "    exit 0\n",
+                                    "}\n",
+                                    "\n",
+                                    "stop() {\n",
+                                    "    echo -n $\"Database Backup: \"\n",
+                                    "    if /usr/local/sbin/dbdump; then\n",
+                                    "        rm -f \"$broken_lock_file_for_centos\"\n",
+                                    "        success\n",
+                                    "    else\n",
+                                    "        failure\n",
+                                    "        RETVAL=1\n",
+                                    "    fi\n",
+                                    "    echo\n",
+                                    "}\n",
+                                    "\n",
+                                    "RETVAL=0\n",
+                                    "\n",
+                                    "case \"$1\" in\n",
+                                    "    start)\n",
+                                    "        start\n",
+                                    "        ;;\n",
+                                    "    stop)\n",
+                                    "        stop\n",
+                                    "        ;;\n",
+                                    "    restart)\n",
+                                    "        stop\n",
+                                    "        start\n",
+                                    "        ;;\n",
+                                    "    status)\n",
+                                    "        status\n",
+                                    "        ;;\n",
+                                    "    *)\n",
+                                    "        echo $\"Usage: $0 {start|stop|restart|status}\"\n",
+                                    "        RETVAL=1\n",
+                                    "esac\n"
+                                ]]},
+                                "context" : {
+                                    "WP_VER" : { "Ref" : "WpVersion" },
+                                    "WOO_VER" : { "Ref" : "WooVersion" }
+                                },
+                                "mode"    : "000755",
+                                "owner"   : "root",
+                                "group"   : "root"
+                            },
+                            "/usr/local/sbin/dbdump" : {
+                                "content" : { "Fn::Join" : [ "", [
+                                    "#!/bin/bash\n",
+                                    "\n",
+                                    ". /etc/profile.d/aws-apitools-common.sh\n",
+                                    "\n",
+                                    "bucket={{BUCKET}}\n",
+                                    "bucket_prefix={{BUCKET_PREFIX}}\n",
+                                    "stack_name={{STACK_NAME}}\n",
+                                    "\n",
+                                    "[ '$bucket_prefix' = 'None' ] && exit 0\n",
+                                    "\n",
+                                    "mysqldump --opt --routines --triggers wordpress \\\n",
+                                    "  | sed 's,wooo.promotably.net,%%_SITE_NAME_%%,g' \\\n",
+                                    "  | gzip > /tmp/wp-backup.mysql.gz\n",
+                                    "\n",
+                                    "aws s3 cp --region {{REGION}} /tmp/wp-backup.mysql.gz ",
+                                      "\"s3://$bucket/$bucket_prefix/$stack_name/$(date +%F.%H-%M-%S).mysql.gz\"\n"
+                                ]]},
+                                "context" : {
+                                    "BUCKET" : { "Ref" : "DbBackupBucket" },
+                                    "BUCKET_PREFIX" : { "Ref" : "DbBackupBucketPrefix" },
+                                    "STACK_NAME" : { "Ref" : "AWS::StackName" },
+                                    "REGION" : { "Ref": "AWS::Region" }
                                 },
                                 "mode"    : "000755",
                                 "owner"   : "root",
@@ -204,6 +394,9 @@
                                 "mysqld" : {
                                     "enabled" : "true",
                                     "ensureRunning" : "true"
+                                },
+                                "dbbackup" : {
+                                    "enabled" : "true"
                                 }
                             }
                         }
@@ -216,6 +409,7 @@
                     { "Ref" : "KeyName" }, { "Ref" : "AWS::NoValue" } ]},
                 "ImageId" : { "Fn::FindInMap" : [ "config", { "Ref" : "AWS::Region" }, "ami" ]},
                 "SecurityGroupIds" : [{ "Ref" : "SecurityGroup" }],
+                "IamInstanceProfile" : { "Ref" : "InstanceProfile" },
                 "UserData" : { "Fn::Base64" : { "Fn::Join" : ["", [
                     "#!/bin/bash -ex\n",
                     "\n",
@@ -225,6 +419,7 @@
                     "  yum upgrade -y || true\n",
                     "fi\n",
                     "\n",
+                    "# TODO - pick configSets\n",
                     "/opt/aws/bin/cfn-init -v -s ", { "Ref": "AWS::StackId" },
                     " -r Instance --region ", { "Ref": "AWS::Region" }, "\n",
                     "\n"
