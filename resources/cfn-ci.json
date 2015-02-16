@@ -38,6 +38,11 @@
             "Default" : "999.999.999.999/32",
             "AllowedPattern" : "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
             "ConstraintDescription" : "must be a valid CIDR range of the form x.x.x.x/x."
+        },
+        "SlaveSecurityGroup" : {
+            "Description" : "Security Group for Jenkins Slaves",
+            "Type" : "String",
+            "Default" : "jenkins-workers"
         }
     },
 
@@ -126,6 +131,16 @@
                 "IpProtocol" : "tcp",
                 "CidrIp" : { "Ref" : "SSHFrom" },
                 "FromPort" : "22", "ToPort" : "22"
+            }
+        },
+
+        "SlaveIngress" : {
+            "Type" : "AWS::EC2::SecurityGroupIngress",
+            "Properties" : {
+                "GroupName" : { "Ref" : "SlaveSecurityGroup" },
+                "SourceSecurityGroupName" : { "Ref" : "SecurityGroup" },
+                "IpProtocol" : "-1",
+                "FromPort" : "-1", "ToPort" : "-1"
             }
         },
 
@@ -338,6 +353,36 @@
                     "HostedZoneId" : { "Fn::GetAtt": [ "LoadBalancer", "CanonicalHostedZoneNameID" ] }
                 }
             }
+        },
+
+        "SlaveRole": {
+            "Type" : "AWS::IAM::Role",
+            "Properties" : {
+                "Path" : "/",
+                "AssumeRolePolicyDocument": {
+                    "Version" : "2012-10-17",
+                    "Statement" : [{
+                        "Effect" : "Allow",
+                        "Principal" : { "Service" : [ "ec2.amazonaws.com" ] },
+                        "Action" : [ "sts:AssumeRole" ]
+                    }]
+                },
+                "Policies" : [{
+                    "PolicyName" : "root",
+                    "PolicyDocument" : {
+                        "Version" : "2012-10-17",
+                        "Statement" : [{ "Effect": "Allow", "Action": "*", "Resource": "*" }]
+                    }
+                }]
+            }
+        },
+
+        "SlaveInstanceProfile" : {
+            "Type" : "AWS::IAM::InstanceProfile",
+            "Properties" : {
+                "Path" : "/",
+                "Roles" : [ { "Ref": "Role" } ]
+            }
         }
     },
 
@@ -347,8 +392,12 @@
             "Value" : { "Ref" : "LaunchGroup" }
         },
         "URL": {
-            "Description": "URL for testing",
-            "Value": { "Fn::Join" : [ "", [ "https://", { "Ref" : "ElbDnsRecord" } ]]}
+            "Description" : "Jenkins URL",
+            "Value" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ElbDnsRecord" } ]]}
+        },
+        "SlaveInstanceProfile" : {
+            "Description" : "Instance Profile for Jenkins Slaves (UPDATE JENKINS CONFIG WITH THIS)",
+            "Value" : { "Fn::GetAtt" : [ "SlaveInstanceProfile", "Arn" ] }
         }
     }
 }
