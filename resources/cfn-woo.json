@@ -295,15 +295,17 @@
                                 "content" : { "Fn::Join" : [ "", [
                                     "#!/bin/bash\n",
                                     "\n",
-                                    "# final logrotate\n",
+                                    "# dbdump on shutdown\n",
                                     "#\n",
-                                    "# chkconfig: 2345 30 35\n",
+                                    "# chkconfig: 2345 30 05\n",
                                     "# description:  perform database dump before mysql is turned off\n",
                                     "#\n",
                                     "\n",
+                                    "export PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin\n",
+                                    "\n",
                                     "# source function library\n",
                                     ". /etc/rc.d/init.d/functions\n",
-                                    "broken_lock_file_for_centos=/var/lock/subsys/db_backup\n",
+                                    "broken_lock_file_for_centos=/var/lock/subsys/dbbackup\n",
                                     "\n",
                                     "start() {\n",
                                     "    echo -n $\"Database Backup: \"\n",
@@ -400,7 +402,7 @@
                                 "command" : "/tmp/install.sh"
                             },
                             "10-chkconfig-dbbackup" : {
-                                "command" : "chkconfig --add dbbackup"
+                                "command" : "chkconfig --add dbbackup && chkconfig dbbackup on"
                             }
                         },
                         "services" : {
