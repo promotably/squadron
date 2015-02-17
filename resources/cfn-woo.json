@@ -174,7 +174,7 @@
                             }
                         }
                     },
-                    "dbinit" : {
+                    "dbimport" : {
                         "files" : {
                             "/tmp/db.mysql.gz" : {
                                 "source" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "DbBackupBucket" }, ".s3.amazonaws.com/", { "Ref" : "DbImportFile" } ]]},
@@ -185,7 +185,16 @@
                         },
                         "commands" : {
                             "00-unzip-dumpfile" : {
-                                "command" : "gunzip /tmp/db.mysql.gz"
+                                "command" : { "Fn::Join" : [ "", [
+                                    "stack_name=", { "Ref" : "AWS::StackName" }, "\n",
+                                    "site_url=$stack_name.promotably.net/rebelstore\n",
+                                    "if [ '", { "Ref" : "DnsOverride" }, "' = 'disable' ]; then\n",
+                                    "  site_url=$(ec2-metadata -p | awk '{print $2}')/rebelstore\n",
+                                    "elif [ '", { "Ref" : "DnsOverride" }, "' != 'default' ]; then\n",
+                                    "  site_url=", { "Ref" : "DnsOverride" }, ".promotably.net/rebelstore\n",
+                                    "fi\n",
+                                    "gunzip -c /tmp/db.mysql.gz | sed \"s,%%_SITE_URL_%%,$site_url,g\" > /tmp/db.mysql\n"
+                                ]]}
                             }
                         }
                     },
@@ -309,7 +318,7 @@
                                     "\n",
                                     "stop() {\n",
                                     "    echo -n $\"Database Backup: \"\n",
-                                    "    if /usr/local/sbin/dbdump; then\n",
+                                    "    if /usr/local/sbin/dbdump > /var/log/dbdump.out 2>&1; then\n",
                                     "        rm -f \"$broken_lock_file_for_centos\"\n",
                                     "        success\n",
                                     "    else\n",
@@ -338,7 +347,8 @@
                                     "    *)\n",
                                     "        echo $\"Usage: $0 {start|stop|restart|status}\"\n",
                                     "        RETVAL=1\n",
-                                    "esac\n"
+                                    "esac\n",
+                                    "exit $RETVAL\n"
                                 ]]},
                                 "context" : {
                                     "WP_VER" : { "Ref" : "WpVersion" },
@@ -352,17 +362,24 @@
                                 "content" : { "Fn::Join" : [ "", [
                                     "#!/bin/bash\n",
                                     "\n",
+                                    "set -ex\n",
                                     ". /etc/profile.d/aws-apitools-common.sh\n",
                                     "\n",
                                     "bucket={{BUCKET}}\n",
                                     "bucket_prefix={{BUCKET_PREFIX}}\n",
                                     "stack_name={{STACK_NAME}}\n",
+                                    "site_url=$stack_name.promotably.net/rebelstore\n",
+                                    "if [ '", { "Ref" : "DnsOverride" }, "' = 'disable' ]; then\n",
+                                    "  site_url=$(ec2-metadata -p | awk '{print $2}')/rebelstore\n",
+                                    "elif [ '", { "Ref" : "DnsOverride" }, "' != 'default' ]; then\n",
+                                    "  site_url=", { "Ref" : "DnsOverride" }, ".promotably.net/rebelstore\n",
+                                    "fi\n",
                                     "\n",
                                     "[ '$bucket_prefix' = 'None' ] && exit 0\n",
                                     "\n",
-                                    "mysqldump --opt --routines --triggers wordpress \\\n",
-                                    "  | sed 's,wooo.promotably.net,%%_SITE_NAME_%%,g' \\\n",
-                                    "  | gzip > /tmp/wp-backup.mysql.gz\n",
+                                    "mysqldump --opt --routines --triggers --databases wordpress",
+                                      " | sed \"s,$site_url,%%_SITE_URL_%%,g\"",
+                                      " | gzip > /tmp/wp-backup.mysql.gz\n",
                                     "\n",
                                     "aws s3 cp --region {{REGION}} /tmp/wp-backup.mysql.gz ",
                                       "\"s3://$bucket/$bucket_prefix/$stack_name/$(date +%F.%H-%M-%S).mysql.gz\"\n"
@@ -381,6 +398,9 @@
                         "commands" : {
                             "00-setup-wordpress" : {
                                 "command" : "/tmp/install.sh"
+                            },
+                            "10-chkconfig-dbbackup" : {
+                                "command" : "chkconfig --add dbbackup"
                             }
                         },
                         "services" : {
@@ -394,9 +414,6 @@
                                 "mysqld" : {
                                     "enabled" : "true",
                                     "ensureRunning" : "true"
-                                },
-                                "dbbackup" : {
-                                    "enabled" : "true"
                                 }
                             }
                         }
@@ -420,8 +437,13 @@
                     "fi\n",
                     "\n",
                     "# TODO - pick configSets\n",
-                    "/opt/aws/bin/cfn-init -v -s ", { "Ref": "AWS::StackId" },
-                    " -r Instance --region ", { "Ref": "AWS::Region" }, "\n",
+                    "if [ '", { "Ref" : "DbImportFile" }, "' = 'None' ]; then\n",
+                    "  /opt/aws/bin/cfn-init -v -s ", { "Ref": "AWS::StackId" },
+                      " -r Instance -c dbinit,base --region ", { "Ref": "AWS::Region" }, "\n",
+                    "else\n",
+                    "  /opt/aws/bin/cfn-init -v -s ", { "Ref": "AWS::StackId" },
+                      " -r Instance -c dbimport,base --region ", { "Ref": "AWS::Region" }, "\n",
+                    "fi\n",
                     "\n"
                 ]]} },
                 "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" } }]
