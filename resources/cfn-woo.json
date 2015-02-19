@@ -9,9 +9,19 @@
             "Default" : "latest"
         },
         "WooVersion" : {
-            "Description" : " Version of WooCommerce to install",
+            "Description" : "Version of WooCommerce to install",
             "Type" : "String",
             "Default" : "latest"
+        },
+        "ArtifactBucket" : {
+            "Description" : "S3 Bucket where build artifacts are stored",
+            "Type" : "String",
+            "Default" : "promotably-build-artifacts"
+        },
+        "PluginPath" : {
+            "Description" : "Path to Promotably WP/Woocommerce plugin in ArtifactBucket",
+            "Type" : "String",
+            "Default" : "jenkins/woocommerce/latest/wp-plugin.zip"
         },
         "InstanceType" : {
             "Description" : "EC2 Instance-Type",
@@ -110,6 +120,18 @@
                             }, { "Ref" : "AWS::NoValue" } ]
                         }]
                     }
+                },{
+                    "PolicyName" : "buildartifacts",
+                    "PolicyDocument" : {
+                        "Version" : "2012-10-17",
+                        "Statement" : [{
+                            "Effect": "Allow",
+                            "Action": [ "s3:GetObject" ],
+                            "Resource": [
+                                { "Fn::Join" : [ "", [ "arn:aws:s3:::", { "Ref" : "ArtifactBucket" }, "/", { "Ref" : "PluginPath" } ]]}
+                            ]
+                        }]
+                    }
                 }]
             }
         },
@@ -150,7 +172,7 @@
                     "S3AccessCreds" : {
                         "type" : "S3",
                         "roleName" : { "Ref" : "Role" },
-                        "buckets" : [ { "Ref" : "DbBackupBucket" } ]
+                        "buckets" : [ { "Ref" : "DbBackupBucket" }, { "Ref" : "ArtifactBucket" } ]
                     }
                 },
                 "AWS::CloudFormation::Init" : {
@@ -216,6 +238,12 @@
                             }
                         },
                         "files" : {
+                            "/tmp/promotably-plugin.zip" : {
+                                "source" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "PluginPath" } ]]},
+                                "mode"    : "000644",
+                                "owner"   : "root",
+                                "group"   : "root"
+                            },
                             "/var/www/html/index.html" : {
                                 "content" : "<!doctype html><html><head></head><body></body></html>\n",
                                 "mode"    : "000644",
@@ -260,6 +288,8 @@
                                     "mv * /var/www/wordpress\n",
                                     "unzip /tmp/woo.zip\n",
                                     "mv * /var/www/wordpress/wp-content/plugins/woocommerce\n",
+                                    "unzip /tmp/promotably-plugin.zip\n",
+                                    "mv * /var/www/wordpress/wp-content/plugins/promotably\n",
                                     "\n",
                                     "cp /var/www/wordpress/wp-config-sample.php /var/www/wordpress/wp-config.php\n",
                                     "sed -i 's/database_name_here/wordpress/' /var/www/wordpress/wp-config.php\n",
