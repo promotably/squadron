@@ -14,18 +14,14 @@ case "$CI_NAME" in
         CI='true'
         CI_BUILD_NUMBER="$BUILD_NUMBER"
         CI_COMMIT_ID="$2"
-        CI_COMMITTER_USERNAME="$(git log --format=%cn -1 | sed 's/^.* //' | awk '{print substr($0,0,6)}')"
         CI_MESSAGE="$(git log -1 --format=%B)"
         ;;
     localdev)
         CI='false'
         CI_BUILD_NUMBER="$(date +%s)"
         CI_COMMIT_ID='dev'
-        CI_COMMITTER_USERNAME="$(whoami)"
         ;;
 esac
-
-export KEY_BUCKET
 
 ## CODESHIP populates these
 #CI true
@@ -84,9 +80,9 @@ dashboard_ref='latest'
 if [ -n "$PROJECT" ]; then
     # if we're in CI, drop the commit message in an object
     if [ "CI" = 'true' -a -n "$CI_MESSAGE" ]; then
-        echo "$CI_MESSAGE" > "$CI_COMMITTER_USERNAME"
-        aws s3 cp "$CI_COMMITTER_USERNAME" "s3://$ARTIFACT_BUCKET/$CI_NAME/$PROJECT/$CI_COMMIT_ID"
-        rm -f "$CI_COMMITTER_USERNAME"
+        echo "$CI_MESSAGE" > commit_msg.$$
+        aws s3 cp commit_msg.$$ "s3://$ARTIFACT_BUCKET/$CI_NAME/$PROJECT/$CI_COMMIT_ID"
+        rm -f commit_msg.$$
     fi
 
     case "$PROJECT" in
@@ -104,15 +100,15 @@ if [ -n "$PROJECT" ]; then
             exit 1
             ;;
     esac
-    stack_name="$CI_COMMITTER_USERNAME-$PROJECT-$CI_COMMIT_ID"
+    stack_name="$PROJECT-$CI_COMMIT_ID"
     if [ "$CI_COMMIT_ID" = 'dev' ]; then
-        stack_name="$CI_COMMITTER_USERNAME-$PROJECT-$(date +%s)"
+        stack_name="$PROJECT-$(date +%s)"
     fi
 else
     PROJECT='None'
-    stack_name="$CI_COMMITTER_USERNAME-$CI_COMMIT_ID"
+    stack_name="$CI_COMMIT_ID"
     if [ "$CI_COMMIT_ID" = 'dev' ]; then
-        stack_name="$CI_COMMITTER_USERNAME-$(date +%s)"
+        stack_name="$(date +%s)"
     fi
 fi
 
