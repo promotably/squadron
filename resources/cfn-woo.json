@@ -291,71 +291,12 @@
                                 "owner"   : "root",
                                 "group"   : "root"
                             },
-                            "/etc/rc.d/init.d/dbbackup" : {
+                            "/etc/cron.hourly/dbbackup" : {
                                 "content" : { "Fn::Join" : [ "", [
                                     "#!/bin/bash\n",
                                     "\n",
-                                    "# dbdump on shutdown\n",
-                                    "#\n",
-                                    "# chkconfig: 2345 30 05\n",
-                                    "# description:  perform database dump before mysql is turned off\n",
-                                    "#\n",
-                                    "\n",
-                                    "export PATH=/sbin:/bin:/usr/sbin:/usr/bin:/usr/local/sbin:/usr/local/bin\n",
-                                    "\n",
-                                    "# source function library\n",
-                                    ". /etc/rc.d/init.d/functions\n",
-                                    "broken_lock_file_for_centos=/var/lock/subsys/dbbackup\n",
-                                    "\n",
-                                    "start() {\n",
-                                    "    echo -n $\"Database Backup: \"\n",
-                                    "    touch \"$broken_lock_file_for_centos\"\n",
-                                    "    success\n",
-                                    "    echo\n",
-                                    "}\n",
-                                    "\n",
-                                    "status() {\n",
-                                    "    exit 0\n",
-                                    "}\n",
-                                    "\n",
-                                    "stop() {\n",
-                                    "    echo -n $\"Database Backup: \"\n",
-                                    "    if /usr/local/sbin/dbdump > /var/log/dbdump.out 2>&1; then\n",
-                                    "        rm -f \"$broken_lock_file_for_centos\"\n",
-                                    "        success\n",
-                                    "    else\n",
-                                    "        failure\n",
-                                    "        RETVAL=1\n",
-                                    "    fi\n",
-                                    "    echo\n",
-                                    "}\n",
-                                    "\n",
-                                    "RETVAL=0\n",
-                                    "\n",
-                                    "case \"$1\" in\n",
-                                    "    start)\n",
-                                    "        start\n",
-                                    "        ;;\n",
-                                    "    stop)\n",
-                                    "        stop\n",
-                                    "        ;;\n",
-                                    "    restart)\n",
-                                    "        stop\n",
-                                    "        start\n",
-                                    "        ;;\n",
-                                    "    status)\n",
-                                    "        status\n",
-                                    "        ;;\n",
-                                    "    *)\n",
-                                    "        echo $\"Usage: $0 {start|stop|restart|status}\"\n",
-                                    "        RETVAL=1\n",
-                                    "esac\n",
-                                    "exit $RETVAL\n"
+                                    "if /usr/local/sbin/dbdump > /var/log/dbdump.out 2>&1\n"
                                 ]]},
-                                "context" : {
-                                    "WP_VER" : { "Ref" : "WpVersion" },
-                                    "WOO_VER" : { "Ref" : "WooVersion" }
-                                },
                                 "mode"    : "000755",
                                 "owner"   : "root",
                                 "group"   : "root"
@@ -400,9 +341,6 @@
                         "commands" : {
                             "00-setup-wordpress" : {
                                 "command" : "/tmp/install.sh"
-                            },
-                            "10-chkconfig-dbbackup" : {
-                                "command" : "chkconfig --add dbbackup && chkconfig dbbackup on"
                             }
                         },
                         "services" : {
