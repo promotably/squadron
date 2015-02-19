@@ -60,7 +60,7 @@ scribe_ip="$(aws ec2 describe-instances --output=text --instance-ids $scribe_ins
 
 [ -z "$api_ip" -o -z "$scribe_ip" ] && exit 1
 
-ssh_cmd="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -t"
+ssh_cmd="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -t -t"
 
 echo "Integration Test Stack: $stack_name"
 echo
