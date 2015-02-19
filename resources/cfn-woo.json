@@ -23,10 +23,16 @@
             "Type" : "String",
             "Default" : "jenkins/woocommerce/latest/wp-plugin.zip"
         },
+        "PhpVersion" : {
+            "Description" : "Version of PHP to install",
+            "Type" : "String",
+            "Default" : "5.3",
+            "AllowedValues" : [ "5.3", "5.4", "5.5" ]
+        },
         "InstanceType" : {
             "Description" : "EC2 Instance-Type",
             "Type" : "String",
-            "Default" : "t2.small"
+            "Default" : "t2.micro"
         },
         "KeyName" : {
             "Description" : "Name of an EC2 KeyPair to enable SSH access to the host (default is no ssh key)",
@@ -178,27 +184,14 @@
                 "AWS::CloudFormation::Init" : {
                     "configSets" : {
                         "base" : [ "base" ],
-                        "dbinit" : [ "dbinit" ],
+                        "php53" : [ "php53" ],
+                        "php54" : [ "php54" ],
+                        "php55" : [ "php55" ],
                         "dbimport" : [ "dbimport" ]
-                    },
-                    "dbinit" : {
-                        "files" : {
-                            "/tmp/db.mysql" : {
-                                "content" : { "Fn::Join" : [ "", [
-                                    "DROP DATABASE IF EXISTS test;\n",
-                                    "DROP DATABASE IF EXISTS wordpress;\n",
-                                    "CREATE DATABASE wordpress;\n",
-                                    "GRANT ALL ON wordpress.* TO 'wordpress'@'localhost' IDENTIFIED BY 'pr0m0tably'\n"
-                                ]]},
-                                "mode"    : "000644",
-                                "owner"   : "root",
-                                "group"   : "root"
-                            }
-                        }
                     },
                     "dbimport" : {
                         "files" : {
-                            "/tmp/db.mysql.gz" : {
+                            "/tmp/db-import.mysql.gz" : {
                                 "source" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "DbBackupBucket" }, ".s3.amazonaws.com/", { "Ref" : "DbImportFile" } ]]},
                                 "mode"    : "000644",
                                 "owner"   : "root",
@@ -215,17 +208,15 @@
                                     "elif [ '", { "Ref" : "DnsOverride" }, "' != 'default' ]; then\n",
                                     "  site_url=", { "Ref" : "DnsOverride" }, ".promotably.net/rebelstore\n",
                                     "fi\n",
-                                    "gunzip -c /tmp/db.mysql.gz | sed \"s,%%_SITE_URL_%%,$site_url,g\" > /tmp/db.mysql\n"
+                                    "gunzip -c /tmp/db-import.mysql.gz | sed \"s,%%_SITE_URL_%%,$site_url,g\" > /tmp/db-import.mysql\n"
                                 ]]}
                             }
                         }
                     },
-                    "base" : {
+                    "php53" : {
                         "packages" : {
                             "yum" : {
                                 "httpd" : [],
-                                "mysql" : [],
-                                "mysql-server" : [],
                                 "php" : [],
                                 "php-mysql" : [],
                                 "php-gd" : [],
@@ -235,6 +226,46 @@
                                 "php-xmlrpc" : [],
                                 "php-pecl-apc" : [],
                                 "php-pecl-memcache" : []
+                            }
+                        }
+                    },
+                    "php54" : {
+                        "packages" : {
+                            "yum" : {
+                                "httpd24" : [],
+                                "php55" : [],
+                                "php55-mysqlnd" : [],
+                                "php55-gd" : [],
+                                "php55-pspell" : [],
+                                "php55-snmp" : [],
+                                "php55-xml" : [],
+                                "php55-xmlrpc" : [],
+                                "php55-pecl-apc" : [],
+                                "php55-pecl-memcache" : []
+                            }
+                        }
+                    },
+                    "php55" : {
+                        "packages" : {
+                            "yum" : {
+                                "httpd24" : [],
+                                "php55" : [],
+                                "php55-mysqlnd" : [],
+                                "php55-gd" : [],
+                                "php55-pspell" : [],
+                                "php55-snmp" : [],
+                                "php55-xml" : [],
+                                "php55-xmlrpc" : [],
+                                "php55-pecl-apcu" : [],
+                                "php55-pecl-memcache" : []
+                            }
+                        }
+                    },
+                    "base" : {
+                        "packages" : {
+                            "yum" : {
+                                "mysql" : [],
+                                "mysql-server" : []
                             }
                         },
                         "files" : {
@@ -266,10 +297,23 @@
                                 "owner"   : "root",
                                 "group"   : "root"
                             },
+                            "/tmp/db-init.mysql" : {
+                                "content" : { "Fn::Join" : [ "", [
+                                    "DROP DATABASE IF EXISTS test;\n",
+                                    "DROP DATABASE IF EXISTS wordpress;\n",
+                                    "CREATE DATABASE wordpress;\n",
+                                    "GRANT ALL ON wordpress.* TO 'wordpress'@'localhost' IDENTIFIED BY 'pr0m0tably'\n"
+                                ]]},
+                                "mode"    : "000644",
+                                "owner"   : "root",
+                                "group"   : "root"
+                            },
                             "/tmp/install.sh" : {
                                 "content" : { "Fn::Join" : [ "", [
                                     "#!/bin/bash\n",
                                     "set -ex\n",
+                                    "\n",
+                                    "sed -i 's/;date.timezone =.*$/date.timezone = UTC/' /etc/php.ini\n",
                                     "\n",
                                     "if [ '{{WP_VER}}' = 'latest' ]; then\n",
                                     "  curl -L -o /tmp/wordpress.tar.gz https://wordpress.org/latest.tar.gz\n",
@@ -308,8 +352,11 @@
                                     "chown -R apache:apache /var/www/wordpress\n",
                                     "\n",
                                     "service mysqld start\n",
-                                    "mysql -u root < /tmp/db.mysql\n",
+                                    "mysql -u root < /tmp/db-init.mysql\n",
                                     "mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -uroot mysql\n",
+                                    "if [ -f /tmp/db-import.mysql ]; then\n",
+                                    "  mysql -u root < /tmp/db-import.mysql\n",
+                                    "fi\n",
                                     "\n",
                                     "rm -rf /tmp/extract\n"
                                 ]]},
@@ -325,7 +372,7 @@
                                 "content" : { "Fn::Join" : [ "", [
                                     "#!/bin/bash\n",
                                     "\n",
-                                    "if /usr/local/sbin/dbdump > /var/log/dbdump.out 2>&1\n"
+                                    "/usr/local/sbin/dbdump > /var/log/dbdump.out 2>&1\n"
                                 ]]},
                                 "mode"    : "000755",
                                 "owner"   : "root",
@@ -371,6 +418,9 @@
                         "commands" : {
                             "00-setup-wordpress" : {
                                 "command" : "/tmp/install.sh"
+                            },
+                            "05-purge-backup-file" : {
+                                "command" : "rm -f /etc/cron.hourly/dbbackup.bak"
                             }
                         },
                         "services" : {
@@ -406,10 +456,24 @@
                     "  yum upgrade -y || true\n",
                     "fi\n",
                     "\n",
-                    "# TODO - pick configSets\n",
+                    "case '", { "Ref" : "PhpVersion" }, "' in\n",
+                    "  5.3)\n",
+                    "    /opt/aws/bin/cfn-init -v -s ", { "Ref": "AWS::StackId" },
+                        " -r Instance -c php53 --region ", { "Ref": "AWS::Region" }, "\n",
+                    "    ;;\n",
+                    "  5.4)\n",
+                    "    /opt/aws/bin/cfn-init -v -s ", { "Ref": "AWS::StackId" },
+                        " -r Instance -c php54 --region ", { "Ref": "AWS::Region" }, "\n",
+                    "    ;;\n",
+                    "  5.5)\n",
+                    "    /opt/aws/bin/cfn-init -v -s ", { "Ref": "AWS::StackId" },
+                        " -r Instance -c php55 --region ", { "Ref": "AWS::Region" }, "\n",
+                    "    ;;\n",
+                    "esac\n",
+                    "\n",
                     "if [ '", { "Ref" : "DbImportFile" }, "' = 'None' ]; then\n",
                     "  /opt/aws/bin/cfn-init -v -s ", { "Ref": "AWS::StackId" },
-                      " -r Instance -c dbinit,base --region ", { "Ref": "AWS::Region" }, "\n",
+                      " -r Instance -c base --region ", { "Ref": "AWS::Region" }, "\n",
                     "else\n",
                     "  /opt/aws/bin/cfn-init -v -s ", { "Ref": "AWS::StackId" },
                       " -r Instance -c dbimport,base --region ", { "Ref": "AWS::Region" }, "\n",
