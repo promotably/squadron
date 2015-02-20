@@ -14,7 +14,6 @@ case "$CI_NAME" in
         CI='true'
         CI_BUILD_NUMBER="$BUILD_NUMBER"
         CI_COMMIT_ID="$2"
-        CI_MESSAGE="$(git log -1 --format=%B)"
         ;;
     localdev)
         CI='false'
@@ -78,13 +77,6 @@ scribe_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated
 dashboard_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/dashboard/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
 
 if [ -n "$PROJECT" ]; then
-    # if we're in CI, drop the commit message in an object
-    if [ "CI" = 'true' -a -n "$CI_MESSAGE" ]; then
-        echo "$CI_MESSAGE" > commit_msg.$$
-        aws s3 cp commit_msg.$$ "s3://$ARTIFACT_BUCKET/$CI_NAME/$PROJECT/$CI_COMMIT_ID"
-        rm -f commit_msg.$$
-    fi
-
     case "$PROJECT" in
         squadron)
             squadron_ref=$CI_COMMIT_ID
