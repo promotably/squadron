@@ -188,4 +188,4 @@ $curl_cmd || exit $?
 
 echo
 echo "Validating that / returns a 200 OK: $elb_url/"
-curl -v --fail --connect-timeout 10 --max-time 15 $elb_url/ || exit $?
+curl -v --fail --connect-timeout 10 --max-time 15 $elb_url/ > /dev/null || exit $?
