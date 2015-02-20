@@ -75,7 +75,7 @@ set -ex
 squadron_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/squadron/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
 api_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/api/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
 scribe_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/scribe/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
-dashboard_ref='latest'
+dashboard_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/dashboard/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
 
 if [ -n "$PROJECT" ]; then
     # if we're in CI, drop the commit message in an object
@@ -127,9 +127,8 @@ for cfn in integration-test network api scribe ; do
         --template-url "https://$ARTIFACT_BUCKET.s3.amazonaws.com/$CI_NAME/squadron/$squadron_ref/cfn-${cfn}.json"
 done
 
-# TODO add dashboard_ref to this list
 # make sure other build artifacts are there
-for s3_file in api/$api_ref/standalone.jar api/$api_ref/source.zip api/$api_ref/apid \
+for s3_file in dashboard/$dashboard_ref/index.html api/$api_ref/standalone.jar api/$api_ref/source.zip api/$api_ref/apid \
                scribe/$scribe_ref/standalone.jar scribe/$scribe_ref/source.zip scribe/$scribe_ref/scribed ; do
     aws s3 ls s3://$ARTIFACT_BUCKET/$CI_NAME/$s3_file > /dev/null
 done
@@ -151,6 +150,7 @@ aws cloudformation create-stack --stack-name $stack_name --disable-rollback \
     ParameterKey=SquadronRef,ParameterValue=$squadron_ref \
     ParameterKey=ApiRef,ParameterValue=$api_ref \
     ParameterKey=ScribeRef,ParameterValue=$scribe_ref \
+    ParameterKey=DashboardRef,ParameterValue=$dashboard_ref \
     ParameterKey=SshKey,ParameterValue=$ssh_key \
     ParameterKey=DnsName,ParameterValue=$dns_name \
     ParameterKey=SSHFrom,ParameterValue=$(curl http://checkip.amazonaws.com/)/32 \

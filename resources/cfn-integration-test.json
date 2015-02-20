@@ -244,9 +244,9 @@
             "Properties" : {
                 "TemplateURL" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "CiName" }, "/squadron/", { "Ref" : "SquadronRef" }, "/cfn-api.json" ] ]},
                 "Parameters" : {
-                    "DashboardRef" : { "Ref" : "DashboardRef" },
                     "ArtifactBucket" : { "Ref" : "ArtifactBucket" },
                     "ArtifactPath" : { "Fn::Join" : [ "/", [ { "Ref" : "CiName" }, "api", { "Ref" : "ApiRef" } ] ]},
+                    "DashboardPath" : { "Fn::Join" : [ "/", [ { "Ref" : "CiName" }, "dashboard", { "Ref" : "DashboardRef" } ] ]},
                     "PublicSubnets" : { "Fn::Join" : [ ",", [
                         { "Fn::GetAtt" : [ "Network", "Outputs.PublicSubnetA" ] },
                         { "Fn::GetAtt" : [ "Network", "Outputs.PublicSubnetB" ] },

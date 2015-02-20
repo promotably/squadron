@@ -4,11 +4,6 @@
 
     "Parameters" : {
 
-        "DashboardRef" : {
-            "Description" : "Git ref of dashboard to refer to",
-            "Type" : "String",
-            "Default" : "latest"
-        },
         "ArtifactBucket" : {
             "Description" : "S3 Bucket where build artifacts are stored",
             "Type" : "String",
@@ -16,6 +11,10 @@
         },
         "ArtifactPath" : {
             "Description" : "Path in S3 bucket to standalone.jar, source.zip, apid",
+            "Type" : "String"
+        },
+        "DashboardPath" : {
+            "Description" : "Git ref of dashboard to refer to",
             "Type" : "String"
         },
         "PublicSubnets" : {
@@ -314,7 +313,7 @@
                                 "content" : { "Fn::Join" : [ "", [
                                     "{\n",
                                     "\"ARTIFACT_BUCKET\" \"{{ARTIFACT_BUCKET}}\"\n",
-                                    "\"DASHBOARD_INDEX_PATH\" \"db/{{DASHBOARD_REF}}/index.html\"\n",
+                                    "\"DASHBOARD_INDEX_PATH\" \"{{DASHBOARD_PATH}}/index.html\"\n",
                                     "\"KINESIS_A\" \"{{KINESIS_A}}\"\n",
                                     "\"KINESIS_B\" \"{{KINESIS_B}}\"\n",
                                     "\"REDIS_HOST\" \"localhost\"\n",
@@ -331,7 +330,7 @@
                                 ]]},
                                 "context" : {
                                     "ARTIFACT_BUCKET" : { "Ref": "ArtifactBucket" },
-                                    "DASHBOARD_REF" : { "Ref": "DashboardRef" },
+                                    "DASHBOARD_PATH" : { "Ref": "DashboardPath" },
                                     "KINESIS_A" : { "Ref": "KinesisStreamA" },
                                     "KINESIS_B" : { "Ref": "KinesisStreamB" },
                                     "RDS_HOST" : { "Ref" : "DBHost" },
@@ -446,7 +445,7 @@
                                     "#!/bin/bash -ex\n",
                                     "\n",
                                     "export ARTIFACT_BUCKET=\"{{ARTIFACT_BUCKET}}\"\n",
-                                    "export DASHBOARD_INDEX_PATH=\"db/{{DASHBOARD_REF}}/index.html\"\n",
+                                    "export DASHBOARD_INDEX_PATH=\"{{DASHBOARD_PATH}}/index.html\"\n",
                                     "export KINESIS_A=\"{{KINESIS_A}}\"\n",
                                     "export KINESIS_B=\"{{KINESIS_B}}\"\n",
                                     "export REDIS_HOST=\"localhost\"\n",
@@ -478,7 +477,7 @@
                                 ]]},
                                 "context" : {
                                     "ARTIFACT_BUCKET" : { "Ref": "ArtifactBucket" },
-                                    "DASHBOARD_REF" : { "Ref": "DashboardRef" },
+                                    "DASHBOARD_PATH" : { "Ref": "DashboardPath" },
                                     "KINESIS_A" : { "Ref": "KinesisStreamA" },
                                     "KINESIS_B" : { "Ref": "KinesisStreamB" },
                                     "RDS_HOST" : { "Ref" : "DBHost" },

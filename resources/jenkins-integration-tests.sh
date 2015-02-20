@@ -185,3 +185,7 @@ while [ $(date +%s) -le $timeout_ts ] && sleep 10; do
     fi
 done
 $curl_cmd || exit $?
+
+echo
+echo "Validating that / returns a 200 OK: $elb_url/"
+curl -v --fail --connect-timeout 10 --max-time 15 $elb_url/ || exit $?
