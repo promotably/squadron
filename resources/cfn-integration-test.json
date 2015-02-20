@@ -144,7 +144,7 @@
             "Type" : "AWS::CloudFormation::Stack",
             "DependsOn" : "TestInstanceProfile",
             "Properties" : {
-                "TemplateURL" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "CiName" }, "/squadron/", { "Ref" : "SquadronRef" }, "/cfn-ci.json" ] ]},
+                "TemplateURL" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "CiName" }, "/squadron/", { "Ref" : "SquadronRef" }, "/cfn-jenkins.json" ] ]},
                 "Parameters" : {
                     "KeyName" : { "Ref" : "SshKey" },
                     "SSHFrom" : { "Fn::If" : [ "TestHost",
