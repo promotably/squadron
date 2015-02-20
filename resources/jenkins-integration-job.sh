@@ -95,6 +95,10 @@ if [ -n "$PROJECT" ]; then
         scribe)
             scribe_ref=$CI_COMMIT_ID
             ;;
+        dashboard)
+            dashboard_ref=$CI_COMMIT_ID
+            skip_integration_tests='true'
+            ;;
         *)
             echo "Fatal: Unknown project $PROJECT" >&2
             exit 1
@@ -133,33 +137,38 @@ for s3_file in dashboard/$dashboard_ref/index.html api/$api_ref/standalone.jar a
     aws s3 ls s3://$ARTIFACT_BUCKET/$CI_NAME/$s3_file > /dev/null
 done
 
-ssh_key="$CI_NAME-$stack_name"
-if aws ec2 create-key-pair --key-name "$ssh_key" --output=text --query KeyMaterial > $ssh_key.pem; then
-    aws s3 cp $ssh_key.pem s3://$KEY_BUCKET/$ssh_key.pem
+if [ -z "$skip_integration_tests" ]; then
+    ssh_key="$CI_NAME-$stack_name"
+    if aws ec2 create-key-pair --key-name "$ssh_key" --output=text --query KeyMaterial > $ssh_key.pem; then
+        aws s3 cp $ssh_key.pem s3://$KEY_BUCKET/$ssh_key.pem
+    fi
+
+    aws cloudformation create-stack --stack-name $stack_name --disable-rollback \
+        --template-url https://$ARTIFACT_BUCKET.s3.amazonaws.com/$CI_NAME/squadron/$squadron_ref/cfn-integration-test.json \
+        --capabilities CAPABILITY_IAM --parameters \
+        $email_param \
+        ParameterKey=ArtifactBucket,ParameterValue=$ARTIFACT_BUCKET \
+        ParameterKey=MetaDataBucket,ParameterValue=$METADATA_BUCKET \
+        ParameterKey=Project,ParameterValue=$PROJECT \
+        ParameterKey=CiName,ParameterValue=$CI_NAME \
+        ParameterKey=BuildNum,ParameterValue=$CI_BUILD_NUMBER \
+        ParameterKey=SquadronRef,ParameterValue=$squadron_ref \
+        ParameterKey=ApiRef,ParameterValue=$api_ref \
+        ParameterKey=ScribeRef,ParameterValue=$scribe_ref \
+        ParameterKey=DashboardRef,ParameterValue=$dashboard_ref \
+        ParameterKey=SshKey,ParameterValue=$ssh_key \
+        ParameterKey=DnsName,ParameterValue=$dns_name \
+        ParameterKey=SSHFrom,ParameterValue=$(curl http://checkip.amazonaws.com/)/32 \
+        ParameterKey=RunTestHost,ParameterValue=false
+
+    get_stack_status $stack_name
+
+    ./jenkins-integration-tests.sh "$stack_name" "$ssh_key.pem"
+    test_rc=$?
+else
+    AUTO_TERM_STACK=false
+    test_rc=0
 fi
-
-aws cloudformation create-stack --stack-name $stack_name --disable-rollback \
-    --template-url https://$ARTIFACT_BUCKET.s3.amazonaws.com/$CI_NAME/squadron/$squadron_ref/cfn-integration-test.json \
-    --capabilities CAPABILITY_IAM --parameters \
-    $email_param \
-    ParameterKey=ArtifactBucket,ParameterValue=$ARTIFACT_BUCKET \
-    ParameterKey=MetaDataBucket,ParameterValue=$METADATA_BUCKET \
-    ParameterKey=Project,ParameterValue=$PROJECT \
-    ParameterKey=CiName,ParameterValue=$CI_NAME \
-    ParameterKey=BuildNum,ParameterValue=$CI_BUILD_NUMBER \
-    ParameterKey=SquadronRef,ParameterValue=$squadron_ref \
-    ParameterKey=ApiRef,ParameterValue=$api_ref \
-    ParameterKey=ScribeRef,ParameterValue=$scribe_ref \
-    ParameterKey=DashboardRef,ParameterValue=$dashboard_ref \
-    ParameterKey=SshKey,ParameterValue=$ssh_key \
-    ParameterKey=DnsName,ParameterValue=$dns_name \
-    ParameterKey=SSHFrom,ParameterValue=$(curl http://checkip.amazonaws.com/)/32 \
-    ParameterKey=RunTestHost,ParameterValue=false
-
-get_stack_status $stack_name
-
-./jenkins-integration-tests.sh "$stack_name" "$ssh_key.pem"
-test_rc=$?
 
 if [ $test_rc -ne 0  ] || grep -q 'java.lang.[A-Za-z0-9_.-]*Exception' integration_test_results.txt; then
     exit 1
@@ -168,9 +177,10 @@ else
         touch empty
         s3_url="s3://$METADATA_BUCKET/validated-builds/$CI_NAME/$PROJECT/$(printf '%.12d' $CI_BUILD_NUMBER)"
         case "$PROJECT" in
-            squadron) aws s3 cp empty "$s3_url/$squadron_ref" ;;
-            api)      aws s3 cp empty "$s3_url/$api_ref" ;;
-            scribe)   aws s3 cp empty "$s3_url/$scribe_ref" ;;
+            squadron)  aws s3 cp empty "$s3_url/$squadron_ref" ;;
+            api)       aws s3 cp empty "$s3_url/$api_ref" ;;
+            scribe)    aws s3 cp empty "$s3_url/$scribe_ref" ;;
+            dashboard) aws s3 cp empty "$s3_url/$dashboard_ref" ;;
         esac
     fi
     if [ "$AUTO_TERM_STACK" = 'true' ]; then
