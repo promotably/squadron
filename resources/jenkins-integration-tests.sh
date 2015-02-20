@@ -6,7 +6,7 @@
 get_stack_status() {
     set +x
     timeout_ts=$((`date +%s` + 1800))
-    while [ $(date +%s) -le $timeout_ts ] && sleep 20; do
+    while [ $(date +%s) -le $timeout_ts ]; do
         stack_status=$(aws cloudformation describe-stacks --output=text --stack-name "$1" --query 'Stacks[0].StackStatus')
         if [ "$2" = 'update' ]; then
             case "$stack_status" in 
@@ -31,6 +31,7 @@ get_stack_status() {
                     ;;
             esac
         fi
+        sleep 20
     done
     aws cloudformation describe-stacks --output=text --stack-name "$1" --query 'Stacks[0].StackStatus'
     return 1
