@@ -297,7 +297,7 @@
                         { "Fn::GetAtt" : [ "Network", "Outputs.PublicSubnetB" ] },
                         { "Fn::GetAtt" : [ "Network", "Outputs.PublicSubnetC" ] } ]]},
                     "VpcId" : { "Fn::GetAtt" : [ "Network", "Outputs.VPCId" ] },
-                    "Environment" : "integration",
+                    "Environment" : "staging",
                     "VpcDefaultSecurityGroup" : { "Fn::GetAtt" : [ "Network", "Outputs.VpcDefaultSecurityGroup" ] },
                     "KeyPair" : { "Ref" : "SshKey" }
                 },

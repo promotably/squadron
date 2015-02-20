@@ -104,33 +104,33 @@ $ssh_cmd -i $ssh_key_pem ec2-user@$bastion_ip "$ssh_cmd $api_ip \"cd /opt/promot
 echo
 echo
 
-echo 'SCRIBE TEST RESULTS'
-echo '------------------------------------------------------------------------------'
-$ssh_cmd -i $ssh_key_pem ec2-user@$bastion_ip "$ssh_cmd $scribe_ip \"cd /opt/promotably/scribe && sudo ../scribe-integration-test.sh\"" || exit $?
+#echo 'SCRIBE TEST RESULTS'
+#echo '------------------------------------------------------------------------------'
+#$ssh_cmd -i $ssh_key_pem ec2-user@$bastion_ip "$ssh_cmd $scribe_ip \"cd /opt/promotably/scribe && sudo ../scribe-integration-test.sh\"" || exit $?
 
 echo
 echo
 
 echo '------------------------------------------------------------------------------'
 
-aws cloudformation update-stack --stack-name $scribe_stack \
-    --use-previous-template --capabilities CAPABILITY_IAM --parameters \
-    ParameterKey=Environment,ParameterValue=staging \
-    ParameterKey=ArtifactBucket,UsePreviousValue=true \
-    ParameterKey=ArtifactPath,UsePreviousValue=true \
-    ParameterKey=KeyPair,UsePreviousValue=true \
-    ParameterKey=DBName,UsePreviousValue=true \
-    ParameterKey=DBHost,UsePreviousValue=true \
-    ParameterKey=DBPort,UsePreviousValue=true \
-    ParameterKey=DBUsername,UsePreviousValue=true \
-    ParameterKey=DBPassword,UsePreviousValue=true \
-    ParameterKey=DBClientSecGrp,UsePreviousValue=true \
-    ParameterKey=KinesisStreamA,UsePreviousValue=true \
-    ParameterKey=KinesisStreamB,UsePreviousValue=true \
-    ParameterKey=VpcId,UsePreviousValue=true \
-    ParameterKey=VpcDefaultSecurityGroup,UsePreviousValue=true \
-    ParameterKey=AvailabilityZones,UsePreviousValue=true \
-    ParameterKey=PublicSubnets,UsePreviousValue=true || exit $?
+#aws cloudformation update-stack --stack-name $scribe_stack \
+#    --use-previous-template --capabilities CAPABILITY_IAM --parameters \
+#    ParameterKey=Environment,ParameterValue=staging \
+#    ParameterKey=ArtifactBucket,UsePreviousValue=true \
+#    ParameterKey=ArtifactPath,UsePreviousValue=true \
+#    ParameterKey=KeyPair,UsePreviousValue=true \
+#    ParameterKey=DBName,UsePreviousValue=true \
+#    ParameterKey=DBHost,UsePreviousValue=true \
+#    ParameterKey=DBPort,UsePreviousValue=true \
+#    ParameterKey=DBUsername,UsePreviousValue=true \
+#    ParameterKey=DBPassword,UsePreviousValue=true \
+#    ParameterKey=DBClientSecGrp,UsePreviousValue=true \
+#    ParameterKey=KinesisStreamA,UsePreviousValue=true \
+#    ParameterKey=KinesisStreamB,UsePreviousValue=true \
+#    ParameterKey=VpcId,UsePreviousValue=true \
+#    ParameterKey=VpcDefaultSecurityGroup,UsePreviousValue=true \
+#    ParameterKey=AvailabilityZones,UsePreviousValue=true \
+#    ParameterKey=PublicSubnets,UsePreviousValue=true || exit $?
 
 aws cloudformation update-stack --stack-name $api_stack \
     --use-previous-template --capabilities CAPABILITY_IAM --parameters \
@@ -157,13 +157,13 @@ aws cloudformation update-stack --stack-name $api_stack \
     ParameterKey=PrivateSubnets,UsePreviousValue=true \
     ParameterKey=DnsOverride,UsePreviousValue=true || exit $?
 
-scribe_stack_status=$(get_stack_status $scribe_stack update)
-rc=$?
-
-echo
-echo "SCRIBE STACK STATUS AFTER UPDATE TO STAGING: $scribe_stack_status"
-[ $rc = 0 ] || exit $rc
-set -x
+#scribe_stack_status=$(get_stack_status $scribe_stack update)
+#rc=$?
+#
+#echo
+#echo "SCRIBE STACK STATUS AFTER UPDATE TO STAGING: $scribe_stack_status"
+#[ $rc = 0 ] || exit $rc
+#set -x
 
 api_stack_status=$(get_stack_status $api_stack update)
 rc=$?
