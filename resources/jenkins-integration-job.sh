@@ -118,7 +118,7 @@ if [ "$CI_NAME" = 'localdev' ]; then
 fi
 
 # validate cfn templates
-aws s3 ls "https://$ARTIFACT_BUCKET.s3.amazonaws.com/$CI_NAME/squadron/$squadron_ref/" \
+aws s3 ls "s3://$ARTIFACT_BUCKET/$CI_NAME/squadron/$squadron_ref/" \
   | awk '{print $4}' | grep '^cfn-.*[.]json$' | while read cfn_json; do
     aws cloudformation validate-template --output=text \
         --template-url "https://$ARTIFACT_BUCKET.s3.amazonaws.com/$CI_NAME/squadron/$squadron_ref/$cfn_json"
