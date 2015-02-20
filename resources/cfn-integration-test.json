@@ -1,6 +1,6 @@
 {
     "AWSTemplateFormatVersion" : "2010-09-09",
-    "Description" : "Integration Test",
+    "Description" : "Promotably Super Stack",
 
     "Parameters" : {
         "ArtifactBucket" : {
@@ -73,12 +73,6 @@
             "Default" : "promotably-keyvault"
         },
 
-        "RunTestHost" : {
-            "Description" : "Build TestHost in stack (if false, expect to run tests externally)",
-            "Type" : "String",
-            "Default" : "true",
-            "AllowedValues" : [ "true", "false" ]
-        },
         "TestResultsEmail" : {
             "Description" : "Send Integration Test results to this email",
             "Type" : "String",
@@ -94,11 +88,21 @@
             "Description" : "Hostname for Api DNS record",
             "Type" : "String",
             "Default" : "default"
+        },
+        "Environment" : {
+            "Description" : "Environment tag",
+            "Type" : "String",
+            "Default" : "integration",
+            "AllowedValues" : [ "integration", "staging", "production" ]
         }
     },
 
     "Conditions" : {
-        "TestHost" : { "Fn::Equals" : [ { "Ref" : "RunTestHost" }, "true" ]}
+        "BuildJenkins" : { "Fn::Equals" : [ { "Ref" : "Environment" }, "integration" ]},
+        "BuildWoo" : { "Fn::Or" : [
+            { "Fn::Equals" : [ { "Ref" : "Environment" }, "integration" ]},
+            { "Fn::Equals" : [ { "Ref" : "Environment" }, "staging" ]}
+        ]}
     },
 
     "Mappings" : {
@@ -106,51 +110,14 @@
 
     "Resources" : {
 
-        "TestRole": {
-            "Type" : "AWS::IAM::Role",
-            "Properties" : {
-                "Path" : "/",
-                "AssumeRolePolicyDocument": {
-                    "Version" : "2012-10-17",
-                    "Statement" : [{
-                        "Effect" : "Allow",
-                        "Principal" : { "Service" : [ "ec2.amazonaws.com" ] },
-                        "Action" : [ "sts:AssumeRole" ]
-                    }]
-                },
-                "Policies" : [{
-                    "PolicyName" : "root",
-                    "PolicyDocument" : {
-                        "Version" : "2012-10-17",
-                        "Statement" : [{ "Effect": "Allow", "Action": "*", "Resource": "*" }]
-                    }
-                }]
-            }
-        },
-
-        "TestInstanceProfile" : {
-            "Type" : "AWS::IAM::InstanceProfile",
-            "Properties" : {
-                "Path" : "/",
-                "Roles" : [ { "Ref": "TestRole" } ]
-            }
-        },
-
-        "TestHostIPAddress" : {
-            "Type" : "AWS::EC2::EIP"
-        },
-
         "Jenkins" : {
             "Type" : "AWS::CloudFormation::Stack",
-            "DependsOn" : "TestInstanceProfile",
+            "Condition" : "BuildJenkins",
             "Properties" : {
                 "TemplateURL" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "CiName" }, "/squadron/", { "Ref" : "SquadronRef" }, "/cfn-jenkins.json" ] ]},
                 "Parameters" : {
                     "KeyName" : { "Ref" : "SshKey" },
-                    "SSHFrom" : { "Fn::If" : [ "TestHost",
-                        { "Fn::Join" : [ "/", [ { "Ref" : "TestHostIPAddress" }, "32" ]]},
-                        { "Ref" : "SSHFrom" }
-                    ]},
+                    "SSHFrom" : { "Ref" : "SSHFrom" },
                     "DnsRecord" : { "Fn::Join" : [ "-", [ "ci", { "Ref" : "DnsName" } ]]}
                 },
                 "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}
@@ -159,15 +126,12 @@
 
         "Woo" : {
             "Type" : "AWS::CloudFormation::Stack",
-            "DependsOn" : "TestInstanceProfile",
+            "Condition" : "BuildWoo",
             "Properties" : {
                 "TemplateURL" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "CiName" }, "/squadron/", { "Ref" : "SquadronRef" }, "/cfn-woo.json" ] ]},
                 "Parameters" : {
                     "KeyName" : { "Ref" : "SshKey" },
-                    "SSHFrom" : { "Fn::If" : [ "TestHost",
-                        { "Fn::Join" : [ "/", [ { "Ref" : "TestHostIPAddress" }, "32" ]]},
-                        { "Ref" : "SSHFrom" }
-                    ]},
+                    "SSHFrom" : { "Ref" : "SSHFrom" },
                     "DnsOverride" : "disable"
                 },
                 "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}
@@ -176,16 +140,12 @@
 
         "Network" : {
             "Type" : "AWS::CloudFormation::Stack",
-            "DependsOn" : "TestInstanceProfile",
             "Properties" : {
                 "TemplateURL" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "CiName" }, "/squadron/", { "Ref" : "SquadronRef" }, "/cfn-network.json" ] ]},
                 "Parameters" : {
                     "BastionKeyName" : { "Ref" : "SshKey" },
                     "NATKeyName" : { "Ref" : "SshKey" },
-                    "SSHFrom" : { "Fn::If" : [ "TestHost",
-                        { "Fn::Join" : [ "/", [ { "Ref" : "TestHostIPAddress" }, "32" ]]},
-                        { "Ref" : "SSHFrom" }
-                    ]}
+                    "SSHFrom" : { "Ref" : "SSHFrom" }
                 },
                 "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}
             }
@@ -193,7 +153,6 @@
 
         "Redis" : {
             "Type" : "AWS::CloudFormation::Stack",
-            "DependsOn" : "TestInstanceProfile",
             "Properties" : {
                 "TemplateURL" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "CiName" }, "/squadron/", { "Ref" : "SquadronRef" }, "/cfn-redis.json" ] ]},
                 "Parameters" : {
@@ -210,7 +169,6 @@
 
         "Rds" : {
             "Type" : "AWS::CloudFormation::Stack",
-            "DependsOn" : "TestInstanceProfile",
             "Properties" : {
                 "TemplateURL" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "CiName" }, "/squadron/", { "Ref" : "SquadronRef" }, "/cfn-postgres.json" ] ]},
                 "Parameters" : {
@@ -231,7 +189,6 @@
 
         "Kinesis" : {
             "Type" : "AWS::CloudFormation::Stack",
-            "DependsOn" : "TestInstanceProfile",
             "Properties" : {
                 "TemplateURL" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "CiName" }, "/squadron/", { "Ref" : "SquadronRef" }, "/cfn-kinesis.json" ] ]},
                 "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}
@@ -240,7 +197,6 @@
 
         "Api" : {
             "Type" : "AWS::CloudFormation::Stack",
-            "DependsOn" : "TestInstanceProfile",
             "Properties" : {
                 "TemplateURL" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "CiName" }, "/squadron/", { "Ref" : "SquadronRef" }, "/cfn-api.json" ] ]},
                 "Parameters" : {
@@ -278,7 +234,6 @@
 
         "Scribe" : {
             "Type" : "AWS::CloudFormation::Stack",
-            "DependsOn" : "TestInstanceProfile",
             "Properties" : {
                 "TemplateURL" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "CiName" }, "/squadron/", { "Ref" : "SquadronRef" }, "/cfn-scribe.json" ] ]},
                 "Parameters" : {
@@ -303,109 +258,6 @@
                 },
                 "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}
             }
-        },
-
-        "TestInstanceSecurityGroup" : {
-            "Type" : "AWS::EC2::SecurityGroup",
-            "Condition" : "TestHost",
-            "Properties" : {
-                "GroupDescription" : { "Fn::Join" : [ "", [ { "Ref" : "AWS::StackName" }, " Test Instance" ] ]},
-                "SecurityGroupIngress" : [
-                    { "IpProtocol" : "tcp", "FromPort" : "22",  "ToPort" : "22",  "CidrIp" : "0.0.0.0/00" }
-                ]
-            }
-        },
-
-        "TestHost" : {
-            "Type" : "AWS::EC2::Instance",
-            "Condition" : "TestHost",
-            "Metadata" : {
-                "AWS::CloudFormation::Authentication" : {
-                    "S3AccessCreds" : {
-                        "type" : "S3",
-                        "roleName" : { "Ref" : "TestRole" },
-                        "buckets" : [ { "Ref" : "KeyBucket" }, { "Ref" : "ArtifactBucket" } ]
-                    }
-                },
-                "AWS::CloudFormation::Init" : {
-                    "config" : {
-                        "files" : {
-                            "/root/.ssh/id_rsa" : {
-                                "source" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "KeyBucket" }, ".s3.amazonaws.com/", { "Ref" : "SshKey" }, ".pem" ]]},
-                                "mode"    : "000600",
-                                "owner"   : "root",
-                                "group"   : "root"
-                            },
-                            "/home/ec2-user/.ssh/id_rsa" : {
-                                "source" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "KeyBucket" }, ".s3.amazonaws.com/", { "Ref" : "SshKey" }, ".pem" ]]},
-                                "mode"    : "000600",
-                                "owner"   : "ec2-user",
-                                "group"   : "ec2-user"
-                            },
-                            "/root/run_tests.sh" : {
-                                "source" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "CiName" }, "/squadron/", { "Ref" : "SquadronRef" }, "/integration_test_driver.sh" ]]},
-                                "mode"    : "000755",
-                                "owner"   : "root",
-                                "group"   : "root"
-                            }
-                        }
-                    }
-                }
-            },
-            "Properties" : {
-                "InstanceType" : "t2.micro",
-                "KeyName"  : { "Ref" : "SshKey" },
-                "ImageId" : "ami-b66ed3de",
-                "SecurityGroupIds" : [{ "Ref" : "TestInstanceSecurityGroup" }],
-                "IamInstanceProfile" : { "Ref" : "TestInstanceProfile" },
-                "UserData" : { "Fn::Base64" : { "Fn::Join" : ["", [
-                    "#!/bin/bash -ex\n",
-                    "\n",
-                    "# retry yum upgrade if it fails, otherwise keep going\n",
-                    "if ! yum upgrade -y; then\n",
-                    "  sleep 30\n",
-                    "  yum upgrade -y || true\n",
-                    "fi\n",
-                    "\n",
-                    "/opt/aws/bin/cfn-init -v -s ", { "Ref": "AWS::StackId" },
-                    " -r TestHost --region ", { "Ref": "AWS::Region" }, "\n",
-                    "\n",
-                    "export artifact_bucket=", { "Ref" : "ArtifactBucket" }, "\n",
-                    "export metadata_bucket=", { "Ref" : "MetaDataBucket" }, "\n",
-                    "export key_bucket=", { "Ref" : "KeyBucket" }, "\n",
-                    "export project=", { "Ref" : "Project" }, "\n",
-                    "export ci_name=", { "Ref" : "CiName" }, "\n",
-                    "export build_num=", { "Ref" : "BuildNum" }, "\n",
-                    "export squadron_ref=", { "Ref" : "SquadronRef" }, "\n",
-                    "export api_ref=", { "Ref" : "ApiRef" }, "\n",
-                    "export scribe_ref=", { "Ref" : "ScribeRef" }, "\n",
-                    "export dashboard_ref=", { "Ref" : "DashboardRef" }, "\n",
-                    "\n",
-                    "export aws_region=", { "Ref": "AWS::Region" }, "\n",
-                    "export ssh_key=", { "Ref" : "SshKey" }, "\n",
-                    "export promotably_stack=", { "Ref" : "AWS::StackName" }, "\n",
-                    "export network_stack=", { "Ref" : "Network" }, "\n",
-                    "export api_stack=", { "Ref" : "Api" }, "\n",
-                    "export scribe_stack=", { "Ref" : "Scribe" }, "\n",
-                    "export test_result_email=", { "Ref" : "TestResultsEmail" }, "\n",
-                    "export elb_url=", { "Fn::GetAtt" : [ "Api", "Outputs.URL" ] }, "\n",
-                    "export ci_url=", { "Fn::GetAtt" : [ "Jenkins", "Outputs.URL" ] }, "\n",
-                    "export auto_term=", { "Ref" : "AutoTermStack" }, "\n",
-                    "\n",
-                    "screen -d -m -L -S integration_tests /root/run_tests.sh\n",
-                    "\n"
-                ]]} },
-                "Tags": [{ "Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ { "Ref" : "AWS::StackName" }, "testhost" ] ]} }]
-            }
-        },
-
-        "TestHostEIPAssocation" : {
-            "Type" : "AWS::EC2::EIPAssociation",
-            "Condition" : "TestHost",
-            "Properties" : {
-                "EIP" : { "Ref" : "TestHostIPAddress" },
-                "InstanceId" : { "Ref" : "TestHost" }
-            }
         }
     },
 
@@ -429,15 +281,6 @@
         "ScribeStack" : {
             "Description" : "StackId of Scribe stack",
             "Value" : { "Ref" : "Scribe" }
-        },
-        "TestHost" : {
-            "Description" : "InstanceId of TestHost",
-            "Value" : { "Fn::If" : [ "TestHost", { "Ref" : "TestHost" }, "" ]}
-        },
-        "TestHostEIP" : {
-            "Description" : "Public IP of TestHost",
-            "Value" : { "Fn::If" : [ "TestHost", { "Ref" : "TestHostIPAddress" }, "" ]}
         }
     }
-
 }

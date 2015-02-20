@@ -157,8 +157,7 @@ if [ -z "$skip_integration_tests" ]; then
         ParameterKey=DashboardRef,ParameterValue=$dashboard_ref \
         ParameterKey=SshKey,ParameterValue=$ssh_key \
         ParameterKey=DnsName,ParameterValue=$dns_name \
-        ParameterKey=SSHFrom,ParameterValue=$(curl http://checkip.amazonaws.com/)/32 \
-        ParameterKey=RunTestHost,ParameterValue=false
+        ParameterKey=SSHFrom,ParameterValue=$(curl http://checkip.amazonaws.com/)/32
 
     get_stack_status $stack_name
 
