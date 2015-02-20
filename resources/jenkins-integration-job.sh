@@ -174,7 +174,7 @@ fi
 if [ $test_rc -ne 0  ] || grep -q 'java.lang.[A-Za-z0-9_.-]*Exception' integration_test_results.txt; then
     exit 1
 else
-    if [ -n "$PROJECT" -a "$PROJECT" != 'None' -n "$CI_BUILD_NUMBER" ]; then
+    if [ -n "$PROJECT" -a "$PROJECT" != 'None' -a -n "$CI_BUILD_NUMBER" ]; then
         touch empty
         s3_url="s3://$METADATA_BUCKET/validated-builds/$CI_NAME/$PROJECT/$(printf '%.12d' $CI_BUILD_NUMBER)"
         case "$PROJECT" in
