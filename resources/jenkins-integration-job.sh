@@ -143,7 +143,7 @@ if [ -z "$skip_integration_tests" ]; then
     ssh-keygen -f "$ssh_key.pem" -y < /dev/null
 
     aws cloudformation create-stack --stack-name $stack_name --disable-rollback \
-        --template-url https://$ARTIFACT_BUCKET.s3.amazonaws.com/$CI_NAME/squadron/$squadron_ref/cfn-integration-test.json \
+        --template-url https://$ARTIFACT_BUCKET.s3.amazonaws.com/$CI_NAME/squadron/$squadron_ref/cfn-promotably.json \
         --capabilities CAPABILITY_IAM --parameters \
         $email_param \
         ParameterKey=ArtifactBucket,ParameterValue=$ARTIFACT_BUCKET \
