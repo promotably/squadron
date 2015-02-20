@@ -164,14 +164,14 @@ if [ -z "$skip_integration_tests" ]; then
 
     get_stack_status $stack_name
 
-    ./jenkins-integration-tests.sh "$stack_name" "$ssh_key.pem" 2>&1 | tee integration_test_results.txt
-    test_rc=$?
+    ( ./jenkins-integration-tests.sh "$stack_name" "$ssh_key.pem" 2>&1 || touch_test_failure ) \
+        | tee integration_test_results.txt
+    set -e
 else
     AUTO_TERM_STACK=false
-    test_rc=0
 fi
 
-if [ $test_rc -ne 0  ] || grep -q 'java.lang.[A-Za-z0-9_.-]*Exception' integration_test_results.txt; then
+if [ -f touch_test_failure ] || grep -q 'java.lang.[A-Za-z0-9_.-]*Exception' integration_test_results.txt; then
     exit 1
 else
     if [ -n "$PROJECT" -a "$PROJECT" != 'None' -a -n "$CI_BUILD_NUMBER" ]; then
