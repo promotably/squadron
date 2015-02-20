@@ -56,7 +56,8 @@
         "Environment" : {
             "Description" : "Environment tag",
             "Type" : "String",
-            "Default" : "integration"
+            "Default" : "integration",
+            "AllowedValues" : [ "integration", "staging", "production" ]
         },
         "VpcDefaultSecurityGroup" : {
             "Description" : "VPC default Security Group",
