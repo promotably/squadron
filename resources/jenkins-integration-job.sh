@@ -137,6 +137,7 @@ for s3_file in dashboard/$dashboard_ref/index.html api/$api_ref/standalone.jar a
     aws s3 ls s3://$ARTIFACT_BUCKET/$CI_NAME/$s3_file > /dev/null
 done
 
+echo -n > integration_test_results.txt
 if [ -z "$skip_integration_tests" ]; then
     ssh_key="$CI_NAME-$stack_name"
     if aws ec2 create-key-pair --key-name "$ssh_key" --output=text --query KeyMaterial > $ssh_key.pem; then
@@ -163,7 +164,7 @@ if [ -z "$skip_integration_tests" ]; then
 
     get_stack_status $stack_name
 
-    ./jenkins-integration-tests.sh "$stack_name" "$ssh_key.pem"
+    ./jenkins-integration-tests.sh "$stack_name" "$ssh_key.pem" 2>&1 | tee integration_test_results.txt
     test_rc=$?
 else
     AUTO_TERM_STACK=false
