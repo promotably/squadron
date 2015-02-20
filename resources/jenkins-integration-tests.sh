@@ -69,6 +69,11 @@ echo
 
 echo 'NETWORK TESTS'
 echo '------------------------------------------------------------------------------'
+# SSH sanity check
+echo "Test SSH"
+$ssh_cmd -i $ssh_key_pem ec2-user@$bastion_ip "whoami"|| exit $?
+$ssh_cmd -i $ssh_key_pem ec2-user@$bastion_ip "$ssh_cmd $api_ip \"sudo whoami\"" || exit $?
+$ssh_cmd -i $ssh_key_pem ec2-user@$bastion_ip "$ssh_cmd $scribe_ip \"sudo whoami\"" || exit $?
 # NTPD
 ntpserver=$(grep '^server' /etc/ntp.conf | head -n 1 | awk '{print $2}')
 echo "Test NTP to $ntpserver"

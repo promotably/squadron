@@ -134,7 +134,13 @@ if [ -z "$skip_integration_tests" ]; then
     ssh_key="$CI_NAME-$stack_name"
     if aws ec2 create-key-pair --key-name "$ssh_key" --output=text --query KeyMaterial > $ssh_key.pem; then
         aws s3 cp $ssh_key.pem s3://$KEY_BUCKET/$ssh_key.pem
+    else
+        # assume the key already exists - try to re-use it
+        aws s3 cp s3://$KEY_BUCKET/$ssh_key.pem $ssh_key.pem
     fi
+    chmod 600 $ssh_key.pem
+    # extract a public key to make sure we actually downloaded a private key
+    ssh-keygen -f "$ssh_key.pem" -y < /dev/null
 
     aws cloudformation create-stack --stack-name $stack_name --disable-rollback \
         --template-url https://$ARTIFACT_BUCKET.s3.amazonaws.com/$CI_NAME/squadron/$squadron_ref/cfn-integration-test.json \
