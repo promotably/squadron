@@ -29,7 +29,8 @@
         },
         "DBPassword" : {
             "Description" : "Database password",
-            "Type" : "String"
+            "Type" : "String",
+            "NoEcho" : "true"
         },
         "DBClass" : {
             "Description" : "Database instance class",
