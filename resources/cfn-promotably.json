@@ -73,11 +73,6 @@
             "Default" : "promotably-keyvault"
         },
 
-        "TestResultsEmail" : {
-            "Description" : "Send Integration Test results to this email",
-            "Type" : "String",
-            "Default" : "integration-tests@promotably.com"
-        },
         "AutoTermStack" : {
             "Description" : "Auto-delete stacks after successful test run",
             "Type" : "String",
