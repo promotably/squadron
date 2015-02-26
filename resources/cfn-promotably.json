@@ -199,7 +199,7 @@
                         { "Fn::GetAtt" : [ "Network", "Outputs.PrivateSubnetB" ] },
                         { "Fn::GetAtt" : [ "Network", "Outputs.PrivateSubnetC" ] } ]]},
                     "VpcId" : { "Fn::GetAtt" : [ "Network", "Outputs.VPCId" ] },
-                    "Environment" : "integration",
+                    "Environment" : { "Ref" : "Environment" },
                     "VpcDefaultSecurityGroup" : { "Fn::GetAtt" : [ "Network", "Outputs.VpcDefaultSecurityGroup" ] },
                     "NATSecurityGroup" : { "Fn::GetAtt" : [ "Network", "Outputs.NATSecurityGroup" ] },
                     "KeyPair" : { "Ref" : "SshKey" },
@@ -242,7 +242,7 @@
                         { "Fn::GetAtt" : [ "Network", "Outputs.PublicSubnetB" ] },
                         { "Fn::GetAtt" : [ "Network", "Outputs.PublicSubnetC" ] } ]]},
                     "VpcId" : { "Fn::GetAtt" : [ "Network", "Outputs.VPCId" ] },
-                    "Environment" : "staging",
+                    "Environment" : { "Ref" : "Environment" },
                     "VpcDefaultSecurityGroup" : { "Fn::GetAtt" : [ "Network", "Outputs.VpcDefaultSecurityGroup" ] },
                     "KeyPair" : { "Ref" : "SshKey" }
                 },
@@ -258,7 +258,7 @@
         },
         "CiUrl" : {
             "Description" : "URL to Jenkins",
-            "Value" : { "Fn::GetAtt" : [ "Jenkins", "Outputs.URL" ] }
+            "Value" : { "Fn::If" : [ "BuildJenkins", { "Fn::GetAtt" : [ "Jenkins", "Outputs.URL" ] }, "N/A" ]}
         },
         "WooUrl" : {
             "Description" : "Woo Site URL",

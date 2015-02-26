@@ -407,13 +407,8 @@
                     "((\n",
                     "  cfn_init -c default || error_exit 'Failed to run cfn-init - default'\n",
                     "\n",
-                    "  if [ '", { "Ref": "Environment" }, "' = 'integration' ]; then\n",
-                    "    cfn_init -c integration || error_exit 'Failed to run cfn-init - integration'\n",
-                    "  else\n",
-                    "\n",
-                    "    cfn_init -c boot || error_exit 'Failed to run cfn-init - boot'\n",
-                    "    cfn_init -c waitForHealthcheck || error_exit 'Failed to run cfn-init - waitForHealthcheck'\n",
-                    "  fi\n",
+                    "  cfn_init -c boot || error_exit 'Failed to run cfn-init - boot'\n",
+                    "  cfn_init -c waitForHealthcheck || error_exit 'Failed to run cfn-init - waitForHealthcheck'\n",
                     "  cfn_signal_ok\n",
                     ") > /tmp/cloud-init-bg.out 2>&1 ) &\n"
                 ] ]} }
