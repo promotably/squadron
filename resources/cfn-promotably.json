@@ -91,7 +91,8 @@
         "BuildWoo" : { "Fn::Or" : [
             { "Fn::Equals" : [ { "Ref" : "Environment" }, "integration" ]},
             { "Fn::Equals" : [ { "Ref" : "Environment" }, "staging" ]}
-        ]}
+        ]},
+        "DnsName" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "DnsName" }, "default" ] }]}
     },
 
     "Mappings" : {
@@ -121,7 +122,10 @@
                 "Parameters" : {
                     "KeyName" : { "Ref" : "SshKey" },
                     "SSHFrom" : { "Ref" : "SSHFrom" },
-                    "DnsOverride" : "disable"
+                    "DnsOverride" : { "Fn::If" : [ "DnsName",
+                        { "Fn::Join" : [ "-", [ "woo", { "Ref" : "DnsName" } ]]},
+                        "default"
+                    ]}
                 },
                 "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}
             }
@@ -215,7 +219,10 @@
                     "DBClientSecGrp" : { "Fn::GetAtt" : [ "Rds", "Outputs.DBClientSecGrp" ] },
                     "KinesisStreamA" : { "Fn::GetAtt" : [ "Kinesis", "Outputs.KinesisStreamA" ] },
                     "KinesisStreamB" : { "Fn::GetAtt" : [ "Kinesis", "Outputs.KinesisStreamB" ] },
-                    "DnsOverride" : { "Fn::Join" : [ "-", [ "api", { "Ref" : "DnsName" } ]]}
+                    "DnsOverride" : { "Fn::If" : [ "DnsName",
+                        { "Fn::Join" : [ "-", [ "api", { "Ref" : "DnsName" } ]]},
+                        "default"
+                    ]}
                 },
                 "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}
             }
