@@ -13,12 +13,6 @@
             "Type" : "String",
             "Default" : "promotably-build-metadata"
         },
-        "Project" : {
-            "Description" : "Name of project being test",
-            "Type" : "String",
-            "Default" : "None",
-            "AllowedValues" : [ "None", "squadron", "api", "scribe" ]
-        },
         "CiName" : {
             "Description" : "Name of CI system (base path in ArtifactBucket)",
             "Type" : "String",

@@ -142,7 +142,6 @@ if [ -z "$skip_integration_tests" ]; then
         --capabilities CAPABILITY_IAM --parameters \
         ParameterKey=ArtifactBucket,ParameterValue=$ARTIFACT_BUCKET \
         ParameterKey=MetaDataBucket,ParameterValue=$METADATA_BUCKET \
-        ParameterKey=Project,ParameterValue=$PROJECT \
         ParameterKey=CiName,ParameterValue=$CI_NAME \
         ParameterKey=SquadronRef,ParameterValue=$squadron_ref \
         ParameterKey=ApiRef,ParameterValue=$api_ref \
