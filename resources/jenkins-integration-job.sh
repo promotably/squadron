@@ -144,7 +144,6 @@ if [ -z "$skip_integration_tests" ]; then
         ParameterKey=MetaDataBucket,ParameterValue=$METADATA_BUCKET \
         ParameterKey=Project,ParameterValue=$PROJECT \
         ParameterKey=CiName,ParameterValue=$CI_NAME \
-        ParameterKey=BuildNum,ParameterValue=$CI_BUILD_NUMBER \
         ParameterKey=SquadronRef,ParameterValue=$squadron_ref \
         ParameterKey=ApiRef,ParameterValue=$api_ref \
         ParameterKey=ScribeRef,ParameterValue=$scribe_ref \

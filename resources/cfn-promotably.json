@@ -24,12 +24,6 @@
             "Type" : "String",
             "Default" : "codeship"
         },
-        "BuildNum" : {
-            "Description" : "Build number",
-            "Type" : "String",
-            "Default" : "None"
-        },
-
         "SquadronRef" : {
             "Description" : "Ref of Squadron build to use",
             "Type" : "String"
