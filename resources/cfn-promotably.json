@@ -108,24 +108,6 @@
             }
         },
 
-        "Woo" : {
-            "Type" : "AWS::CloudFormation::Stack",
-            "Condition" : "BuildWoo",
-            "Properties" : {
-                "TemplateURL" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "CiName" }, "/squadron/", { "Ref" : "SquadronRef" }, "/cfn-woo.json" ] ]},
-                "Parameters" : {
-                    "KeyName" : { "Ref" : "SshKey" },
-                    "SSHFrom" : { "Ref" : "SSHFrom" },
-                    "DnsOverride" : { "Fn::If" : [ "DnsName",
-                        { "Fn::Join" : [ "-", [ "woo", { "Ref" : "DnsName" } ]]},
-                        "default"
-                    ]},
-                    "DbImportFile" : "dbdumps/woo-store/woo-staging/2015-02-25.22-01-01.mysql.gz"
-                },
-                "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}
-            }
-        },
-
         "Network" : {
             "Type" : "AWS::CloudFormation::Stack",
             "Properties" : {
@@ -246,6 +228,25 @@
                     "Environment" : { "Ref" : "Environment" },
                     "VpcDefaultSecurityGroup" : { "Fn::GetAtt" : [ "Network", "Outputs.VpcDefaultSecurityGroup" ] },
                     "KeyPair" : { "Ref" : "SshKey" }
+                },
+                "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}
+            }
+        },
+
+        "Woo" : {
+            "Type" : "AWS::CloudFormation::Stack",
+            "Condition" : "BuildWoo",
+            "Properties" : {
+                "TemplateURL" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "CiName" }, "/squadron/", { "Ref" : "SquadronRef" }, "/cfn-woo.json" ] ]},
+                "Parameters" : {
+                    "KeyName" : { "Ref" : "SshKey" },
+                    "SSHFrom" : { "Ref" : "SSHFrom" },
+                    "DnsOverride" : { "Fn::If" : [ "DnsName",
+                        { "Fn::Join" : [ "-", [ "woo", { "Ref" : "DnsName" } ]]},
+                        "default"
+                    ]},
+                    "DbImportFile" : "dbdumps/woo-store/woo-staging/2015-02-25.22-01-01.mysql.gz",
+                    "ApiHost" : { "Fn::GetAtt" : [ "Api", "Outputs.Hostname" ] }
                 },
                 "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}
             }

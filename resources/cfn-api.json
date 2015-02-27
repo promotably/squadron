@@ -681,6 +681,12 @@
                 { "Fn::Join" : [ "", [ "https://", { "Ref" : "ElbDnsRecord" } ]]},
                 { "Fn::Join" : [ "", [ "https://", { "Fn::GetAtt": [ "LoadBalancer", "DNSName" ] } ]]}
             ]}
+        },
+        "Hostname" : {
+            "Value": { "Fn::If" : [ "CreateDns",
+                { "Ref" : "ElbDnsRecord" },
+                { "Fn::GetAtt": [ "LoadBalancer", "DNSName" ] }
+            ]}
         }
     }
 }

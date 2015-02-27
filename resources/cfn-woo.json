@@ -71,6 +71,16 @@
             "Description" : "Object in DbBackupBucket to use for database import",
             "Type" : "String",
             "Default" : "None"
+        },
+        "ApiHost" : {
+            "Description" : "Hostname of Promotably API",
+            "Type" : "String",
+            "Default" : "None"
+        },
+        "ApiPort" : {
+            "Description" : "Port of Promotably API",
+            "Type" : "String",
+            "Default" : "None"
         }
     },
 
@@ -350,6 +360,13 @@
                                     "sed -i \"s|define('NONCE_SALT'.*$|define('NONCE_SALT', '$(openssl rand -base64 32)');|\" /var/www/wordpress/wp-config.php\n",
                                     "\n",
                                     "chown -R apache:apache /var/www/wordpress\n",
+                                    "\n",
+                                    "if [ '", { "Ref" : "ApiHost" }, "' != 'None' ]; then\n",
+                                    "  echo SetEnv PROMOTABLY_API_HOST ", { "Ref" : "ApiHost" }, "' >> /etc/httpd/conf.d/wordpress.conf\n",
+                                    "fi\n",
+                                    "if [ '", { "Ref" : "ApiPort" }, "' != 'None' ]; then\n",
+                                    "  echo SetEnv PROMOTABLY_API_PORT ", { "Ref" : "ApiPort" }, "' >> /etc/httpd/conf.d/wordpress.conf\n",
+                                    "fi\n",
                                     "\n",
                                     "service mysqld start\n",
                                     "mysql -u root < /tmp/db-init.mysql\n",
