@@ -42,14 +42,15 @@
             "Type" : "String"
         },
         "DBSnapshotId" : {
-            "Description" : "DB Snapshot to restore from",
+            "Description" : "DB Snapshot to restore from (empty string for fresh database)",
             "Type" : "String",
             "Default" : "promotably-base"
         }
     },
 
     "Conditions" : {
-        "DefaultDBClass" : { "Fn::Equals" : [ { "Ref" : "DBClass" }, "default" ]}
+        "DefaultDBClass" : { "Fn::Equals" : [ { "Ref" : "DBClass" }, "default" ]},
+        "DbRestore" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "DBSnapshotId" }, "" ] }]}
     },
 
     "Mappings" : {
@@ -99,7 +100,7 @@
             "Type": "AWS::RDS::DBInstance",
             "DeletionPolicy" : "Snapshot",
             "Properties": {
-                "DBName"            : { "Ref" : "DBName" },
+                "DBName"            : { "Fn::If" : [ "DbRestore", { "Ref" : "AWS::NoValue" }, { "Ref" : "DBName" } ]},
                 "Engine"            : "postgres",
                 "MasterUsername"    : { "Ref" : "DBUsername" },
                 "MasterUserPassword": { "Ref" : "DBPassword" },
@@ -111,7 +112,7 @@
                 "AllocatedStorage"  : { "Ref" : "DBAllocatedStorage" },
                 "DBSubnetGroupName" : { "Ref" : "DBSubnetGroup" },
                 "BackupRetentionPeriod" : { "Fn::FindInMap" : [ "config", { "Ref" : "Environment" }, "backupRetention" ]},
-                "DBSnapshotIdentifier" : { "Ref" : "DBSnapshotId" }
+                "DBSnapshotIdentifier" : { "Fn::If" : [ "DbRestore", { "Ref" : "DBSnapshotId" }, { "Ref" : "AWS::NoValue" } ]}
             }
         }
     },
