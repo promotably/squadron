@@ -26,7 +26,7 @@
         "PhpVersion" : {
             "Description" : "Version of PHP to install",
             "Type" : "String",
-            "Default" : "5.3",
+            "Default" : "5.5",
             "AllowedValues" : [ "5.3", "5.4", "5.5" ]
         },
         "InstanceType" : {
