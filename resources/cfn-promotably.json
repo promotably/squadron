@@ -119,7 +119,8 @@
                     "DnsOverride" : { "Fn::If" : [ "DnsName",
                         { "Fn::Join" : [ "-", [ "woo", { "Ref" : "DnsName" } ]]},
                         "default"
-                    ]}
+                    ]},
+                    "DbImportFile" : "dbdumps/woo-store/woo-staging/2015-02-25.22-01-01.mysql.gz"
                 },
                 "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}
             }
