@@ -44,7 +44,7 @@
         "DBSnapshotId" : {
             "Description" : "DB Snapshot to restore from",
             "Type" : "String",
-            "Default" : ""
+            "Default" : "promotably-base"
         }
     },
 
