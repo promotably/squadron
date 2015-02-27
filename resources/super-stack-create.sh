@@ -50,7 +50,7 @@ done
 # helper function to wait for stack creation/update
 get_stack_status() {
     set +x
-    timeout_ts=$((`date +%s` + 1800))
+    timeout_ts=$((`date +%s` + 3600))
     while [ $(date +%s) -le $timeout_ts ] && sleep 20; do
         stack_status=$(aws cloudformation describe-stacks --output=text --stack-name "$1" --query 'Stacks[0].StackStatus')
         if [ "$2" = 'update' ]; then
