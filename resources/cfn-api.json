@@ -314,6 +314,7 @@
                                 "content" : { "Fn::Join" : [ "", [
                                     "{\n",
                                     "\"ARTIFACT_BUCKET\" \"{{ARTIFACT_BUCKET}}\"\n",
+                                    "\"DASHBOARD_HTML_PATH\" \"{{DASHBOARD_PATH}}\"\n",
                                     "\"DASHBOARD_INDEX_PATH\" \"{{DASHBOARD_PATH}}/index.html\"\n",
                                     "\"KINESIS_A\" \"{{KINESIS_A}}\"\n",
                                     "\"KINESIS_B\" \"{{KINESIS_B}}\"\n",
@@ -446,6 +447,7 @@
                                     "#!/bin/bash -ex\n",
                                     "\n",
                                     "export ARTIFACT_BUCKET=\"{{ARTIFACT_BUCKET}}\"\n",
+                                    "export DASHBOARD_HTML_PATH=\"{{DASHBOARD_PATH}}\"\n",
                                     "export DASHBOARD_INDEX_PATH=\"{{DASHBOARD_PATH}}/index.html\"\n",
                                     "export KINESIS_A=\"{{KINESIS_A}}\"\n",
                                     "export KINESIS_B=\"{{KINESIS_B}}\"\n",
