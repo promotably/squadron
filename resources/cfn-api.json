@@ -223,13 +223,13 @@
                         ]]}
                     }
                 ],
-                "HealthCheck": {
+                "HealthCheck": { "Fn::If" : [ "IsIntegration", { "Ref" : "AWS::NoValue" }, {
                     "Target": "HTTP:3000/health-check",
                     "HealthyThreshold": "3",
                     "UnhealthyThreshold": "3",
                     "Interval": "10",
                     "Timeout": "5"
-                },
+                } ]},
                 "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" } },
                          { "Key" : "Environment", "Value" : { "Ref" : "Environment" } }]
             }
