@@ -249,11 +249,10 @@
                     "configSets" : {
                         "update" : [ "update" ],
                         "base" : [ "base" ],
-                        "dbinit" : [ "dbinit" ],
                         "boot" : [ "boot" ],
                         "waitForHealthcheck" : [ "waitForHealthcheck" ],
                         "integration" : [ "integration" ],
-                        "default" : [ { "ConfigSet" : "base" }, { "ConfigSet" : "dbinit" } ]
+                        "default" : [ { "ConfigSet" : "base" }]
                     },
                     "base" : {
                         "packages" : {
@@ -395,39 +394,6 @@
                         "commands" : {
                             "01-get-cluster-config" : { "command" : "/usr/local/bin/get_cluster_config" },
                             "02-apidchkconfig" : { "command" : "chkconfig --add apid" }
-                        }
-                    },
-                    "dbinit" : {
-                        "packages" : {
-                            "yum" : {
-                                "postgresql93" : []
-                            }
-                        },
-                        "files" : {
-                            "/tmp/postgres_setup.sql" : {
-                                "content" : { "Fn::Join" : [ "", [
-                                    "CREATE USER ", {"Ref": "DBUsername"}, " WITH PASSWORD '", {"Ref": "DBPassword"}, "';\n",
-                                    "CREATE DATABASE ", {"Ref": "DBName"}, ";\n",
-                                    "GRANT ALL PRIVILEGES ON DATABASE ", {"Ref": "DBName"}, " to ", {"Ref": "DBUsername"}, ";\n",
-                                    "\\c ", {"Ref": "DBName"}, "\n",
-                                    "CREATE EXTENSION \"uuid-ossp\";\n",
-                                    "CREATE TABLE IF NOT EXISTS migrations(version varchar(255));\n",
-                                    "GRANT ALL PRIVILEGES ON TABLE migrations TO ", {"Ref": "DBUsername"}, ";\n"
-                                ] ]},
-                                "mode"    : "000644",
-                                "owner"   : "root",
-                                "group"   : "root"
-                            }
-                        },
-                        "commands" : {
-                            "01-postgres-setup" : {
-                                "env" : { "PGPASSWORD" : {"Ref": "DBPassword"} },
-                                "command" : { "Fn::Join": [ "", [
-                                    "psql -f /tmp/postgres_setup.sql -h ",
-                                    { "Ref" : "DBHost" }, " -p ",
-                                    { "Ref" : "DBPort" }, " -U ", {"Ref": "DBUsername"}, "\n"
-                                ] ]}
-                            }
                         }
                     },
                     "integration" : {
