@@ -19,6 +19,16 @@
             "AllowedValues" : [ "integration", "staging", "production" ]
         },
 
+        "ArtifactBucket" : {
+            "Description" : "S3 Bucket where build artifacts are stored",
+            "Type" : "String",
+            "Default" : "promotably-build-artifacts"
+        },
+        "ArtifactPath" : {
+            "Description" : "Path in S3 bucket to standalone.jar, source.zip, apid",
+            "Type" : "String"
+        },
+
         "DBName" : {
             "Description" : "Database name",
             "Type" : "String"
@@ -45,6 +55,21 @@
             "Description" : "DB Snapshot to restore from (empty string for fresh database)",
             "Type" : "String",
             "Default" : "promotably-base"
+        },
+
+        "KeyPair": {
+            "Description": "Name of the keypair to use for SSH access",
+            "Type": "AWS::EC2::KeyPair::KeyName"
+        },
+        "VpcDefaultSecurityGroup" : {
+            "Description" : "VPC default Security Group",
+            "Type" : "AWS::EC2::SecurityGroup::Id"
+        },
+        "AutoTermMigrator" : {
+            "Description" : "Automatically terminate instance after running migrations",
+            "Type" : "String",
+            "Default" : "true",
+            "AllowedValues" : [ "true", "false" ]
         }
     },
 
@@ -55,6 +80,10 @@
 
     "Mappings" : {
         "config" : {
+            "us-east-1" : { "ami" : "ami-ee6e2a86" },
+            "us-west-2" : { "ami" : "ami-c1c39af1" },
+            "eu-west-2" : { "ami" : "ami-8723aef0" },
+
             "integration" : {
                 "dbClass" : "db.t2.small",
                 "multiAZ" : "false",
@@ -115,7 +144,166 @@
                 "AllocatedStorage"  : { "Ref" : "DBAllocatedStorage" },
                 "DBSubnetGroupName" : { "Ref" : "DBSubnetGroup" },
                 "BackupRetentionPeriod" : { "Fn::FindInMap" : [ "config", { "Ref" : "Environment" }, "backupRetention" ]},
-                "DBSnapshotIdentifier" : { "Fn::If" : [ "DbRestore", { "Ref" : "DBSnapshotId" }, { "Ref" : "AWS::NoValue" } ]}
+                "DBSnapshotIdentifier" : { "Fn::If" : [ "DbRestore", { "Ref" : "DBSnapshotId" }, { "Ref" : "AWS::NoValue" } ]},
+                "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" } },
+                         { "Key" : "Environment", "Value" : { "Ref" : "Environment" }}]
+            }
+        },
+
+        "MigratorRole": {
+            "Type" : "AWS::IAM::Role",
+            "Properties" : {
+                "Path" : "/",
+                "AssumeRolePolicyDocument": {
+                    "Version" : "2012-10-17",
+                    "Statement" : [{
+                        "Effect" : "Allow",
+                        "Principal" : { "Service" : [ "ec2.amazonaws.com" ] },
+                        "Action" : [ "sts:AssumeRole" ]
+                    }]
+                },
+                "Policies" : [{
+                    "PolicyName" : "root",
+                    "PolicyDocument" : {
+                        "Version" : "2012-10-17",
+                        "Statement" : [{
+                            "Effect": "Allow",
+                            "Action": [ "s3:Get*" ],
+                            "Resource": [{ "Fn::Join" : [ "", [ "arn:aws:s3:::", { "Ref" : "ArtifactBucket" }, "/*" ] ] }]
+                        },{
+                            "Effect": "Allow",
+                            "Action": [ "autoscaling:TerminateInstanceInAutoScalingGroup" ],
+                            "Resource": "*"
+                        }]
+                    }
+                }]
+            }
+        },
+
+        "InstanceProfile" : {
+            "Type" : "AWS::IAM::InstanceProfile",
+            "Properties" : {
+                "Path" : "/",
+                "Roles" : [ { "Ref": "MigratorRole" } ]
+            }
+        },
+
+
+        "LaunchConfig" : {
+            "Type" : "AWS::AutoScaling::LaunchConfiguration",
+            "Metadata" : {
+                "AWS::CloudFormation::Authentication" : {
+                    "S3AccessCreds" : {
+                        "type" : "S3",
+                        "roleName" : { "Ref" : "MigratorRole" },
+                        "buckets" : [ { "Ref" : "ArtifactBucket" } ]
+                    }
+                },
+                "AWS::CloudFormation::Init" : {
+                    "config" : {
+                        "packages" : {
+                            "yum" : {
+                                "postgresql93" : [],
+                                "git" : []
+                            }
+                        },
+                        "files" : {
+                            "/opt/promotably/api.zip" : {
+                                "source" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "ArtifactPath" }, "/source.zip" ]]},
+                                "mode"    : "000644",
+                                "owner"   : "root",
+                                "group"   : "root"
+                            },
+                            "/tmp/postgres_setup.sql" : {
+                                "content" : { "Fn::Join" : [ "", [
+                                    "\\c ", {"Ref": "DBName"}, "\n",
+                                    "CREATE EXTENSION \"uuid-ossp\";\n",
+                                    "CREATE TABLE IF NOT EXISTS migrations(version varchar(255));\n"
+                                ] ]},
+                                "mode"    : "000644",
+                                "owner"   : "root",
+                                "group"   : "root"
+                            }
+                        },
+                        "commands" : {
+                            "00-prep" :{
+                                "ignoreErrors" : "false",
+                                "command" : { "Fn::Join" : [ "", [
+                                    "\n",
+                                    "curl https://raw.githubusercontent.com/technomancy/leiningen/stable/bin/lein > /usr/local/bin/lein\n",
+                                    "chmod 0755 /usr/local/bin/lein\n",
+                                    "rm -rf /opt/promotably/api\n",
+                                    "mkdir -p /opt/promotably/api\n",
+                                    "cd /opt/promotably/api\n",
+                                    "unzip ../api.zip\n"
+                                ]]}
+                            },
+                            "01-db-setup" : {
+                                "cwd" : "/opt/promotably/api",
+                                "ignoreErrors" : "false",
+                                "env" : {
+                                    "PGPASSWORD" : {"Ref": "DBPassword"},
+                                    "ARTIFACT_BUCKET" : { "Ref": "ArtifactBucket" },
+                                    "KINESIS_A" : "unknown",
+                                    "KINESIS_B" : "unknown",
+                                    "REDIS_HOST" : "localhost",
+                                    "REDIS_PORT" : "6379",
+                                    "RDS_DB_NAME" : { "Ref": "DBName" },
+                                    "RDS_HOST" : { "Fn::GetAtt" : [ "DBInstance", "Endpoint.Address" ]},
+                                    "RDS_PORT" : { "Fn::GetAtt" : [ "DBInstance", "Endpoint.Port" ]},
+                                    "RDS_USER" : { "Ref": "DBUsername" },
+                                    "RDS_PW" : { "Ref": "DBPassword" },
+                                    "ENV" : { "Ref": "Environment" },
+                                    "LEIN_ROOT" : "yes",
+                                    "MIDJE_COLORIZE" : "false",
+                                    "STACKNAME" : { "Ref": "AWS::StackName" }
+                                },
+                                "command" : { "Fn::Join": [ "", [
+                                    "psql -f /tmp/postgres_setup.sql -h $RDS_HOST -p $RDS_PORT",
+                                      " -U  $RDS_USER -d $RDS_DB_NAME\n",
+                                    "lein migrate\n"
+                                ] ]}
+                            }
+                        }
+                    }
+                }
+            },
+            "Properties" : {
+                "ImageId" : { "Fn::FindInMap" : [ "config", { "Ref" : "AWS::Region" }, "ami" ]},
+                "SecurityGroups" : [{ "Ref" : "ClientSecurityGroup" }, { "Ref" : "VpcDefaultSecurityGroup" }],
+                "InstanceType" : "t2.micro",
+                "KeyName": { "Ref": "KeyPair" },
+                "IamInstanceProfile": { "Ref": "InstanceProfile" },
+                "UserData": { "Fn::Base64": { "Fn::Join": [ "", [
+                    "#!/bin/bash -ex\n",
+                    "\n",
+                    ". /etc/profile.d/aws-apitools-common.sh\n",
+                    "\n",
+                    "cfn-init -v -s ", { "Ref": "AWS::StackId" },
+                      " -r LaunchConfig --region ", { "Ref": "AWS::Region" }, "\n",
+                    "\n",
+                    "[ '", { "Ref" : "AutoTermMigrator" }, "' = 'true' ] || exit 0\n",
+                    "instance_id=$(ec2-metadata -i | awk '{print $2}')\n",
+                    "aws autoscaling terminate-instance-in-auto-scaling-group ",
+                      "--instance-id $instance_id --should-decrement-desired-capacity ",
+                      "--region ", { "Ref" : "AWS::Region" }, "\n"
+                ] ]} }
+            }
+        },
+
+        "LaunchGroup" : {
+            "Type" : "AWS::AutoScaling::AutoScalingGroup",
+            "Properties" : {
+                "AvailabilityZones" : { "Fn::GetAZs": "AWS::Region" },
+                "LaunchConfigurationName" : { "Ref" : "LaunchConfig" },
+                "MinSize" : "0",
+                "MaxSize" : "1",
+                "DesiredCapacity" : 1,
+                "HealthCheckGracePeriod" : "300",
+                "Cooldown" : "600",
+                "VPCZoneIdentifier" : { "Ref" : "PrivateSubnets" },
+                "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" }, "PropagateAtLaunch" : "true" },
+                         { "Key" : "Environment", "Value" : { "Ref" : "Environment" }, "PropagateAtLaunch" : "true" }]
             }
         }
     },

@@ -148,10 +148,15 @@
                         { "Fn::GetAtt" : [ "Network", "Outputs.PrivateSubnetC" ] } ]]},
                     "VpcId" : { "Fn::GetAtt" : [ "Network", "Outputs.VPCId" ] },
                     "Environment" : "integration",
+                    "ArtifactBucket" : { "Ref" : "ArtifactBucket" },
+                    "ArtifactPath" : { "Fn::Join" : [ "/", [ { "Ref" : "CiName" }, "api", { "Ref" : "ApiRef" } ] ]},
                     "DBName" : "promotably",
                     "DBUsername" : "promotably",
                     "DBPassword" : "promotably",
-                    "DBAllocatedStorage" : "10"
+                    "DBAllocatedStorage" : "10",
+                    "KeyPair" : { "Ref" : "SshKey" },
+                    "VpcDefaultSecurityGroup" : { "Fn::GetAtt" : [ "Network", "Outputs.VpcDefaultSecurityGroup" ] },
+                    "AutoTermMigrator" : "true"
                 },
                 "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}
             }
