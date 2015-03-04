@@ -142,6 +142,7 @@
                                         { "Ref" : "DBClass" } ]},
                 "VPCSecurityGroups"  : [{ "Ref" : "SecurityGroup" }],
                 "AllocatedStorage"  : { "Ref" : "DBAllocatedStorage" },
+                "StorageType" : "gp2",
                 "DBSubnetGroupName" : { "Ref" : "DBSubnetGroup" },
                 "BackupRetentionPeriod" : { "Fn::FindInMap" : [ "config", { "Ref" : "Environment" }, "backupRetention" ]},
                 "DBSnapshotIdentifier" : { "Fn::If" : [ "DbRestore", { "Ref" : "DBSnapshotId" }, { "Ref" : "AWS::NoValue" } ]},

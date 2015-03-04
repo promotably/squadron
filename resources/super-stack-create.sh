@@ -18,6 +18,7 @@ Options:
     -d <dns_suffix>     String to append to DNS names of stacks (eg: api-<dns_suffix>.promotably.com>)
     -w <cidr>           CIDR to pass to SshFrom paramter
     -e <env>            Environment parameter (integration, staging, etc.)
+    -i <db_snap>        RDS DB Snapshot ID
 _END_
 
     if [ -n "$1" ]; then
@@ -31,6 +32,7 @@ gitref=''
 dns_suffix=''
 ssh_from=''
 environment=''
+db_snap=''
 opts='hs:p:r:d:w:e:'
 while getopts "$opts" opt; do
     #echo "OPT: $opt"
@@ -42,6 +44,7 @@ while getopts "$opts" opt; do
         d) dns_suffix="$OPTARG" ;;
         w) ssh_from="$OPTARG" ;;
         e) environment="$OPTARG" ;;
+        i) db_snap="$OPTARG" ;;
         \?) print_usage 1;;
         #-) shift; break ;;
     esac
@@ -145,6 +148,11 @@ if [ -n "$environment" ]; then
     environment_param="ParameterKey=Environment,ParameterValue=$environment"
 fi
 
+db_snap=''
+if [ -n "$db_snap" ]; then
+    db_snap="ParameterKey=DBSnapshotId,ParameterValue=$db_snap"
+fi
+
 ssh_key="$CI_NAME-$stack_name"
 if aws ec2 create-key-pair --key-name "$ssh_key" --output=text --query KeyMaterial > $ssh_key.pem; then
     aws s3 cp $ssh_key.pem s3://$KEY_BUCKET/$ssh_key.pem
@@ -163,6 +171,7 @@ aws cloudformation create-stack --stack-name $stack_name --disable-rollback \
     --capabilities CAPABILITY_IAM --parameters \
     $ssh_from_param \
     $environment_param \
+    $db_snap \
     ParameterKey=ArtifactBucket,ParameterValue=$ARTIFACT_BUCKET \
     ParameterKey=MetaDataBucket,ParameterValue=$METADATA_BUCKET \
     ParameterKey=CiName,ParameterValue=$CI_NAME \

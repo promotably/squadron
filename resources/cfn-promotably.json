@@ -36,6 +36,12 @@
             "Default" : "latest"
         },
 
+        "DBSnapshotId" : {
+            "Description" : "DB Snapshot to restore from (default looks in Mappings)",
+            "Type" : "String",
+            "Default" : "default"
+        },
+
         "SshKey" :  {
             "Description" : "Name of an EC2 KeyPair to enable SSH access (default is no ssh key)",
             "Type" : "String",
@@ -86,10 +92,22 @@
             { "Fn::Equals" : [ { "Ref" : "Environment" }, "integration" ]},
             { "Fn::Equals" : [ { "Ref" : "Environment" }, "staging" ]}
         ]},
-        "DnsName" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "DnsName" }, "default" ] }]}
+        "DnsName" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "DnsName" }, "default" ] }]},
+        "DBSnapshotId" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "DBSnapshotId" }, "default" ] }]}
     },
 
     "Mappings" : {
+        "config" : {
+            "integration" : {
+                "dbSnapshot" : ""
+            },
+            "staging" : {
+                "dbSnapshot" : "promotably-base"
+            },
+            "production" : {
+                "dbSnapshot" : "promotably-base"
+            }
+        }
     },
 
     "Resources" : {
@@ -154,6 +172,10 @@
                     "DBUsername" : "promotably",
                     "DBPassword" : "promotably",
                     "DBAllocatedStorage" : "10",
+                    "DBSnapshotId" : { "Fn::If" : [ "DBSnapshotId",
+                        { "Ref" : "DBSnapshotId" },
+                        { "Fn::FindInMap" : [ "config", { "Ref" : "Environment" }, "dbSnapshot" ]}
+                    ]},
                     "KeyPair" : { "Ref" : "SshKey" },
                     "VpcDefaultSecurityGroup" : { "Fn::GetAtt" : [ "Network", "Outputs.VpcDefaultSecurityGroup" ] },
                     "AutoTermMigrator" : "true"
