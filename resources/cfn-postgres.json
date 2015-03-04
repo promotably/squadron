@@ -56,7 +56,7 @@
     "Mappings" : {
         "config" : {
             "integration" : {
-                "dbClass" : "db.t1.micro",
+                "dbClass" : "db.t2.small",
                 "multiAZ" : "false",
                 "backupRetention" : "0"
             },
