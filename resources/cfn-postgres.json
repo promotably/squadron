@@ -75,7 +75,8 @@
             "Properties" : {
                 "DBSubnetGroupDescription" : { "Ref" : "AWS::StackName" },
                 "SubnetIds" : { "Ref" : "PrivateSubnets" },
-                "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" } }]
+                "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" } },
+                         { "Key" : "Environment", "Value" : { "Ref" : "Environment" }}]
             }
         },
 
@@ -88,11 +89,13 @@
         },
 
         "SecurityGroup": {
-            "Type": "AWS::RDS::DBSecurityGroup",
+            "Type": "AWS::EC2::SecurityGroup",
             "Properties": {
-                "EC2VpcId" : { "Ref" : "VpcId" },
-                "DBSecurityGroupIngress": { "EC2SecurityGroupId": { "Ref": "ClientSecurityGroup" } },
-                "GroupDescription" : { "Ref" : "AWS::StackName" }
+                "VpcId" : { "Ref" : "VpcId" },
+                "GroupDescription" : { "Ref" : "AWS::StackName" },
+                "SecurityGroupIngress" : [
+                    { "IpProtocol" : "tcp", "FromPort" : "5432", "ToPort" : "5432", "SourceSecurityGroupId": { "Ref" : "ClientSecurityGroup" } }
+                ]
             }
         },
 
@@ -108,7 +111,7 @@
                 "DBInstanceClass"   : { "Fn::If" : [ "DefaultDBClass",
                                         { "Fn::FindInMap" : [ "config", { "Ref" : "Environment" }, "dbClass" ]},
                                         { "Ref" : "DBClass" } ]},
-                "DBSecurityGroups"  : [{ "Ref" : "SecurityGroup" }],
+                "VPCSecurityGroups"  : [{ "Ref" : "SecurityGroup" }],
                 "AllocatedStorage"  : { "Ref" : "DBAllocatedStorage" },
                 "DBSubnetGroupName" : { "Ref" : "DBSubnetGroup" },
                 "BackupRetentionPeriod" : { "Fn::FindInMap" : [ "config", { "Ref" : "Environment" }, "backupRetention" ]},
