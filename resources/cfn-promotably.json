@@ -149,7 +149,7 @@
                         { "Fn::GetAtt" : [ "Network", "Outputs.PrivateSubnetB" ] },
                         { "Fn::GetAtt" : [ "Network", "Outputs.PrivateSubnetC" ] } ]]},
                     "VpcId" : { "Fn::GetAtt" : [ "Network", "Outputs.VPCId" ] },
-                    "Environment" : "integration"
+                    "Environment" : { "Ref" : "Environment" }
                 },
                 "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}
             }
@@ -165,7 +165,7 @@
                         { "Fn::GetAtt" : [ "Network", "Outputs.PrivateSubnetB" ] },
                         { "Fn::GetAtt" : [ "Network", "Outputs.PrivateSubnetC" ] } ]]},
                     "VpcId" : { "Fn::GetAtt" : [ "Network", "Outputs.VPCId" ] },
-                    "Environment" : "integration",
+                    "Environment" : { "Ref" : "Environment" },
                     "ArtifactBucket" : { "Ref" : "ArtifactBucket" },
                     "ArtifactPath" : { "Fn::Join" : [ "/", [ { "Ref" : "CiName" }, "api", { "Ref" : "ApiRef" } ] ]},
                     "DBName" : "promotably",
