@@ -16,7 +16,7 @@
         "CiName" : {
             "Description" : "Name of CI system (base path in ArtifactBucket)",
             "Type" : "String",
-            "Default" : "codeship"
+            "Default" : "jenkins"
         },
         "SquadronRef" : {
             "Description" : "Ref of Squadron build to use",
@@ -272,7 +272,7 @@
                         { "Fn::Join" : [ "-", [ "woo", { "Ref" : "DnsName" } ]]},
                         "default"
                     ]},
-                    "DbImportFile" : "dbdumps/woo-store/woo-staging/2015-02-25.22-01-01.mysql.gz",
+                    "DbImportFile" : "dbdumps/woo-store/staging-latest.mysql.gz",
                     "ApiHost" : { "Fn::GetAtt" : [ "Api", "Outputs.Hostname" ] }
                 },
                 "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}
