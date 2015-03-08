@@ -304,6 +304,10 @@
         "ScribeStack" : {
             "Description" : "StackId of Scribe stack",
             "Value" : { "Ref" : "Scribe" }
+        },
+        "RdsStack" : {
+            "Description" : "StackId of Rds stack",
+            "Value" : { "Ref" : "Rds" }
         }
     }
 }
