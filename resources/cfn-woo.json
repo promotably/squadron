@@ -297,7 +297,7 @@
                                     "\n",
                                     "<Directory /var/www/wordpress>\n",
                                     "    DirectoryIndex index.php index.html\n",
-                                    "    Options Indexes FollowSymLinks MultiViews\n",
+                                    "    Options FollowSymLinks MultiViews\n",
                                     "    AllowOverride All\n",
                                     "    Order allow,deny\n",
                                     "    Allow from All\n",
