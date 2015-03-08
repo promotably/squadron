@@ -106,6 +106,9 @@ for param in $(aws cloudformation describe-stacks --stack-name $stack_name \
         DashboardRef)
             dashboardref_param='ParameterKey=DashboardRef,UsePreviousValue=true'
             ;;
+        MetricsAggregatorRef)
+            metrics_aggregatorref_param='ParameterKey=MetricsAggregatorRef,UsePreviousValue=true'
+            ;;
         Environment)
             environment_param='ParameterKey=Environment,UsePreviousValue=true'
             ;;
@@ -121,11 +124,13 @@ squadron_ref=''
 api_ref=''
 scribe_ref=''
 dashboard_ref=''
+metrics_aggregator_ref='none'
 if [ -n "$refresh" ]; then
     squadron_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/squadron/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
     api_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/api/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
     scribe_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/scribe/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
     dashboard_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/dashboard/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
+    metrics_aggregator_ref='none'
 fi
 
 if [ -n "$project" ]; then
@@ -144,6 +149,9 @@ if [ -n "$project" ]; then
             ;;
         dashboard)
             dashboard_ref=$gitref
+            ;;
+        metrics-aggregator)
+            metrics_aggregator_ref=$gitref
             ;;
         *)
             echo "Fatal: Unknown project $project" >&2
@@ -193,6 +201,14 @@ if [ -n "$dashboard_ref" ]; then
     dashboardref_param="ParameterKey=DashboardRef,ParameterValue=$dashboard_ref"
 fi
 
+# make sure metrics-aggregator artifacts are there if we're refreshing Metrics Aggregator
+if [ -n "$metrics_aggregator_ref" ]; then
+    #for s3_file in metrics-aggregator/$metrics_aggregator_ref/standalone.jar metrics-aggregator/$metrics_aggregator_ref/source.zip metrics-aggregator/$metrics_aggregator_ref/mad ; do
+    #    aws s3 ls s3://$ARTIFACT_BUCKET/$CI_NAME/$s3_file > /dev/null
+    #done
+    metrics_aggregatorref_param="ParameterKey=MetricsAggregatorRef,ParameterValue=$metrics_aggregator_ref"
+fi
+
 if [ -n "$ssh_from" ]; then
     ssh_from_param="ParameterKey=SSHFrom,ParameterValue=$ssh_from"
 fi
@@ -203,7 +219,7 @@ fi
 
 aws cloudformation update-stack --stack-name $stack_name $template_option \
     --capabilities CAPABILITY_IAM --parameters \
-    $squadronref_param $apiref_param $scriberef_param $dashboardref_param \
+    $squadronref_param $apiref_param $scriberef_param $dashboardref_param $metrics_aggregatorref_param\
     $environment_param $ssh_from_param \
     $general_stack_params
 

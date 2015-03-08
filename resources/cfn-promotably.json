@@ -35,6 +35,10 @@
             "Type" : "String",
             "Default" : "latest"
         },
+        "MetricsAggregatorRef" : {
+            "Description" : "Git ref of metrics-aggregator to refer to",
+            "Type" : "String"
+        },
 
         "DBSnapshotId" : {
             "Description" : "DB Snapshot to restore from (default looks in Mappings)",

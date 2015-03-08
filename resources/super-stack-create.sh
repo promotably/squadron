@@ -90,6 +90,7 @@ squadron_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validat
 api_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/api/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
 scribe_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/scribe/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
 dashboard_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/dashboard/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
+metrics_aggregator_ref='none'
 
 if [ -n "$project" ]; then
     if [ -z "$gitref" ]; then
@@ -107,6 +108,9 @@ if [ -n "$project" ]; then
             ;;
         dashboard)
             dashboard_ref=$gitref
+            ;;
+        metrics-aggregator)
+            metrics_aggregator_ref=$gitref
             ;;
         *)
             echo "Fatal: Unknown project $project" >&2
@@ -179,6 +183,7 @@ aws cloudformation create-stack --stack-name $stack_name --disable-rollback \
     ParameterKey=ApiRef,ParameterValue=$api_ref \
     ParameterKey=ScribeRef,ParameterValue=$scribe_ref \
     ParameterKey=DashboardRef,ParameterValue=$dashboard_ref \
+    ParameterKey=MetricsAggregatorRef,ParameterValue=$metrics_aggregator_ref \
     ParameterKey=SshKey,ParameterValue=$ssh_key \
     ParameterKey=DnsName,ParameterValue=$dns_suffix
 

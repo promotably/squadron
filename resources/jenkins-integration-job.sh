@@ -54,6 +54,10 @@ if [ -n "$PROJECT" ]; then
             project_options="-p dashboard -r $CI_COMMIT_ID"
             skip_integration_tests='true'
             ;;
+        metrics-aggregator)
+            project_options="-p metrics-aggregator -r $CI_COMMIT_ID"
+            skip_integration_tests='true'
+            ;;
         *)
             echo "Fatal: Unknown project $PROJECT" >&2
             exit 1
