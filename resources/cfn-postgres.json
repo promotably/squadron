@@ -325,6 +325,10 @@
         "DBClientSecGrp" : {
             "Description" : "Security group in which to place RDS clients",
             "Value" : { "Fn::GetAtt" : [ "ClientSecurityGroup", "GroupId" ]}
+        },
+        "MigrationsLaunchGroup" : {
+            "Description" : "Auto-scaling group for lein migration",
+            "Value" : { "Ref": "LaunchGroup" }
         }
     }
 }
