@@ -181,6 +181,8 @@
                                     "\"ENV\" \"{{ENV}}\"\n",
                                     "\"LEIN_ROOT\" \"yes\"\n",
                                     "\"STACKNAME\" \"{{STACKNAME}}\"\n",
+                                    "\"LOGGLY_URL\" \"http://logs-01.loggly.com/inputs/2032adee-6213-469d-ba58-74993611570a/tag/{{ENV}},metrics-aggregator/\"\n",
+                                    "\"LOG_DIR\" \"/var/log/mad\"\n",
                                     "}\n"
                                 ]]},
                                 "context" : {

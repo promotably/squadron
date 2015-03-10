@@ -210,6 +210,8 @@
                                     "\"ENV\" \"{{ENV}}\"\n",
                                     "\"LEIN_ROOT\" \"yes\"\n",
                                     "\"STACKNAME\" \"{{STACKNAME}}\"\n",
+                                    "\"LOGGLY_URL\" \"http://logs-01.loggly.com/inputs/2032adee-6213-469d-ba58-74993611570a/tag/{{ENV}},scribe/\"\n",
+                                    "\"LOG_DIR\" \"/var/log/scribe\"\n",
                                     "}\n"
                                 ]]},
                                 "context" : {
@@ -286,6 +288,8 @@
                                     "export LEIN_ROOT=\"yes\"\n",
                                     "export MIDJE_COLORIZE=\"false\"\n",
                                     "export STACKNAME=\"{{STACKNAME}}\"\n",
+                                    "export LOGGLY_URL=\"http://logs-01.loggly.com/inputs/2032adee-6213-469d-ba58-74993611570a/tag/{{ENV}},scribe/\"\n",
+                                    "export LOG_DIR=\"/var/log/scribe\"\n",
                                     "\n",
                                     "/usr/local/bin/lein deps > /dev/null 2>&1\n",
                                     "/usr/local/bin/lein midje scribe.integration.*\n"
