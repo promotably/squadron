@@ -159,7 +159,7 @@
             "Properties" : {
                 "AccessLoggingPolicy" : {
                     "Enabled" : "true",
-                    "EmitInterval" : "10",
+                    "EmitInterval" : "5",
                     "S3BucketName" : "promotably-persist",
                     "S3BucketPrefix" : { "Fn::Join" : [ "/", [ "logs", "elb", { "Ref" : "Environment" }, { "Ref" : "AWS::StackName" } ] ]}
                 },
