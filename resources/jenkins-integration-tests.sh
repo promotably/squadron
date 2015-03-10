@@ -53,7 +53,7 @@ metricsag_stack="$(aws cloudformation describe-stacks --output=text --stack-name
 api_asg="$(aws cloudformation describe-stacks --output=text --stack-name $api_stack --query 'Stacks[0].Outputs[?OutputKey==`APIInstanceGroup`].OutputValue[]')"
 elb_url="$(aws cloudformation describe-stacks --output=text --stack-name $api_stack --query 'Stacks[0].Outputs[?OutputKey==`URL`].OutputValue[]')"
 scribe_asg="$(aws cloudformation describe-stacks --output=text --stack-name $scribe_stack --query 'Stacks[0].Outputs[?OutputKey==`ScribeInstanceGroup`].OutputValue[]')"
-metricsag_asg="$(aws cloudformation describe-stacks --output=text --stack-name $scribe_stack --query 'Stacks[0].Outputs[?OutputKey==`LaunchGroup`].OutputValue[]')"
+metricsag_asg="$(aws cloudformation describe-stacks --output=text --stack-name $metricsag_stack --query 'Stacks[0].Outputs[?OutputKey==`LaunchGroup`].OutputValue[]')"
 
 api_instance_id="$(aws autoscaling describe-auto-scaling-groups --output=text --auto-scaling-group-names $api_asg --query 'AutoScalingGroups[0].Instances[0].InstanceId')"
 scribe_instance_id="$(aws autoscaling describe-auto-scaling-groups --output=text --auto-scaling-group-names $scribe_asg --query 'AutoScalingGroups[0].Instances[0].InstanceId')"
