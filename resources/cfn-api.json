@@ -211,7 +211,7 @@
                     "Enabled" : "true",
                     "EmitInterval" : "5",
                     "S3BucketName" : "promotably-persist",
-                    "S3BucketPrefix" : { "Fn::Join" : [ "/", [ "logs", "elb", { "Ref" : "Environment" }, { "Ref" : "AWS::StackName" } ] ]}
+                    "S3BucketPrefix" : "logs"
                 },
                 "ConnectionDrainingPolicy" : { "Enabled" : "true", "Timeout" : "15" },
                 "Policies" : [{
