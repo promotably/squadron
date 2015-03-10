@@ -124,7 +124,8 @@
                 "Parameters" : {
                     "KeyName" : { "Ref" : "SshKey" },
                     "SSHFrom" : { "Ref" : "SSHFrom" },
-                    "DnsRecord" : { "Fn::Join" : [ "-", [ "ci", { "Ref" : "DnsName" } ]]}
+                    "DnsRecord" : { "Fn::Join" : [ "-", [ "ci", { "Ref" : "DnsName" } ]]},
+                    "Environment" : { "Ref" : "Environment" }
                 },
                 "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}
             }

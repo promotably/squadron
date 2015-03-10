@@ -43,6 +43,12 @@
             "Description" : "Security Group for Jenkins Slaves",
             "Type" : "String",
             "Default" : "jenkins-workers"
+        },
+        "Environment" : {
+            "Description" : "Environment tag",
+            "Type" : "String",
+            "Default" : "ci",
+            "AllowedValues" : [ "integration", "ci" ]
         }
     },
 
@@ -108,7 +114,7 @@
             "Properties" : {
                 "GroupDescription" : { "Fn::Join" : [ " - ", [ { "Ref" : "AWS::StackName" }, "ELB " ] ]},
                 "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" } },
-                         { "Key" : "Environment", "Value" : "ci" }],
+                         { "Key" : "Environment", "Value" : { "Ref" : "Environment" } }],
                 "SecurityGroupIngress" : [
                     { "IpProtocol" : "tcp", "FromPort" : "443", "ToPort" : "443", "CidrIp": "0.0.0.0/0" }
                 ]
@@ -120,7 +126,7 @@
             "Properties" : {
                 "GroupDescription" : { "Ref" : "AWS::StackName" },
                 "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" } },
-                         { "Key" : "Environment", "Value" : "ci" }],
+                         { "Key" : "Environment", "Value" : { "Ref" : "Environment" } }],
                 "SecurityGroupIngress" : [
                     { "IpProtocol" : "tcp", "FromPort" : "8080", "ToPort" : "8080", "SourceSecurityGroupName" : { "Ref" : "ELBSecurityGroup" } }
                 ]
@@ -151,6 +157,12 @@
         "LoadBalancer" : {
             "Type" : "AWS::ElasticLoadBalancing::LoadBalancer",
             "Properties" : {
+                "AccessLoggingPolicy" : {
+                    "Enabled" : "true",
+                    "EmitInterval" : "10",
+                    "S3BucketName" : "promotably-persist",
+                    "S3BucketPrefix" : { "Fn::Join" : [ "/", [ "logs", "elb", { "Ref" : "Environment" }, { "Ref" : "AWS::StackName" } ] ]}
+                },
                 "AvailabilityZones": [{ "Fn::FindInMap" : [ "config", { "Ref" : "AWS::Region" }, "az" ] }],
                 "SecurityGroups" : [ { "Fn::GetAtt" : [ "ELBSecurityGroup", "GroupId" ]} ],
                 "Listeners" : [{
@@ -172,7 +184,7 @@
                     "UnhealthyThreshold" : "2"
                 },
                 "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" } },
-                         { "Key" : "Environment", "Value" : "ci" }]
+                         { "Key" : "Environment", "Value" : { "Ref" : "Environment" } }]
             }
         },
 
@@ -191,7 +203,7 @@
                     { "Ref" : "AWS::NoValue" }
                 ]},
                 "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" } },
-                         { "Key" : "Environment", "Value" : "ci" }]
+                         { "Key" : "Environment", "Value" : { "Ref" : "Environment" } }]
             }
         },
 
@@ -341,7 +353,7 @@
                 "Cooldown" : "600",
                 "LoadBalancerNames" : [ { "Ref" : "LoadBalancer" } ],
                 "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" }, "PropagateAtLaunch" : "true" },
-                         { "Key" : "Environment", "Value" : "ci", "PropagateAtLaunch" : "true" }]
+                         { "Key" : "Environment", "Value" : { "Ref" : "Environment" }, "PropagateAtLaunch" : "true" }]
             }
         },
 
