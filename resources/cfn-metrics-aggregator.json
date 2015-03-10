@@ -215,7 +215,7 @@
                                       " --stack ", { "Ref" : "AWS::StackName" },
                                       " --resource LaunchConfig",
                                       " --region ", { "Ref" : "AWS::Region" }, "\n",
-                                      " -c base,update,waitForHealthcheck\n",
+                                      " -c base,update\n",
                                     "runas=root\n"
                                 ]]}
                             }
@@ -312,7 +312,6 @@
                     "  cfn_init -c default || error_exit 'Failed to run cfn-init - default'\n",
                     "\n",
                     "  cfn_init -c boot || error_exit 'Failed to run cfn-init - boot'\n",
-                    "  cfn_init -c waitForHealthcheck || error_exit 'Failed to run cfn-init - waitForHealthcheck'\n",
                     "  cfn_signal_ok\n",
                     ") > /tmp/cloud-init-bg.out 2>&1 ) &\n"
                 ] ]} }
