@@ -90,7 +90,7 @@ squadron_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validat
 api_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/api/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
 scribe_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/scribe/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
 dashboard_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/dashboard/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
-metrics_aggregator_ref='none'
+metrics_aggregator_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/metrics-aggregator/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
 
 if [ -n "$project" ]; then
     if [ -z "$gitref" ]; then
@@ -138,7 +138,8 @@ fi
 
 # make sure other build artifacts are there
 for s3_file in dashboard/$dashboard_ref/index.html api/$api_ref/standalone.jar api/$api_ref/source.zip api/$api_ref/apid \
-               scribe/$scribe_ref/standalone.jar scribe/$scribe_ref/source.zip scribe/$scribe_ref/scribed ; do
+               scribe/$scribe_ref/standalone.jar scribe/$scribe_ref/source.zip scribe/$scribe_ref/scribed \
+               metrics-aggregator/$metrics_aggregator_ref/standalone.jar metrics-aggregator/$metrics_aggregator_ref/source.zip metrics-aggregator/$metrics_aggregator_ref/mad ; do
     aws s3 ls s3://$ARTIFACT_BUCKET/$CI_NAME/$s3_file > /dev/null
 done
 

@@ -130,7 +130,7 @@ if [ -n "$refresh" ]; then
     api_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/api/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
     scribe_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/scribe/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
     dashboard_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/dashboard/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
-    metrics_aggregator_ref='none'
+    metrics_aggregator_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/metrics-aggregator/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
 fi
 
 if [ -n "$project" ]; then
@@ -203,9 +203,9 @@ fi
 
 # make sure metrics-aggregator artifacts are there if we're refreshing Metrics Aggregator
 if [ -n "$metrics_aggregator_ref" ]; then
-    #for s3_file in metrics-aggregator/$metrics_aggregator_ref/standalone.jar metrics-aggregator/$metrics_aggregator_ref/source.zip metrics-aggregator/$metrics_aggregator_ref/mad ; do
-    #    aws s3 ls s3://$ARTIFACT_BUCKET/$CI_NAME/$s3_file > /dev/null
-    #done
+    for s3_file in metrics-aggregator/$metrics_aggregator_ref/standalone.jar metrics-aggregator/$metrics_aggregator_ref/source.zip metrics-aggregator/$metrics_aggregator_ref/mad ; do
+        aws s3 ls s3://$ARTIFACT_BUCKET/$CI_NAME/$s3_file > /dev/null
+    done
     metrics_aggregatorref_param="ParameterKey=MetricsAggregatorRef,ParameterValue=$metrics_aggregator_ref"
 fi
 
