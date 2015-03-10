@@ -182,7 +182,9 @@
                 "VpcId" : { "Ref" : "VpcId" },
                 "SecurityGroupIngress" : [
                     { "IpProtocol" : "tcp", "FromPort" : "443", "ToPort" : "443", "CidrIp": "0.0.0.0/0" }
-                ]
+                ],
+                "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" } },
+                         { "Key" : "Environment", "Value" : { "Ref" : "Environment" } }]
             }
         },
 
@@ -194,7 +196,9 @@
                 "SecurityGroupIngress" : [
                     { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "SourceSecurityGroupId" : { "Ref" : "ELBSecurityGroup" } },
                     { "IpProtocol" : "tcp", "FromPort" : "3000", "ToPort" : "3000", "SourceSecurityGroupId" : { "Ref" : "ELBSecurityGroup" } }
-                ]
+                ],
+                "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" } },
+                         { "Key" : "Environment", "Value" : { "Ref" : "Environment" } }]
             }
         },
 

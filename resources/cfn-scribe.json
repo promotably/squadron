@@ -151,7 +151,9 @@
             "Type": "AWS::EC2::SecurityGroup",
             "Properties": {
                 "GroupDescription" : { "Ref" : "AWS::StackName" },
-                "VpcId" : { "Ref" : "VpcId" }
+                "VpcId" : { "Ref" : "VpcId" },
+                "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" } },
+                         { "Key" : "Environment", "Value" : { "Ref" : "Environment" } }]
             }
         },
 

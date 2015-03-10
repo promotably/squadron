@@ -3,6 +3,12 @@
     "Description" : "Networking infrastructure.",
 
     "Parameters" : {
+        "Environment" : {
+            "Description" : "Environment tag",
+            "Type" : "String",
+            "Default" : "integration",
+            "AllowedValues" : [ "integration", "staging", "production" ]
+        },
 
         "BastionKeyName" : {
             "Description" : "Name of an EC2 KeyPair to enable SSH access to the bastion host (default is no ssh key)",
@@ -105,6 +111,7 @@
                 "EnableDnsSupport" : "true",
                 "EnableDnsHostnames" : "true",
                 "Tags" : [{ "Key" : "Application", "Value" : { "Ref" : "AWS::StackName" } },
+                          { "Key" : "Environment", "Value" : { "Ref" : "Environment" } },
                           { "Key" : "Network", "Value" : "Public" }]
             }
         },
@@ -117,7 +124,8 @@
                 "AvailabilityZone" : { "Fn::FindInMap" : [ "config", { "Ref" : "AWS::Region" }, "azA" ]},
                 "CidrBlock" : { "Fn::FindInMap" : [ "config", "cidr", "PublicSubnetA" ]},
                 "Tags" : [{ "Key" : "Application", "Value" : { "Ref" : "AWS::StackName" } },
-                          { "Key" : "Network", "Value" : "PublicSubnetA" }]
+                          { "Key" : "Environment", "Value" : { "Ref" : "Environment" } },
+                          { "Key" : "Network", "Value" : "Public" }]
             }
         },
 
@@ -129,7 +137,8 @@
                 "AvailabilityZone" : { "Fn::FindInMap" : [ "config", { "Ref" : "AWS::Region" }, "azB" ]},
                 "CidrBlock" : { "Fn::FindInMap" : [ "config", "cidr", "PublicSubnetB" ]},
                 "Tags" : [{ "Key" : "Application", "Value" : { "Ref" : "AWS::StackName" } },
-                          { "Key" : "Network", "Value" : "PublicSubnetB" }]
+                          { "Key" : "Environment", "Value" : { "Ref" : "Environment" } },
+                          { "Key" : "Network", "Value" : "Public" }]
             }
         },
 
@@ -141,7 +150,8 @@
                 "AvailabilityZone" : { "Fn::FindInMap" : [ "config", { "Ref" : "AWS::Region" }, "azC" ]},
                 "CidrBlock" : { "Fn::FindInMap" : [ "config", "cidr", "PublicSubnetC" ]},
                 "Tags" : [{ "Key" : "Application", "Value" : { "Ref" : "AWS::StackName" } },
-                          { "Key" : "Network", "Value" : "PublicSubnetC" }]
+                          { "Key" : "Environment", "Value" : { "Ref" : "Environment" } },
+                          { "Key" : "Network", "Value" : "Public" }]
             }
         },
 
@@ -149,6 +159,7 @@
             "Type" : "AWS::EC2::InternetGateway",
             "Properties" : {
                 "Tags" : [{ "Key" : "Application", "Value" : { "Ref" : "AWS::StackName" } },
+                          { "Key" : "Environment", "Value" : { "Ref" : "Environment" } },
                           { "Key" : "Network", "Value" : "Public" }]
             }
         },
@@ -166,6 +177,7 @@
             "Properties" : {
                 "VpcId" : { "Ref" : "VPC" },
                 "Tags" : [{ "Key" : "Application", "Value" : { "Ref" : "AWS::StackName" } },
+                          { "Key" : "Environment", "Value" : { "Ref" : "Environment" } },
                           { "Key" : "Network", "Value" : "Public" }]
             }
         },
@@ -209,6 +221,7 @@
             "Properties" : {
                 "VpcId" : { "Ref" : "VPC" },
                 "Tags" : [{ "Key" : "Application", "Value" : { "Ref" : "AWS::StackName" } },
+                          { "Key" : "Environment", "Value" : { "Ref" : "Environment" } },
                           { "Key" : "Network", "Value" : "Public" }]
             }
         },
@@ -361,7 +374,8 @@
                 "AvailabilityZone" : { "Fn::FindInMap" : [ "config", { "Ref" : "AWS::Region" }, "azA" ]},
                 "CidrBlock" : { "Fn::FindInMap" : [ "config", "cidr", "PrivateSubnetA" ]},
                 "Tags" : [{ "Key" : "Application", "Value" : { "Ref" : "AWS::StackName" } },
-                          { "Key" : "Network", "Value" : "PrivateSubnetA" }]
+                          { "Key" : "Environment", "Value" : { "Ref" : "Environment" } },
+                          { "Key" : "Network", "Value" : "Private" }]
             }
         },
 
@@ -373,7 +387,8 @@
                 "AvailabilityZone" : { "Fn::FindInMap" : [ "config", { "Ref" : "AWS::Region" }, "azB" ]},
                 "CidrBlock" : { "Fn::FindInMap" : [ "config", "cidr", "PrivateSubnetB" ]},
                 "Tags" : [{ "Key" : "Application", "Value" : { "Ref" : "AWS::StackName" } },
-                          { "Key" : "Network", "Value" : "PrivateSubnetB" }]
+                          { "Key" : "Environment", "Value" : { "Ref" : "Environment" } },
+                          { "Key" : "Network", "Value" : "Private" }]
             }
         },
 
@@ -385,7 +400,8 @@
                 "AvailabilityZone" : { "Fn::FindInMap" : [ "config", { "Ref" : "AWS::Region" }, "azC" ]},
                 "CidrBlock" : { "Fn::FindInMap" : [ "config", "cidr", "PrivateSubnetC" ]},
                 "Tags" : [{ "Key" : "Application", "Value" : { "Ref" : "AWS::StackName" } },
-                          { "Key" : "Network", "Value" : "PrivateSubnetC" }]
+                          { "Key" : "Environment", "Value" : { "Ref" : "Environment" } },
+                          { "Key" : "Network", "Value" : "Private" }]
             }
         },
 
@@ -394,6 +410,7 @@
             "Properties" : {
                 "VpcId" : { "Ref" : "VPC" },
                 "Tags" : [{ "Key" : "Application", "Value" : { "Ref" : "AWS::StackName" } },
+                          { "Key" : "Environment", "Value" : { "Ref" : "Environment" } },
                           { "Key" : "Network", "Value" : "Private" }]
             }
         },
@@ -436,6 +453,7 @@
             "Properties" : {
                 "VpcId" : { "Ref" : "VPC" },
                 "Tags" : [{ "Key" : "Application", "Value" : { "Ref" : "AWS::StackName" } },
+                          { "Key" : "Environment", "Value" : { "Ref" : "Environment" } },
                           { "Key" : "Network", "Value" : "Private" }]
             }
         },
@@ -493,6 +511,8 @@
             "Properties" : {
                 "GroupDescription" : { "Fn::Join" : [ "", [ { "Ref" : "AWS::StackName" }, " Default Group" ] ]},
                 "VpcId" : { "Ref" : "VPC" },
+                "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" } },
+                         { "Key" : "Environment", "Value" : { "Ref" : "Environment" } }],
                 "SecurityGroupIngress" : [
                     { "IpProtocol" : "tcp", "FromPort" : "22",  "ToPort" : "22",  "SourceSecurityGroupId" : { "Ref" : "BastionSecurityGroup" }}
                 ],
@@ -510,6 +530,8 @@
             "Properties" : {
                 "GroupDescription" : { "Fn::Join" : [ "", [ { "Ref" : "AWS::StackName" }, " NAT" ] ]},
                 "VpcId" : { "Ref" : "VPC" },
+                "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" } },
+                         { "Key" : "Environment", "Value" : { "Ref" : "Environment" } }],
                 "SecurityGroupIngress" : [
                     { "IpProtocol" : "tcp", "FromPort" : "80",  "ToPort" : "80",  "CidrIp" : { "Fn::FindInMap" : [ "config", "cidr", "PrivateAll" ]}},
                     { "IpProtocol" : "tcp", "FromPort" : "443", "ToPort" : "443", "CidrIp" : { "Fn::FindInMap" : [ "config", "cidr", "PrivateAll" ]}},
@@ -552,7 +574,8 @@
                     "fi\n",
                     "\n"
                 ]]} },
-                "Tags": [{ "Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ { "Ref" : "AWS::StackName" }, "nat" ] ]} }]
+                "Tags": [{ "Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ { "Ref" : "AWS::StackName" }, "nat" ] ]} },
+                         { "Key" : "Environment", "Value" : { "Ref" : "Environment" } }]
             }
         },
 
@@ -612,6 +635,8 @@
             "Properties" : {
                 "GroupDescription" : { "Fn::Join" : [ "", [ { "Ref" : "AWS::StackName" }, " Bastion" ] ]},
                 "VpcId" : { "Ref" : "VPC" },
+                "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" } },
+                         { "Key" : "Environment", "Value" : { "Ref" : "Environment" } }],
                 "SecurityGroupIngress" : { "Fn::If" : [ "SSHFrom",
                     [{ "IpProtocol" : "tcp", "FromPort" : "22",  "ToPort" : "22",  "CidrIp" : { "Ref" : "SSHFrom" }}],
                     { "Ref" : "AWS::NoValue" }
@@ -666,7 +691,8 @@
                     "/opt/aws/bin/cfn-init -v -s ", { "Ref": "AWS::StackId" },
                        " -r BastionHost --region ", { "Ref": "AWS::Region" }, "\n"
                 ]]} },
-                "Tags": [{ "Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ { "Ref" : "AWS::StackName" }, "bastion" ] ]} }]
+                "Tags": [{ "Key" : "Name", "Value" : { "Fn::Join" : [ "-", [ { "Ref" : "AWS::StackName" }, "bastion" ] ]} },
+                         { "Key" : "Environment", "Value" : { "Ref" : "Environment" } }]
             }
         }
     },

@@ -107,6 +107,8 @@
             "Type" : "AWS::EC2::SecurityGroup",
             "Properties" : {
                 "GroupDescription" : { "Fn::Join" : [ " - ", [ { "Ref" : "AWS::StackName" }, "ELB " ] ]},
+                "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" } },
+                         { "Key" : "Environment", "Value" : "ci" }],
                 "SecurityGroupIngress" : [
                     { "IpProtocol" : "tcp", "FromPort" : "443", "ToPort" : "443", "CidrIp": "0.0.0.0/0" }
                 ]
@@ -117,6 +119,8 @@
             "Type" : "AWS::EC2::SecurityGroup",
             "Properties" : {
                 "GroupDescription" : { "Ref" : "AWS::StackName" },
+                "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" } },
+                         { "Key" : "Environment", "Value" : "ci" }],
                 "SecurityGroupIngress" : [
                     { "IpProtocol" : "tcp", "FromPort" : "8080", "ToPort" : "8080", "SourceSecurityGroupName" : { "Ref" : "ELBSecurityGroup" } }
                 ]
@@ -401,5 +405,3 @@
         }
     }
 }
-
-

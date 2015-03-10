@@ -135,6 +135,7 @@
             "Properties" : {
                 "TemplateURL" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "CiName" }, "/squadron/", { "Ref" : "SquadronRef" }, "/cfn-network.json" ] ]},
                 "Parameters" : {
+                    "Environment" : { "Ref" : "Environment" },
                     "BastionKeyName" : { "Ref" : "SshKey" },
                     "NATKeyName" : { "Ref" : "SshKey" },
                     "SSHFrom" : { "Ref" : "SSHFrom" }
@@ -303,6 +304,7 @@
                         "default"
                     ]},
                     "DbImportFile" : "dbdumps/woo-store/staging-latest.mysql.gz",
+                    "Environment" : { "Ref" : "Environment" },
                     "ApiHost" : { "Fn::GetAtt" : [ "Api", "Outputs.Hostname" ] }
                 },
                 "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}

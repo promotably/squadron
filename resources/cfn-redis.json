@@ -45,6 +45,8 @@
             "Type": "AWS::EC2::SecurityGroup",
             "Properties": {
                 "GroupDescription" : { "Fn::Join" : [ " - ", [ { "Ref" : "AWS::StackName" }, "clients" ]]},
+                "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" } },
+                         { "Key" : "Environment", "Value" : { "Ref" : "Environment" } }],
                 "VpcId" : { "Ref" : "VpcId" }
             }
         },
@@ -54,6 +56,8 @@
             "Properties": {
                 "GroupDescription" : { "Ref" : "AWS::StackName" },
                 "VpcId" : { "Ref" : "VpcId" },
+                "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" } },
+                         { "Key" : "Environment", "Value" : { "Ref" : "Environment" } }],
                 "SecurityGroupIngress": [{
                     "IpProtocol": "tcp",
                     "FromPort": "6379",
