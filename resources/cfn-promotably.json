@@ -264,6 +264,32 @@
             }
         },
 
+        "MetricsAg" : {
+            "Type" : "AWS::CloudFormation::Stack",
+            "Properties" : {
+                "TemplateURL" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "CiName" }, "/squadron/", { "Ref" : "SquadronRef" }, "/cfn-metrics-aggregator.json" ] ]},
+                "Parameters" : {
+                    "ArtifactBucket" : { "Ref" : "ArtifactBucket" },
+                    "ArtifactPath" : { "Fn::Join" : [ "/", [ { "Ref" : "CiName" }, "metrics-aggregator", { "Ref" : "MetricsAggregatorRef" } ] ]},
+                    "DBHost" : { "Fn::GetAtt" : [ "Rds", "Outputs.DBHost" ] },
+                    "DBPort" : { "Fn::GetAtt" : [ "Rds", "Outputs.DBPort" ] },
+                    "DBName" : { "Fn::GetAtt" : [ "Rds", "Outputs.DBName" ] },
+                    "DBUsername" : "promotably",
+                    "DBPassword" : "promotably",
+                    "DBClientSecGrp" : { "Fn::GetAtt" : [ "Rds", "Outputs.DBClientSecGrp" ] },
+                    "PrivateSubnets" : { "Fn::Join" : [ ",", [
+                        { "Fn::GetAtt" : [ "Network", "Outputs.PrivateSubnetA" ] },
+                        { "Fn::GetAtt" : [ "Network", "Outputs.PrivateSubnetB" ] },
+                        { "Fn::GetAtt" : [ "Network", "Outputs.PrivateSubnetC" ] } ]]},
+                    "VpcId" : { "Fn::GetAtt" : [ "Network", "Outputs.VPCId" ] },
+                    "Environment" : { "Ref" : "Environment" },
+                    "VpcDefaultSecurityGroup" : { "Fn::GetAtt" : [ "Network", "Outputs.VpcDefaultSecurityGroup" ] },
+                    "KeyPair" : { "Ref" : "SshKey" }
+                },
+                "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}
+            }
+        },
+
         "Woo" : {
             "Type" : "AWS::CloudFormation::Stack",
             "Condition" : "BuildWoo",
@@ -300,6 +326,10 @@
         "ApiStack" : {
             "Description" : "StackId of Api stack",
             "Value" : { "Ref" : "Api" }
+        },
+        "MetricsAggregatorStack" : {
+            "Description" : "StackId of MetricsAggregator stack",
+            "Value" : { "Ref" : "MetricsAg" }
         },
         "ScribeStack" : {
             "Description" : "StackId of Scribe stack",

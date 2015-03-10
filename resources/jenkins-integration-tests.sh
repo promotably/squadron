@@ -48,18 +48,22 @@ ci_url="$(aws cloudformation describe-stacks --output=text --stack-name $stack_n
 woo_url="$(aws cloudformation describe-stacks --output=text --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`WooUrl`].OutputValue[]')"
 api_stack="$(aws cloudformation describe-stacks --output=text --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`ApiStack`].OutputValue[]')"
 scribe_stack="$(aws cloudformation describe-stacks --output=text --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`ScribeStack`].OutputValue[]')"
+metricsag_stack="$(aws cloudformation describe-stacks --output=text --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`MetricsAggregatorStack`].OutputValue[]')"
 
 api_asg="$(aws cloudformation describe-stacks --output=text --stack-name $api_stack --query 'Stacks[0].Outputs[?OutputKey==`APIInstanceGroup`].OutputValue[]')"
 elb_url="$(aws cloudformation describe-stacks --output=text --stack-name $api_stack --query 'Stacks[0].Outputs[?OutputKey==`URL`].OutputValue[]')"
 scribe_asg="$(aws cloudformation describe-stacks --output=text --stack-name $scribe_stack --query 'Stacks[0].Outputs[?OutputKey==`ScribeInstanceGroup`].OutputValue[]')"
+metricsag_asg="$(aws cloudformation describe-stacks --output=text --stack-name $scribe_stack --query 'Stacks[0].Outputs[?OutputKey==`LaunchGroup`].OutputValue[]')"
 
 api_instance_id="$(aws autoscaling describe-auto-scaling-groups --output=text --auto-scaling-group-names $api_asg --query 'AutoScalingGroups[0].Instances[0].InstanceId')"
 scribe_instance_id="$(aws autoscaling describe-auto-scaling-groups --output=text --auto-scaling-group-names $scribe_asg --query 'AutoScalingGroups[0].Instances[0].InstanceId')"
+metricsag_instance_id="$(aws autoscaling describe-auto-scaling-groups --output=text --auto-scaling-group-names $metricsag_asg --query 'AutoScalingGroups[0].Instances[0].InstanceId')"
 
 api_ip="$(aws ec2 describe-instances --output=text --instance-ids $api_instance_id --query 'Reservations[0].Instances[0].PrivateIpAddress')"
 scribe_ip="$(aws ec2 describe-instances --output=text --instance-ids $scribe_instance_id --query 'Reservations[0].Instances[0].PrivateIpAddress')"
+metricsag_ip="$(aws ec2 describe-instances --output=text --instance-ids $metricsag_instance_id --query 'Reservations[0].Instances[0].PrivateIpAddress')"
 
-[ -z "$api_ip" -o -z "$scribe_ip" ] && exit 1
+[ -z "$api_ip" -o -z "$scribe_ip" -o -z "$metricsag_ip" ] && exit 1
 
 ssh_cmd="ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -t -t"
 
@@ -70,24 +74,18 @@ echo
 echo 'NETWORK TESTS'
 echo '------------------------------------------------------------------------------'
 # SSH sanity check
-echo "Test SSH"
+echo "Bastion Sanity Check"
 $ssh_cmd -i $ssh_key_pem ec2-user@$bastion_ip "whoami"|| exit $?
-$ssh_cmd -i $ssh_key_pem ec2-user@$bastion_ip "$ssh_cmd $api_ip \"sudo whoami\"" || exit $?
-$ssh_cmd -i $ssh_key_pem ec2-user@$bastion_ip "$ssh_cmd $scribe_ip \"sudo whoami\"" || exit $?
-# TODO Make less brittle and re-enable
-## NTPD
 #ntpserver=$(grep '^server' /etc/ntp.conf | head -n 1 | awk '{print $2}')
-#echo "Test NTP to $ntpserver"
-#$ssh_cmd -i $ssh_key_pem ec2-user@$bastion_ip "$ssh_cmd $api_ip \"sudo sh -c 'service ntpd stop > /dev/null && ntpdate $ntpserver && service ntpd start > /dev/null && service ntpd status'\"" || exit $?
-#$ssh_cmd -i $ssh_key_pem ec2-user@$bastion_ip "$ssh_cmd $scribe_ip \"sudo sh -c 'service ntpd stop > /dev/null && ntpdate $ntpserver && service ntpd start > /dev/null && service ntpd status'\"" || exit $?
-# HTTP
-echo "Test HTTP to http://checkip.amazonaws.com/"
-$ssh_cmd -i $ssh_key_pem ec2-user@$bastion_ip "$ssh_cmd $api_ip \"curl -v --fail --connect-timeout 15 --max-time 30 http://checkip.amazonaws.com/\"" || exit $?
-$ssh_cmd -i $ssh_key_pem ec2-user@$bastion_ip "$ssh_cmd $scribe_ip \"curl -v --fail --connect-timeout 15 --max-time 30 http://checkip.amazonaws.com/\"" || exit $?
-# HTTPS
-echo "Test HTTPS to https://www.google.com/"
-$ssh_cmd -i $ssh_key_pem ec2-user@$bastion_ip "$ssh_cmd $api_ip \"curl -v --fail --connect-timeout 15 --max-time 30 https://www.google.com/ > /dev/null\"" || exit $?
-$ssh_cmd -i $ssh_key_pem ec2-user@$bastion_ip "$ssh_cmd $scribe_ip \"curl -v --fail --connect-timeout 15 --max-time 30 https://www.google.com > /dev/null\"" || exit $?
+for priv_ip in $api_ip $scribe_ip $metricsag_ip ; do
+    echo "Network Tests for $priv_ip"
+    $ssh_cmd -i $ssh_key_pem ec2-user@$bastion_ip "$ssh_cmd $priv_ip \"sudo whoami\"" || exit $?
+    # TODO Make less brittle and re-enable
+    #$ssh_cmd -i $ssh_key_pem ec2-user@$bastion_ip "$ssh_cmd $priv_ip \"sudo sh -c 'service ntpd stop > /dev/null && ntpdate $ntpserver && service ntpd start > /dev/null && service ntpd status'\"" || exit $?
+    $ssh_cmd -i $ssh_key_pem ec2-user@$bastion_ip "$ssh_cmd $priv_ip \"curl -v --fail --connect-timeout 15 --max-time 30 http://checkip.amazonaws.com/\"" || exit $?
+    $ssh_cmd -i $ssh_key_pem ec2-user@$bastion_ip "$ssh_cmd $priv_ip \"curl -v --fail --connect-timeout 15 --max-time 30 https://www.google.com/ > /dev/null\"" || exit $?
+    echo
+done
 
 # give Jenkins times to come online
 sleep 30

@@ -1,0 +1,357 @@
+{
+    "AWSTemplateFormatVersion" : "2010-09-09",
+    "Description" : "Metrics Aggregator",
+
+    "Parameters" : {
+
+        "ArtifactBucket" : {
+            "Description" : "S3 Bucket where build artifacts are stored",
+            "Type" : "String",
+            "Default" : "promotably-build-artifacts"
+        },
+        "ArtifactPath" : {
+            "Description" : "Path in S3 bucket to standalone.jar, source.zip, mad",
+            "Type" : "String"
+        },
+        "DBHost": {
+            "Description": "Database hostname",
+            "Type": "String"
+        },
+        "DBPort": {
+            "Description": "Database port",
+            "Type": "String"
+        },
+        "DBName": {
+            "Description": "Database name",
+            "Type": "String"
+        },
+        "DBUsername": {
+            "Description": "Database username",
+            "Type": "String"
+        },
+        "DBPassword": {
+            "Description": "Database password",
+            "Type": "String"
+        },
+        "DBClientSecGrp" : {
+            "Description" : "Name of Redis Cluster client security group",
+            "Type" : "String"
+        },
+        "PrivateSubnets" : {
+            "Description" : "List of VPC public subnet IDs for the cluster. Note: must match up with the passed AvailabilityZones.",
+            "Type" : "List<AWS::EC2::Subnet::Id>"
+        },
+        "VpcId" : {
+            "Description" : "VPC associated with the provided subnets",
+            "Type" : "AWS::EC2::VPC::Id"
+        },
+        "Environment" : {
+            "Description" : "Environment tag",
+            "Type" : "String",
+            "Default" : "integration",
+            "AllowedValues" : [ "integration", "staging", "production" ]
+        },
+        "VpcDefaultSecurityGroup" : {
+            "Description" : "VPC default Security Group",
+            "Type" : "AWS::EC2::SecurityGroup::Id"
+        },
+        "KeyPair": {
+            "Description": "Name of the keypair to use for SSH access",
+            "Type": "AWS::EC2::KeyPair::KeyName"
+        },
+        "AvailabilityZones": {
+            "Description" : "(Optional) If passed, only launch nodes in these AZs (e.g., 'us-east-1a,us-east-1b'). Note: these must match up with the passed Subnets.",
+            "Type" : "CommaDelimitedList",
+            "Default" : ""
+        }
+    },
+
+    "Conditions" : {
+        "UseAllAvailabilityZones" : { "Fn::Equals" : [{ "Fn::Join" : [ "", { "Ref" : "AvailabilityZones" } ]}, "" ]}
+    },
+
+    "Mappings" : {
+        "config" : {
+            "us-east-1" : { "ami" : "ami-ee6e2a86" },
+            "us-west-2" : { "ami" : "ami-c1c39af1" },
+            "eu-west-2" : { "ami" : "ami-8723aef0" }
+        }
+    },
+
+    "Resources" : {
+
+        "RootRole": {
+            "Type" : "AWS::IAM::Role",
+            "Properties" : {
+                "Path" : "/",
+                "AssumeRolePolicyDocument": {
+                    "Version" : "2012-10-17",
+                    "Statement" : [ {
+                        "Effect" : "Allow",
+                        "Principal" : {
+                            "Service" : [ "ec2.amazonaws.com" ]
+                        },
+                        "Action" : [ "sts:AssumeRole" ]
+                    } ]
+                },
+                "Policies" : {
+                    "PolicyName" : "root",
+                    "PolicyDocument" : {
+                        "Version" : "2012-10-17",
+                        "Statement" : [{
+                            "Effect" : "Allow",
+                            "Action" : "cloudwatch:*",
+                            "Resource" : "*"
+                        },{
+                            "Effect": "Allow",
+                            "Action": [ "s3:Get*" ],
+                            "Resource": [
+                                { "Fn::Join" : [ "", [ "arn:aws:s3:::", { "Ref" : "ArtifactBucket" }, "/*" ] ] }
+                            ]
+                        }]
+                    }
+                }
+            }
+        },
+
+        "RootInstanceProfile" : {
+            "Type" : "AWS::IAM::InstanceProfile",
+            "Properties" : {
+                "Path" : "/",
+                "Roles" : [ { "Ref": "RootRole" } ]
+            }
+        },
+
+        "SecurityGroup": {
+            "Type": "AWS::EC2::SecurityGroup",
+            "Properties": {
+                "GroupDescription" : { "Ref" : "AWS::StackName" },
+                "VpcId" : { "Ref" : "VpcId" }
+            }
+        },
+
+        "LaunchConfig" : {
+            "Type" : "AWS::AutoScaling::LaunchConfiguration",
+            "Metadata" : {
+                "AWS::CloudFormation::Authentication" : {
+                    "S3AccessCreds" : {
+                        "type" : "S3",
+                        "roleName" : { "Ref" : "RootRole" },
+                        "buckets" : [ { "Ref" : "ArtifactBucket" } ]
+                    }
+                },
+                "AWS::CloudFormation::Init" : {
+                    "configSets" : {
+                        "update" : [ "update" ],
+                        "base" : [ "base" ],
+                        "boot" : [ "boot" ],
+                        "waitForHealthcheck" : [ "waitForHealthcheck" ],
+                        "default" : [ { "ConfigSet" : "base" } ]
+                    },
+                    "base" : {
+                        "packages" : {
+                            "yum" : {
+                                "java-1.7.0-openjdk" : [],
+                                "apache-commons-daemon-jsvc" : []
+                            }
+                        },
+                        "files" : {
+                            "/opt/promotably/mad-current.jar" : {
+                                "source" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "ArtifactPath" }, "/standalone.jar" ]]},
+                                "mode"    : "000644",
+                                "owner"   : "root",
+                                "group"   : "root"
+                            },
+                            "/etc/rc.d/init.d/mad" : {
+                                "source" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "ArtifactPath" }, "/mad" ]]},
+                                "mode"    : "000755",
+                                "owner"   : "root",
+                                "group"   : "root"
+                            },
+                            "/opt/promotably/metrics-aggregator.conf" : {
+                                "content" : { "Fn::Join" : [ "", [
+                                    "{\n",
+                                    "\"RDS_HOST\" \"{{RDS_HOST}}\"\n",
+                                    "\"RDS_PORT\" \"{{RDS_PORT}}\"\n",
+                                    "\"RDS_USER\" \"{{RDS_USER}}\"\n",
+                                    "\"RDS_PW\" \"{{RDS_PW}}\"\n",
+                                    "\"RDS_DB_NAME\" \"{{RDS_DB_NAME}}\"\n",
+                                    "\"ENV\" \"{{ENV}}\"\n",
+                                    "\"LEIN_ROOT\" \"yes\"\n",
+                                    "\"STACKNAME\" \"{{STACKNAME}}\"\n",
+                                    "}\n"
+                                ]]},
+                                "context" : {
+                                    "ARTIFACT_BUCKET" : { "Ref": "ArtifactBucket" },
+                                    "RDS_HOST" : { "Ref" : "DBHost" },
+                                    "RDS_PORT" : { "Ref" : "DBPort" },
+                                    "RDS_USER" : { "Ref": "DBUsername" },
+                                    "RDS_PW" : { "Ref": "DBPassword" },
+                                    "RDS_DB_NAME" : { "Ref": "DBName" },
+                                    "ENV" : { "Ref": "Environment" },
+                                    "STACKNAME" : { "Ref": "AWS::StackName" }
+                                },
+                                "mode"    : "000644",
+                                "owner"   : "root",
+                                "group"   : "root"
+                            },
+                            "/etc/cfn/cfn-hup.conf" : {
+                                "content" : { "Fn::Join" : ["", [
+                                    "[main]\n",
+                                    "stack=", { "Ref" : "AWS::StackId" }, "\n",
+                                    "region=", { "Ref" : "AWS::Region" }, "\n",
+                                    "interval=5\n"
+                                ]]},
+                                "mode"    : "000400",
+                                "owner"   : "root",
+                                "group"   : "root"
+                            },
+                            "/etc/cfn/hooks.d/cfn-auto-reloader.conf" : {
+                                "content": { "Fn::Join" : ["", [
+                                    "[cfn-auto-reloader-hook]\n",
+                                    "triggers=post.update\n",
+                                    "path=Resources.LaunchConfig.Metadata.AWS::CloudFormation::Init\n",
+                                    "action=/opt/aws/bin/cfn-init -v",
+                                      " --stack ", { "Ref" : "AWS::StackName" },
+                                      " --resource LaunchConfig",
+                                      " --region ", { "Ref" : "AWS::Region" }, "\n",
+                                      " -c base,update,waitForHealthcheck\n",
+                                    "runas=root\n"
+                                ]]}
+                            }
+                        },
+                        "commands" : {
+                            "01-chkconfig" : { "command" : "chkconfig --add mad" }
+                        }
+                     },
+                    "boot" : {
+                        "services" : {
+                            "sysvinit" : {
+                                "mad" : {
+                                    "enabled" : "true",
+                                    "ensureRunning" : "true",
+                                    "files" : [ "/opt/promotably/metrics-aggregator.conf", "/opt/promotably/mad-current.jar" ]
+                                },
+                                "cfn-hup" : {
+                                    "enabled" : "true",
+                                    "ensureRunning" : "true",
+                                    "files" : [ "/etc/cfn/cfn-hup.conf", "/etc/cfn/hooks.d/cfn-auto-reloader.conf" ]
+                                }
+                            }
+                        }
+                    },
+                    "update" : {
+                        "commands" : {
+                            "01-restartservices" : {
+                                "command" : { "Fn::Join" : [ "", [
+                                    "service mad restart\n"
+                                ]]}
+                            }
+                        }
+                    },
+                    "waitForHealthcheck" : {
+                        "commands" : {
+                            "01-wait" : {
+                                "command" : { "Fn::Join" : [ "", [
+                                    "timeout_ts=$((`date +%s` + 600))\n",
+                                    "while [ $(date +%s) -le $timeout_ts ] && sleep 10; do\n",
+                                    "  if service mad status; then\n",
+                                    "    exit 0\n",
+                                    "  fi\n",
+                                    "done\n",
+                                    "exit 1\n"
+                                ]]}
+                            }
+                        }
+                    }
+                }
+            },
+
+            "Properties" : {
+                "ImageId" : { "Fn::FindInMap" : [ "config", { "Ref" : "AWS::Region" }, "ami" ]},
+                "SecurityGroups": [{ "Ref": "SecurityGroup" }, { "Ref" : "VpcDefaultSecurityGroup" }, { "Ref" : "DBClientSecGrp" }],
+                "InstanceType" : "t2.micro",
+                "KeyName": { "Ref": "KeyPair" },
+                "IamInstanceProfile": { "Ref": "RootInstanceProfile" },
+                "UserData": { "Fn::Base64": { "Fn::Join": [ "", [
+                    "#!/bin/bash -ex\n",
+                    "\n",
+                    "# retry yum upgrade if it fails, otherwise keep going\n",
+                    "if ! yum upgrade -y; then\n",
+                    "  sleep 30\n",
+                    "  yum upgrade -y || true\n",
+                    "fi\n",
+                    "\n",
+                    "mkdir -p /opt/promotably/metrics-aggregator\n",
+                    "\n",
+                    "# Helper functions\n",
+                    "function error_exit\n",
+                    "{\n",
+                    "  /opt/aws/bin/cfn-signal -e 1 -r \"$1\"",
+                      " --stack ", { "Ref" : "AWS::StackName" },
+                      " --resource LaunchGroup ",
+                      " --region ", { "Ref" : "AWS::Region" }, "\n",
+                    "  exit 1\n",
+                    "}\n",
+                    "function cfn_init\n",
+                    "{\n",
+                    "  /opt/aws/bin/cfn-init -v -s ", { "Ref": "AWS::StackId" },
+                      " -r LaunchConfig --region ", { "Ref": "AWS::Region" },
+                      " \"$@\"\n",
+                    "}\n",
+                    "function cfn_signal_ok\n",
+                    "{\n",
+                    "  /opt/aws/bin/cfn-signal -e 0 ",
+                      " --stack ", { "Ref" : "AWS::StackName" },
+                      " --resource LaunchGroup ",
+                      " --region ", { "Ref" : "AWS::Region" }, " || true\n",
+                    "}\n",
+                    "\n",
+                    "# Wrap this stuff so it runs in the backgroun\n",
+                    "((\n",
+                    "  cfn_init -c default || error_exit 'Failed to run cfn-init - default'\n",
+                    "\n",
+                    "  cfn_init -c boot || error_exit 'Failed to run cfn-init - boot'\n",
+                    "  cfn_init -c waitForHealthcheck || error_exit 'Failed to run cfn-init - waitForHealthcheck'\n",
+                    "  cfn_signal_ok\n",
+                    ") > /tmp/cloud-init-bg.out 2>&1 ) &\n"
+                ] ]} }
+            }
+        },
+
+        "LaunchGroup" : {
+            "Type" : "AWS::AutoScaling::AutoScalingGroup",
+            "CreationPolicy": {
+                "ResourceSignal": { "Count": "1", "Timeout": "PT15M" }
+            },
+            "UpdatePolicy" : {
+                "AutoScalingRollingUpdate" : {
+                    "MinInstancesInService" : "1",
+                    "MaxBatchSize" : "1",
+                    "PauseTime" : "PT15M",
+                    "WaitOnResourceSignals" : "true"
+                }
+            },
+            "Properties" : {
+                "AvailabilityZones" : { "Fn::If" : [ "UseAllAvailabilityZones",
+                    { "Fn::GetAZs": "AWS::Region" },
+                    { "Ref" : "AvailabilityZones" }
+                ] },
+                "LaunchConfigurationName" : { "Ref" : "LaunchConfig" },
+                "MinSize" : "1",
+                "MaxSize" : "2",
+                "DesiredCapacity" : 1,
+                "VPCZoneIdentifier" : { "Ref" : "PrivateSubnets" },
+                "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" }, "PropagateAtLaunch" : "true" },
+                         { "Key" : "Environment", "Value" : { "Ref" : "Environment" }, "PropagateAtLaunch" : "true" }]
+            }
+        }
+    },
+
+    "Outputs" : {
+        "LaunchGroup" : {
+            "Description" : "ASG of the metrics-aggregator servers",
+            "Value" : { "Ref" : "LaunchGroup" }
+        }
+    }
+}
