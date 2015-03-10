@@ -94,7 +94,7 @@
                         "Action" : [ "sts:AssumeRole" ]
                     } ]
                 },
-                "Policies" : {
+                "Policies" : [{
                     "PolicyName" : "root",
                     "PolicyDocument" : {
                         "Version" : "2012-10-17",
@@ -110,7 +110,7 @@
                             ]
                         }]
                     }
-                }
+                }]
             }
         },
 
