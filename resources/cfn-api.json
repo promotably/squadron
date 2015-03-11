@@ -205,6 +205,10 @@
         "LoadBalancer" : {
             "Type" : "AWS::ElasticLoadBalancing::LoadBalancer",
             "Properties" : {
+                "LoadBalancerName": { "Fn::If" : [ "IsIntegration",
+                    { "Ref" : "AWS::NoValue" },
+                    { "Ref" : "AWS::StackName" }
+                ]},
                 "Subnets": { "Ref": "PublicSubnets" },
                 "SecurityGroups": [{ "Ref": "ELBSecurityGroup" }],
                 "AccessLoggingPolicy" : {

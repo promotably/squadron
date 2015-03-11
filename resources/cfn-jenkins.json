@@ -53,6 +53,7 @@
     },
 
     "Conditions" : {
+        "IsIntegration" : { "Fn::Equals" : [ { "Ref" : "Environment" }, "integration" ]},
         "SSHFrom" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "SSHFrom" }, "999.999.999.999/32" ] }] },
         "KeyName" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "KeyName" }, "None" ] }] },
         "Snapshot" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "SnapshotId" }, "none" ]} ]}
@@ -157,7 +158,10 @@
         "LoadBalancer" : {
             "Type" : "AWS::ElasticLoadBalancing::LoadBalancer",
             "Properties" : {
-                "LoadBalancerName" : { "Ref" : "AWS::StackName" },
+                "LoadBalancerName": { "Fn::If" : [ "IsIntegration",
+                    { "Ref" : "AWS::NoValue" },
+                    { "Ref" : "AWS::StackName" }
+                ]},
                 "AccessLoggingPolicy" : {
                     "Enabled" : "true",
                     "EmitInterval" : "5",
