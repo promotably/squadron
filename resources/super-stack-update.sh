@@ -124,7 +124,7 @@ squadron_ref=''
 api_ref=''
 scribe_ref=''
 dashboard_ref=''
-metrics_aggregator_ref='none'
+metrics_aggregator_ref=''
 if [ -n "$refresh" ]; then
     squadron_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/squadron/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
     api_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/api/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
