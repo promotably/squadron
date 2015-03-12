@@ -103,7 +103,9 @@
         "UseAllAvailabilityZones" : { "Fn::Equals" : [{ "Fn::Join" : [ "", { "Ref" : "AvailabilityZones" } ]}, "" ]},
         "IsIntegration" : { "Fn::Equals" : [ { "Ref" : "Environment" }, "integration" ]},
         "CreateDns" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "DnsOverride" }, "disable" ]} ]},
-        "DnsOverride" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "DnsOverride" }, "default" ]} ]}
+        "DnsOverride" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "DnsOverride" }, "default" ]} ]},
+        "SetELBNameToDNS" : { "Fn::And" : [ { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "DnsOverride" }, "disable" ]} ]},
+            { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "DnsOverride" }, "default" ]} ]} ]}
     },
 
     "Mappings" : {
@@ -205,10 +207,8 @@
         "LoadBalancer" : {
             "Type" : "AWS::ElasticLoadBalancing::LoadBalancer",
             "Properties" : {
-                "LoadBalancerName": { "Fn::If" : [ "IsIntegration",
-                    { "Ref" : "AWS::NoValue" },
-                    { "Fn::If" : [ "DnsOverride", { "Ref" : "AWS::NoValue" }, { "Ref" : "AWS::StackName" } ] }
-                ]},
+                "LoadBalancerName": { "Fn::If" : [ "SetELBNameToDNS",
+                    { "Ref" : "DnsOverride" }, { "Ref" : "AWS::NoValue" } ]},
                 "Subnets": { "Ref": "PublicSubnets" },
                 "SecurityGroups": [{ "Ref": "ELBSecurityGroup" }],
                 "AccessLoggingPolicy" : {
