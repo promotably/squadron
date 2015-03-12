@@ -78,7 +78,7 @@ fi
 echo -n > integration_test_results.txt
 if [ -z "$skip_integration_tests" ]; then
 
-    ./super-stack-create.sh -s $stack_name $project_options -e integration -w $(curl -s http://checkip.amazonaws.com/)/32
+    ./super-stack-create.sh -s $stack_name $project_options -e integration -w $(curl -s http://checkip.amazonaws.com/)/32 -d job$CI_BUILD_NUMBER
 
     ssh_key=$(aws cloudformation describe-stacks --stack-name $stack_name \
         --output=text --query 'Stacks[0].Parameters[?ParameterKey==`SshKey`].ParameterValue')
