@@ -173,7 +173,6 @@
                         "base" : [ "base" ],
                         "boot" : [ "boot" ],
                         "waitForHealthcheck" : [ "waitForHealthcheck" ],
-                        "integration" : [ "integration" ],
                         "default" : [ { "ConfigSet" : "base" } ]
                     },
                     "base" : {
@@ -259,73 +258,6 @@
                             "01-scibedchkconfig" : { "command" : "chkconfig --add scribed" }
                         }
                     },
-                    "integration" : {
-                        "packages" : {
-                            "yum" : {
-                                "git" : []
-                            }
-                        },
-                        "files" : {
-                            "/opt/promotably/scribe.zip" : {
-                                "source" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "ArtifactPath" }, "/source.zip" ]]},
-                                "mode"    : "000644",
-                                "owner"   : "root",
-                                "group"   : "root"
-                            },
-                            "/opt/promotably/scribe-integration-test.sh" : {
-                                "content" : { "Fn::Join" : [ "", [
-                                    "#!/bin/bash -ex\n",
-                                    "\n",
-                                    "export ARTIFACT_BUCKET=\"{{ARTIFACT_BUCKET}}\"\n",
-                                    "export KINESIS_A=\"{{KINESIS_A}}\"\n",
-                                    "export KINESIS_B=\"{{KINESIS_B}}\"\n",
-                                    "export RDS_HOST=\"{{RDS_HOST}}\"\n",
-                                    "export RDS_PORT=\"{{RDS_PORT}}\"\n",
-                                    "export RDS_USER=\"{{RDS_USER}}\"\n",
-                                    "export RDS_PW=\"{{RDS_PW}}\"\n",
-                                    "export RDS_DB_NAME=\"{{RDS_DB_NAME}}\"\n",
-                                    "export ENV=\"{{ENV}}\"\n",
-                                    "export LEIN_ROOT=\"yes\"\n",
-                                    "export MIDJE_COLORIZE=\"false\"\n",
-                                    "export STACKNAME=\"{{STACKNAME}}\"\n",
-                                    "export LOGGLY_URL=\"http://logs-01.loggly.com/inputs/2032adee-6213-469d-ba58-74993611570a/tag/{{ENV}},scribe/\"\n",
-                                    "export LOG_DIR=\"/var/log/scribe\"\n",
-                                    "\n",
-                                    "/usr/local/bin/lein deps > /dev/null 2>&1\n",
-                                    "/usr/local/bin/lein midje scribe.integration.*\n"
-                                ]]},
-                                "context" : {
-                                    "ARTIFACT_BUCKET" : { "Ref": "ArtifactBucket" },
-                                    "KINESIS_A" : { "Ref": "KinesisStreamA" },
-                                    "KINESIS_B" : { "Ref": "KinesisStreamB" },
-                                    "RDS_HOST" : { "Ref" : "DBHost" },
-                                    "RDS_PORT" : { "Ref" : "DBPort" },
-                                    "RDS_USER" : { "Ref": "DBUsername" },
-                                    "RDS_PW" : { "Ref": "DBPassword" },
-                                    "RDS_DB_NAME" : { "Ref": "DBName" },
-                                    "ENV" : { "Ref": "Environment" },
-                                    "STACKNAME" : { "Ref": "AWS::StackName" }
-                                },
-                                "mode"    : "000755",
-                                "owner"   : "root",
-                                "group"   : "root"
-                            }
-                        },
-                        "commands" : {
-                            "00-integration" :{
-                                "cwd" : "/opt/promotably",
-                                "ignoreErrors" : "false",
-                                "command" : { "Fn::Join" : [ "", [
-                                    "curl https://raw.githubusercontent.com/technomancy/leiningen/stable/bin/lein > /usr/local/bin/lein\n",
-                                    "chmod 0755 /usr/local/bin/lein\n",
-                                    "rm -rf scribe\n",
-                                    "mkdir scribe\n",
-                                    "cd scribe\n",
-                                    "unzip ../scribe.zip\n"
-                                ]]}
-                            }
-                        }
-                     },
                     "boot" : {
                         "services" : {
                             "sysvinit" : {
