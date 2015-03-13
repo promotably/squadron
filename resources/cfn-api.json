@@ -213,7 +213,7 @@
                 "SecurityGroups": [{ "Ref": "ELBSecurityGroup" }],
                 "AccessLoggingPolicy" : {
                     "Enabled" : "true",
-                    "EmitInterval" : "5",
+                    "EmitInterval" : { "Fn::If" : [ "IsIntegration", "60",  "5" ]},
                     "S3BucketName" : "promotably-persist",
                     "S3BucketPrefix" : "logs"
                 },
