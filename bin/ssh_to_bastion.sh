@@ -7,9 +7,13 @@ if [ -z "$stack_name" ]; then
     exit 1
 fi
 
+# Attempt to detect if we're on a dev's system
 [ -n "$AWS_DEFAULT_REGION" ] || export AWS_DEFAULT_REGION=us-east-1
 awscmd='aws'
-[ -f ~/.aws/credentials ] && awscmd="aws --profile promotably"
+if [ -f ~/.aws/credentials -a "$CI_NAME" != 'jenkins' ]; then
+    awscmd="aws --profile promotably"
+    unset AWS_ACCOUNT_ID AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SECRET_KEY
+fi
 
 set -x
 
