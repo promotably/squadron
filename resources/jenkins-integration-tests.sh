@@ -51,7 +51,6 @@ scribe_stack="$(aws cloudformation describe-stacks --output=text --stack-name $s
 metricsag_stack="$(aws cloudformation describe-stacks --output=text --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`MetricsAggregatorStack`].OutputValue[]')"
 
 api_asg="$(aws cloudformation describe-stacks --output=text --stack-name $api_stack --query 'Stacks[0].Outputs[?OutputKey==`APIInstanceGroup`].OutputValue[]')"
-elb_url="$(aws cloudformation describe-stacks --output=text --stack-name $api_stack --query 'Stacks[0].Outputs[?OutputKey==`URL`].OutputValue[]')"
 scribe_asg="$(aws cloudformation describe-stacks --output=text --stack-name $scribe_stack --query 'Stacks[0].Outputs[?OutputKey==`ScribeInstanceGroup`].OutputValue[]')"
 metricsag_asg="$(aws cloudformation describe-stacks --output=text --stack-name $metricsag_stack --query 'Stacks[0].Outputs[?OutputKey==`LaunchGroup`].OutputValue[]')"
 
@@ -111,6 +110,8 @@ echo
 
 echo '------------------------------------------------------------------------------'
 
+api_dns="$(aws cloudformation describe-stacks --output=text --stack-name $api_stack --query 'Stacks[0].Parameters[?ParameterKey==`DnsOverride`].ParameterValue[]')"
+
 aws cloudformation update-stack --stack-name $api_stack \
     --use-previous-template --capabilities CAPABILITY_IAM --parameters \
     ParameterKey=Environment,ParameterValue=staging \
@@ -134,7 +135,7 @@ aws cloudformation update-stack --stack-name $api_stack \
     ParameterKey=AvailabilityZones,UsePreviousValue=true \
     ParameterKey=PublicSubnets,UsePreviousValue=true \
     ParameterKey=PrivateSubnets,UsePreviousValue=true \
-    ParameterKey=DnsOverride,UsePreviousValue=true || exit $?
+    ParameterKey=DnsOverride,ParameterValue=${api_dns}X || exit $?
 
 api_stack_status=$(get_stack_status $api_stack update)
 rc=$?
@@ -145,6 +146,7 @@ echo "API STACK STATUS AFTER UPDATE TO STAGING: $api_stack_status"
 set -x
 
 # give ELB time to validate health checks
+elb_url="$(aws cloudformation describe-stacks --output=text --stack-name $api_stack --query 'Stacks[0].Outputs[?OutputKey==`URL`].OutputValue[]')"
 sleep 30
 echo
 echo "Validating api health-check: $elb_url/health-check"
@@ -158,5 +160,5 @@ done
 $curl_cmd || exit $?
 
 echo
-echo "Validating that / returns a 200 OK: $elb_url/"
-curl -v --fail --connect-timeout 10 --max-time 15 $elb_url/ > /dev/null || exit $?
+echo "Validating that /login returns a 200 OK: $elb_url/login"
+curl -v --fail --connect-timeout 10 --max-time 15 $elb_url/login > /dev/null || exit $?
