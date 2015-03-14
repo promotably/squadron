@@ -529,7 +529,7 @@
             "Type": "AWS::EC2::SecurityGroup",
             "Properties": {
                 "GroupDescription" : { "Fn::Join" : [ " - ", [ { "Ref" : "AWS::StackName" }, " database clients" ] ]},
-                "VpcId" : { "Ref" : "VpcId" },
+                "VpcId" : { "Ref" : "VPC" },
                 "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" } },
                          { "Key" : "Environment", "Value" : { "Ref" : "Environment" }}]
             }
