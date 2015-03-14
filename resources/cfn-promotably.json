@@ -184,6 +184,7 @@
                     ]},
                     "KeyPair" : { "Ref" : "SshKey" },
                     "VpcDefaultSecurityGroup" : { "Fn::GetAtt" : [ "Network", "Outputs.VpcDefaultSecurityGroup" ] },
+                    "ClientSecurityGroup" : { "Fn::GetAtt" : [ "Network", "Outputs.DbClientSecurityGroup" ] },
                     "AutoTermMigrator" : "true"
                 },
                 "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}
@@ -226,7 +227,7 @@
                     "DBName" : { "Fn::GetAtt" : [ "Rds", "Outputs.DBName" ] },
                     "DBUsername" : "promotably",
                     "DBPassword" : "promotably",
-                    "DBClientSecGrp" : { "Fn::GetAtt" : [ "Rds", "Outputs.DBClientSecGrp" ] },
+                    "DBClientSecGrp" : { "Fn::GetAtt" : [ "Network", "Outputs.DbClientSecurityGroup" ] },
                     "KinesisStreamA" : { "Fn::GetAtt" : [ "Kinesis", "Outputs.KinesisStreamA" ] },
                     "KinesisStreamB" : { "Fn::GetAtt" : [ "Kinesis", "Outputs.KinesisStreamB" ] },
                     "DnsOverride" : { "Fn::If" : [ "DnsName",
@@ -250,7 +251,7 @@
                     "DBName" : { "Fn::GetAtt" : [ "Rds", "Outputs.DBName" ] },
                     "DBUsername" : "promotably",
                     "DBPassword" : "promotably",
-                    "DBClientSecGrp" : { "Fn::GetAtt" : [ "Rds", "Outputs.DBClientSecGrp" ] },
+                    "DBClientSecGrp" : { "Fn::GetAtt" : [ "Network", "Outputs.DbClientSecurityGroup" ] },
                     "KinesisStreamA" : { "Fn::GetAtt" : [ "Kinesis", "Outputs.KinesisStreamA" ] },
                     "KinesisStreamB" : { "Fn::GetAtt" : [ "Kinesis", "Outputs.KinesisStreamB" ] },
                     "PublicSubnets" : { "Fn::Join" : [ ",", [
@@ -278,7 +279,7 @@
                     "DBName" : { "Fn::GetAtt" : [ "Rds", "Outputs.DBName" ] },
                     "DBUsername" : "promotably",
                     "DBPassword" : "promotably",
-                    "DBClientSecGrp" : { "Fn::GetAtt" : [ "Rds", "Outputs.DBClientSecGrp" ] },
+                    "DBClientSecGrp" : { "Fn::GetAtt" : [ "Network", "Outputs.DbClientSecurityGroup" ] },
                     "PrivateSubnets" : { "Fn::Join" : [ ",", [
                         { "Fn::GetAtt" : [ "Network", "Outputs.PrivateSubnetA" ] },
                         { "Fn::GetAtt" : [ "Network", "Outputs.PrivateSubnetB" ] },
