@@ -126,7 +126,7 @@
         "PostgresIngress" : {
             "Type" : "AWS::EC2::SecurityGroupIngress",
             "Properties" : {
-                "GroupName" : { "Ref" : "SecurityGroup" },
+                "GroupId" : { "Ref" : "SecurityGroup" },
                 "IpProtocol" : "tcp",
                 "SourceSecurityGroupId" : { "Ref" : "ClientSecurityGroup" },
                 "FromPort" : "5432", "ToPort" : "5432"
