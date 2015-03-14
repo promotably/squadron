@@ -6,6 +6,12 @@
 : ${KEY_BUCKET:=promotably-keyvault}
 : ${CI_NAME:=localdev}
 
+[ -n "$AWS_DEFAULT_REGION" ] || export AWS_DEFAULT_REGION=us-east-1
+awscmd='aws'
+if [ "$CI_NAME" != 'jenkins' -a -z "$AWS_ACCESS_KEY_ID" ]; then
+    awscmd="aws --profile promotably"
+fi
+
 print_usage() {
     set +ex
     cat >&2 << _END_
@@ -55,7 +61,7 @@ get_stack_status() {
     set +x
     timeout_ts=$((`date +%s` + 3600))
     while [ $(date +%s) -le $timeout_ts ] && sleep 20; do
-        stack_status=$(aws cloudformation describe-stacks --output=text --stack-name "$1" --query 'Stacks[0].StackStatus')
+        stack_status=$($awscmd cloudformation describe-stacks --output=text --stack-name "$1" --query 'Stacks[0].StackStatus')
         if [ "$2" = 'update' ]; then
             case "$stack_status" in 
                 UPDATE_COMPLETE)
@@ -80,17 +86,17 @@ get_stack_status() {
             esac
         fi
     done
-    aws cloudformation describe-stacks --output=text --stack-name "$1" --query 'Stacks[0].StackStatus'
+    $awscmd cloudformation describe-stacks --output=text --stack-name "$1" --query 'Stacks[0].StackStatus'
     return 1
 }
 
 set -ex
 
-squadron_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/squadron/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
-api_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/api/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
-scribe_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/scribe/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
-dashboard_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/dashboard/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
-metrics_aggregator_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/metrics-aggregator/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
+squadron_ref=$($awscmd s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/squadron/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
+api_ref=$($awscmd s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/api/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
+scribe_ref=$($awscmd s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/scribe/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
+dashboard_ref=$($awscmd s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/dashboard/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
+metrics_aggregator_ref=$($awscmd s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/metrics-aggregator/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
 
 if [ -n "$project" ]; then
     if [ -z "$gitref" ]; then
@@ -126,8 +132,8 @@ fi
 
 # validate cfn templates
 templates_validated=0
-for cfn_json in $(aws s3 ls "s3://$ARTIFACT_BUCKET/$CI_NAME/squadron/$squadron_ref/" | awk '{print $4}' | grep '^cfn-.*[.]json$') ; do
-    aws cloudformation validate-template --output=text \
+for cfn_json in $($awscmd s3 ls "s3://$ARTIFACT_BUCKET/$CI_NAME/squadron/$squadron_ref/" | awk '{print $4}' | grep '^cfn-.*[.]json$') ; do
+    $awscmd cloudformation validate-template --output=text \
         --template-url "https://$ARTIFACT_BUCKET.s3.amazonaws.com/$CI_NAME/squadron/$squadron_ref/$cfn_json"
     templates_validated=$(($templates_validated + 1))
 done
@@ -140,7 +146,7 @@ fi
 for s3_file in dashboard/$dashboard_ref/index.html api/$api_ref/standalone.jar api/$api_ref/source.zip api/$api_ref/apid \
                scribe/$scribe_ref/standalone.jar scribe/$scribe_ref/source.zip scribe/$scribe_ref/scribed \
                metrics-aggregator/$metrics_aggregator_ref/standalone.jar metrics-aggregator/$metrics_aggregator_ref/source.zip metrics-aggregator/$metrics_aggregator_ref/mad ; do
-    aws s3 ls s3://$ARTIFACT_BUCKET/$CI_NAME/$s3_file > /dev/null
+    $awscmd s3 ls s3://$ARTIFACT_BUCKET/$CI_NAME/$s3_file > /dev/null
 done
 
 ssh_from_param=''
@@ -159,11 +165,11 @@ if [ -n "$db_snap" ]; then
 fi
 
 ssh_key="$CI_NAME-$stack_name"
-if aws ec2 create-key-pair --key-name "$ssh_key" --output=text --query KeyMaterial > $ssh_key.pem; then
-    aws s3 cp $ssh_key.pem s3://$KEY_BUCKET/$ssh_key.pem
+if $awscmd ec2 create-key-pair --key-name "$ssh_key" --output=text --query KeyMaterial > $ssh_key.pem; then
+    $awscmd s3 cp $ssh_key.pem s3://$KEY_BUCKET/$ssh_key.pem
 else
     # assume the key already exists - try to re-use it
-    aws s3 cp s3://$KEY_BUCKET/$ssh_key.pem $ssh_key.pem
+    $awscmd s3 cp s3://$KEY_BUCKET/$ssh_key.pem $ssh_key.pem
 fi
 chmod 600 $ssh_key.pem
 # extract a public key to make sure we actually downloaded a private key
@@ -171,7 +177,7 @@ ssh-keygen -f "$ssh_key.pem" -y < /dev/null
 # clean up after ourself - jenkins jobs should re-copy key
 rm -f "$ssh_key.pem"
 
-aws cloudformation create-stack --stack-name $stack_name --disable-rollback \
+$awscmd cloudformation create-stack --stack-name $stack_name --disable-rollback \
     --template-url https://$ARTIFACT_BUCKET.s3.amazonaws.com/$CI_NAME/squadron/$squadron_ref/cfn-promotably.json \
     --capabilities CAPABILITY_IAM --parameters \
     $ssh_from_param \
