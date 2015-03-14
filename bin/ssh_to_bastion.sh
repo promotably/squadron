@@ -9,7 +9,7 @@ fi
 
 [ -n "$AWS_DEFAULT_REGION" ] || export AWS_DEFAULT_REGION=us-east-1
 awscmd='aws'
-[ -n "$AWS_ACCESS_KEY_ID" ] || awscmd="aws --profile promotably"
+[ -f ~/.aws/credentials ] && awscmd="aws --profile promotably"
 
 set -x
 
