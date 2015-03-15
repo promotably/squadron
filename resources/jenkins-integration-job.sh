@@ -55,8 +55,6 @@ if [ -z "$skip_integration_tests" ]; then
     ( ./jenkins-integration-tests.sh "$stack_name" 2>&1 || touch test_failure ) \
         | tee integration_test_results.txt
     set -x
-else
-    AUTO_TERM_STACK=false
 fi
 
 if [ -f test_failure ] || grep -q 'java.lang.[A-Za-z0-9_.-]*Exception' integration_test_results.txt; then
@@ -66,10 +64,5 @@ else
         touch empty
         s3_url="s3://$METADATA_BUCKET/validated-builds/$CI_NAME/$PROJECT/$(printf '%.12d' $CI_BUILD_NUMBER)"
         aws s3 cp empty "$s3_url/$CI_COMMIT_ID"
-    fi
-    if [ "$AUTO_TERM_STACK" = 'true' ]; then
-        aws cloudformation delete-stack --stack-name "$stack_name"
-        aws ec2 delete-key-pair --key-name "$ssh_key"
-        aws s3 rm "s3://$KEY_BUCKET/$ssh_key.pem"
     fi
 fi
