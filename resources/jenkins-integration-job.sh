@@ -12,50 +12,29 @@ PROJECT="$1"
 case "$CI_NAME" in
     jenkins)
         CI='true'
-        CI_BUILD_NUMBER="$BUILD_NUMBER"
         CI_COMMIT_ID="$2"
         ;;
     localdev)
         CI='false'
-        CI_BUILD_NUMBER="$(date +%s)"
         CI_COMMIT_ID='dev'
         ;;
 esac
 
-## CODESHIP populates these
-#CI true
-#CI_BUILD_NUMBER ID of the build in our service
-#CI_BUILD_URL URL of the build
-#CI_PULL_REQUEST false
-#CI_BRANCH Branch of the build
-#CI_COMMIT_ID Commit Hash of the build
-#CI_COMMITTER_NAME Name of the committer
-#CI_COMMITTER_EMAIL Email of the committer
-#CI_COMMITTER_USERNAME Username of the commiter in their SCM service
-#CI_MESSAGE Message of the last commit for that build
-#CI_NAME codeship
-
 set -ex
 
-project_options=''
+if [ -z "$CI_BUILD_NUMBER" ]; then
+    echo "Fatal: \$CI_BUILD_NUMBER is empty!" >&2
+    exit 1
+fi
 
 if [ -n "$PROJECT" ]; then
     case "$PROJECT" in
-        squadron)
-            project_options="-p squadron -r $CI_COMMIT_ID"
-            ;;
-        api)
-            project_options="-p api -r $CI_COMMIT_ID"
-            ;;
-        scribe)
-            project_options="-p scribe -r $CI_COMMIT_ID"
+        squadron|api| scribe)
             ;;
         dashboard)
-            project_options="-p dashboard -r $CI_COMMIT_ID"
             skip_integration_tests='true'
             ;;
         metrics-aggregator)
-            project_options="-p metrics-aggregator -r $CI_COMMIT_ID"
             skip_integration_tests='true'
             ;;
         *)
@@ -63,29 +42,17 @@ if [ -n "$PROJECT" ]; then
             exit 1
             ;;
     esac
-    stack_name="$PROJECT-$CI_COMMIT_ID"
-    if [ "$CI_COMMIT_ID" = 'dev' ]; then
-        stack_name="$PROJECT-$(date +%s)"
-    fi
+    stack_name="$PROJECT-ci-$CI_BUILD_NUMBER"
 else
     PROJECT='None'
-    stack_name="$CI_COMMIT_ID"
-    if [ "$CI_COMMIT_ID" = 'dev' ]; then
-        stack_name="$(date +%s)"
-    fi
+    stack_name="ci-$CI_BUILD_NUMBER"
 fi
 
+
 echo -n > integration_test_results.txt
+rm -f test_failure
 if [ -z "$skip_integration_tests" ]; then
-
-    ./super-stack-create.sh -s $stack_name $project_options -e integration -w $(curl -s http://checkip.amazonaws.com/)/32 -d job$CI_BUILD_NUMBER
-
-    ssh_key=$(aws cloudformation describe-stacks --stack-name $stack_name \
-        --output=text --query 'Stacks[0].Parameters[?ParameterKey==`SshKey`].ParameterValue')
-    aws s3 cp "s3://$KEY_BUCKET/$ssh_key.pem" ./
-    chmod 600 "$ssh_key.pem"
-
-    ( ./jenkins-integration-tests.sh "$stack_name" "$ssh_key.pem" 2>&1 || touch test_failure ) \
+    ( ./jenkins-integration-tests.sh "$stack_name" 2>&1 || touch test_failure ) \
         | tee integration_test_results.txt
     set -x
 else

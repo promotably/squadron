@@ -38,9 +38,12 @@ get_stack_status() {
 }
 
 stack_name="$1"
-ssh_key_pem="$2"
+ssh_key=$(aws cloudformation describe-stacks --stack-name "$stack_name" \
+    --output=text --query 'Stacks[0].Parameters[?ParameterKey==`SshKey`].ParameterValue')
+ssh_key_pem="$ssh_key.pem"
+aws s3 cp "s3://$KEY_BUCKET/$ssh_key_pem" ./
 chmod 600 "$ssh_key_pem" || exit $?
-#get_stack_status $stack_name
+
 set -x
 
 bastion_ip="$(aws cloudformation describe-stacks --output=text --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`BastionIp`].OutputValue[]')"

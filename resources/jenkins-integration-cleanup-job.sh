@@ -6,11 +6,11 @@
 print_usage() {
     set +ex
     cat >&2 << _END_
-Usage: $(basename $0) -p <project> -r <commit_sha> [-i]
+Usage: $(basename $0) -p <project> -b <build_num> [-i]
 
 Options:
     -p <project>        Which project to override 'known-good' version
-    -r <commit_sha>     Commit sha of project (required if -p specified)
+    -b <build_num>      Upstream job build number
     -i                  Ignore errors
 _END_
 
@@ -20,24 +20,28 @@ _END_
 }
 
 project=''
-gitref=''
+build_num=''
 ignore_err=''
-opts='p:r:i'
+opts='p:b:i'
 while getopts "$opts" opt; do
-    #echo "OPT: $opt"
     case "$opt" in
         h) print_usage 0;;
         p) project="$OPTARG" ;;
-        r) gitref="$OPTARG" ;;
+        b) build_num="$OPTARG" ;;
         i) ignore_err='true' ;;
         \?) print_usage 1;;
     esac
 done
 
-[ -n "$project" -a -n "$gitref" ] || print_usage 1
+[ -n "$project" -a -n "$build_num" ] || print_usage 1
 
+no_stack=''
 case "$project" in
-    squadron|api|scribe|dashboard|metrics-aggregator)
+    squadron|api|scribe)
+        ;;
+    dashboard|metrics-aggregator)
+        echo "$project shouldn't have a stack ... exiting quietly"
+        exit 0
         ;;
     *)
         echo "Fatal: Unknown project $project" >&2
@@ -45,8 +49,8 @@ case "$project" in
         ;;
 esac
 
-if ! echo "$gitref" | grep -q '^\([0-9]\{10,\}\|[0-9a-f]\{40\}\)$'; then
-    echo "Fatal: commit_sha '$gitref' does not follow known format" >&2
+if ! echo "$build_num" | grep -q '^[0-9]\+$'; then
+    echo "Fatal: build number $build_num is not a number" >&2
     exit 1
 fi
 
@@ -60,19 +64,45 @@ error_exit() {
     exit 1
 }
 
-stack_status="$(aws cloudformation describe-stacks --stack-name $project-$gitref --query 'Stacks[].StackStatus' --output=text 2>/dev/null)"
-[ -z "$stack_status" ] || error_exit "Fatal: stack $project-$gitref still exists!"
+stack_status="$(aws cloudformation describe-stacks --stack-name ${project}-ci-${build_num} --query 'Stacks[].StackStatus' --output=text)"
 
-ddb_tables=$(aws dynamodb list-tables --query TableNames --output=text | grep -o "\<$project-$gitref-Scribe-[0-9A-Za-z]\+\>")
-[ -n "$ddb_tables" ] || error "No DynamoDB tables found!"
+if [ -z "$stack_status" ]; then
+    error "WARNING: Stack ${project}-ci-${build_num} does not exist"
+else
+    case "$stack_status" in
+        DELETE_COMPLETE)
+            ;;
+        CREATE_COMPLETE|ROLLBACK_COMPLETE|ROLLBACK_FAILED|UPDATE_COMPLETE|UPDATE_ROLLBACK_COMPLETE|UPDATE_ROLLBACK_FAILED|DELETE_FAILED)
+            aws cloudformation delete-stack --stack-name ${project}-ci-${build_num}
+            timeout_ts=$((`date +%s` + 3600))
+            while [ -n "$stack_status" -a "$stack_status" != 'DELETE_COMPLETE' ]; do
+                if [ $(date +%s) -gt $timeout_ts ]; then
+                    error_exit "Fatal: Stack ${project}-ci-${build_num} failed to delete before timeout"
+                fi
 
-rds_snaps=$(aws rds describe-db-snapshots --snapshot-type manual --query 'DBSnapshots[].DBSnapshotIdentifier' --output text | grep -o "\<$project-$gitref-rds-[^ 	]\+\>")
-[ -n "$rds_snaps" ] || error "No RDS snapshots found!"
+                sleep 30
+                stack_status="$(aws cloudformation describe-stacks --stack-name ${project}-ci-${build_num} --query 'Stacks[].StackStatus' --output=text)"
+                if [ "$stack_status" = 'DELETE_FAILED' ]; then
+                    error_exit "Fatal: Stack ${project}-ci-${build_num} failed to delete"
+                fi
+            done
+            ;;
+        *)
+            error_exit "Fatal: Stack ${project}-ci-${build_num} is not in a deletable state"
+            ;;
+    esac
+fi
 
-ec2_snaps=$(aws ec2 describe-snapshots --filters "Name=tag:Name,Values=$project-$gitref-Jenkins-*" --query 'Snapshots[].SnapshotId' --output=text)
-[ -n "$ec2_snaps" ] || error "No EC2 snapshots found!"
+ddb_tables=$(aws dynamodb list-tables --query TableNames --output=text | grep -o "\<${project}-ci-${build_num}-Scribe-[0-9A-Za-z]\+\>")
+[ -n "$ddb_tables" ] || error "WARNING: No DynamoDB tables found!"
 
-ssh_key="$CI_NAME-$project-$gitref"
+rds_snaps=$(aws rds describe-db-snapshots --snapshot-type manual --query 'DBSnapshots[].DBSnapshotIdentifier' --output text | grep -o "\<${project}-ci-${build_num}-rds-[^ 	]\+\>")
+[ -n "$rds_snaps" ] || error "WARNING: No RDS snapshots found!"
+
+ec2_snaps=$(aws ec2 describe-snapshots --filters "Name=tag:Name,Values=${project}-ci-${build_num}-Jenkins-*" --query 'Snapshots[].SnapshotId' --output=text)
+[ -n "$ec2_snaps" ] || error "WARNING: No EC2 snapshots found!"
+
+ssh_key="$CI_NAME-${project}-ci-${build_num}"
 
 # wait for resources to be available
 timeout_ts=$((`date +%s` + 1800))
