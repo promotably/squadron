@@ -1,11 +1,5 @@
 #!/bin/bash
 
-# these should be set in the environment by our CI server
-: ${ARTIFACT_BUCKET:=p_tmp}
-: ${METADATA_BUCKET:=p_tmp}
-: ${KEY_BUCKET:=promotably-keyvault}
-: ${CI_NAME:=localdev}
-
 print_usage() {
     set +ex
     cat >&2 << _END_
@@ -85,10 +79,18 @@ set -ex
 
 stack_ci_name=$(aws cloudformation describe-stacks --stack-name $stack_name \
     --output=text --query 'Stacks[0].Parameters[?ParameterKey==`CiName`].ParameterValue')
-if [ "$stack_ci_name" != "$CI_NAME" ]; then
-    echo "Fatal: Stack's CiName parameter ($stack_ci_name) does not match locally set CI_NAME ($CI_NAME)" >&2
+stack_artifact_bucket=$(aws cloudformation describe-stacks --stack-name $stack_name \
+    --output=text --query 'Stacks[0].Parameters[?ParameterKey==`ArtifactBucket`].ParameterValue')
+stack_metadata_bucket=$(aws cloudformation describe-stacks --stack-name $stack_name \
+    --output=text --query 'Stacks[0].Parameters[?ParameterKey==`MetaDataBucket`].ParameterValue')
+if [ -z "$stack_ci_name" -o -z "$stack_artifact_bucket" -o -z "$stack_metadata_bucket" ]; then
+    echo "Fatal: Unable to query Stack parameters" >&2
     exit 1
 fi
+
+export CI_NAME="$stack_ci_name"
+export ARTIFACT_BUCKET="$stack_artifact_bucket"
+export METADATA_BUCKET="$stack_metadata_bucket"
 
 general_stack_params=''
 for param in $(aws cloudformation describe-stacks --stack-name $stack_name \
