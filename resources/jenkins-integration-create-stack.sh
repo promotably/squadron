@@ -57,5 +57,5 @@ else
 fi
 
 if [ -z "$skip_integration_tests" ]; then
-    ./super-stack-create.sh -s $stack_name $project_options -e integration -w $(curl -s http://checkip.amazonaws.com/)/32 -d job$CI_BUILD_NUMBER
+    ./super-stack-create.sh -s $stack_name $project_options -e integration -w 0.0.0.0/0 -d job$CI_BUILD_NUMBER
 fi
