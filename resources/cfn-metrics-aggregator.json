@@ -218,7 +218,7 @@
                                     "action=/opt/aws/bin/cfn-init -v",
                                       " --stack ", { "Ref" : "AWS::StackName" },
                                       " --resource LaunchConfig",
-                                      " --region ", { "Ref" : "AWS::Region" }, "\n",
+                                      " --region ", { "Ref" : "AWS::Region" },
                                       " -c base,update\n",
                                     "runas=root\n"
                                 ]]}
