@@ -1,5 +1,13 @@
 #!/bin/bash
 
+# Attempt to detect if we're on a dev's system
+[ -n "$AWS_DEFAULT_REGION" ] || export AWS_DEFAULT_REGION=us-east-1
+awscmd='aws'
+if [ -f ~/.aws/credentials -a "$CI_NAME" != 'jenkins' ]; then
+    awscmd="aws --profile promotably"
+    unset AWS_ACCOUNT_ID AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SECRET_KEY
+fi
+
 print_usage() {
     set +ex
     cat >&2 << _END_
@@ -46,7 +54,7 @@ get_stack_status() {
     set +x
     timeout_ts=$((`date +%s` + 1800))
     while [ $(date +%s) -le $timeout_ts ] && sleep 20; do
-        stack_status=$(aws cloudformation describe-stacks --output=text --stack-name "$1" --query 'Stacks[0].StackStatus')
+        stack_status=$($awscmd cloudformation describe-stacks --output=text --stack-name "$1" --query 'Stacks[0].StackStatus')
         if [ "$2" = 'update' ]; then
             case "$stack_status" in 
                 UPDATE_COMPLETE)
@@ -71,17 +79,17 @@ get_stack_status() {
             esac
         fi
     done
-    aws cloudformation describe-stacks --output=text --stack-name "$1" --query 'Stacks[0].StackStatus'
+    $awscmd cloudformation describe-stacks --output=text --stack-name "$1" --query 'Stacks[0].StackStatus'
     return 1
 }
 
 set -ex
 
-stack_ci_name=$(aws cloudformation describe-stacks --stack-name $stack_name \
+stack_ci_name=$($awscmd cloudformation describe-stacks --stack-name $stack_name \
     --output=text --query 'Stacks[0].Parameters[?ParameterKey==`CiName`].ParameterValue')
-stack_artifact_bucket=$(aws cloudformation describe-stacks --stack-name $stack_name \
+stack_artifact_bucket=$($awscmd cloudformation describe-stacks --stack-name $stack_name \
     --output=text --query 'Stacks[0].Parameters[?ParameterKey==`ArtifactBucket`].ParameterValue')
-stack_metadata_bucket=$(aws cloudformation describe-stacks --stack-name $stack_name \
+stack_metadata_bucket=$($awscmd cloudformation describe-stacks --stack-name $stack_name \
     --output=text --query 'Stacks[0].Parameters[?ParameterKey==`MetaDataBucket`].ParameterValue')
 if [ -z "$stack_ci_name" -o -z "$stack_artifact_bucket" -o -z "$stack_metadata_bucket" ]; then
     echo "Fatal: Unable to query Stack parameters" >&2
@@ -93,7 +101,7 @@ export ARTIFACT_BUCKET="$stack_artifact_bucket"
 export METADATA_BUCKET="$stack_metadata_bucket"
 
 general_stack_params=''
-for param in $(aws cloudformation describe-stacks --stack-name $stack_name \
+for param in $($awscmd cloudformation describe-stacks --stack-name $stack_name \
   --output=text --query 'Stacks[0].Parameters[].ParameterKey') ; do
     case "$param" in
         SquadronRef)
@@ -128,11 +136,11 @@ scribe_ref=''
 dashboard_ref=''
 metrics_aggregator_ref=''
 if [ -n "$refresh" ]; then
-    squadron_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/squadron/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
-    api_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/api/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
-    scribe_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/scribe/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
-    dashboard_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/dashboard/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
-    metrics_aggregator_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/metrics-aggregator/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
+    squadron_ref=$($awscmd s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/squadron/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
+    api_ref=$($awscmd s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/api/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
+    scribe_ref=$($awscmd s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/scribe/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
+    dashboard_ref=$($awscmd s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/dashboard/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
+    metrics_aggregator_ref=$($awscmd s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/metrics-aggregator/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
 fi
 
 if [ -n "$project" ]; then
@@ -166,8 +174,8 @@ fi
 template_option='--use-previous-template'
 if [ -n "$squadron_ref" ]; then
     templates_validated=0
-    for cfn_json in $(aws s3 ls "s3://$ARTIFACT_BUCKET/$CI_NAME/squadron/$squadron_ref/" | awk '{print $4}' | grep '^cfn-.*[.]json$') ; do
-        aws cloudformation validate-template --output=text \
+    for cfn_json in $($awscmd s3 ls "s3://$ARTIFACT_BUCKET/$CI_NAME/squadron/$squadron_ref/" | awk '{print $4}' | grep '^cfn-.*[.]json$') ; do
+        $awscmd cloudformation validate-template --output=text \
             --template-url "https://$ARTIFACT_BUCKET.s3.amazonaws.com/$CI_NAME/squadron/$squadron_ref/$cfn_json"
         templates_validated=$(($templates_validated + 1))
     done
@@ -182,7 +190,7 @@ fi
 # make sure api artifacts are there if we're refreshing Api
 if [ -n "$api_ref" ]; then
     for s3_file in api/$api_ref/standalone.jar api/$api_ref/source.zip api/$api_ref/apid ; do
-        aws s3 ls s3://$ARTIFACT_BUCKET/$CI_NAME/$s3_file > /dev/null
+        $awscmd s3 ls s3://$ARTIFACT_BUCKET/$CI_NAME/$s3_file > /dev/null
     done
     apiref_param="ParameterKey=ApiRef,ParameterValue=$api_ref"
 fi
@@ -190,7 +198,7 @@ fi
 # make sure scribe artifacts are there if we're refreshing Scribe
 if [ -n "$scribe_ref" ]; then
     for s3_file in scribe/$scribe_ref/standalone.jar scribe/$scribe_ref/source.zip scribe/$scribe_ref/scribed ; do
-        aws s3 ls s3://$ARTIFACT_BUCKET/$CI_NAME/$s3_file > /dev/null
+        $awscmd s3 ls s3://$ARTIFACT_BUCKET/$CI_NAME/$s3_file > /dev/null
     done
     scriberef_param="ParameterKey=ScribeRef,ParameterValue=$scribe_ref"
 fi
@@ -198,7 +206,7 @@ fi
 # make sure dashboard artifacts are there if we're refreshing Dashboard
 if [ -n "$dashboard_ref" ]; then
     for s3_file in dashboard/$dashboard_ref/index.html ; do
-        aws s3 ls s3://$ARTIFACT_BUCKET/$CI_NAME/$s3_file > /dev/null
+        $awscmd s3 ls s3://$ARTIFACT_BUCKET/$CI_NAME/$s3_file > /dev/null
     done
     dashboardref_param="ParameterKey=DashboardRef,ParameterValue=$dashboard_ref"
 fi
@@ -206,7 +214,7 @@ fi
 # make sure metrics-aggregator artifacts are there if we're refreshing Metrics Aggregator
 if [ -n "$metrics_aggregator_ref" ]; then
     for s3_file in metrics-aggregator/$metrics_aggregator_ref/standalone.jar metrics-aggregator/$metrics_aggregator_ref/source.zip metrics-aggregator/$metrics_aggregator_ref/mad ; do
-        aws s3 ls s3://$ARTIFACT_BUCKET/$CI_NAME/$s3_file > /dev/null
+        $awscmd s3 ls s3://$ARTIFACT_BUCKET/$CI_NAME/$s3_file > /dev/null
     done
     metrics_aggregatorref_param="ParameterKey=MetricsAggregatorRef,ParameterValue=$metrics_aggregator_ref"
 fi
@@ -219,7 +227,7 @@ if [ -n "$environment" ]; then
     environment_param="ParameterKey=Environment,ParameterValue=$environment"
 fi
 
-aws cloudformation update-stack --stack-name $stack_name $template_option \
+$awscmd cloudformation update-stack --stack-name $stack_name $template_option \
     --capabilities CAPABILITY_IAM --parameters \
     $squadronref_param $apiref_param $scriberef_param $dashboardref_param $metrics_aggregatorref_param\
     $environment_param $ssh_from_param \

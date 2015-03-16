@@ -12,29 +12,37 @@ PROJECT="$1"
 case "$CI_NAME" in
     jenkins)
         CI='true'
+        CI_BUILD_NUMBER="$BUILD_NUMBER"
         CI_COMMIT_ID="$2"
         ;;
     localdev)
         CI='false'
+        CI_BUILD_NUMBER="$(date +%s)"
         CI_COMMIT_ID='dev'
         ;;
 esac
 
 set -ex
 
-if [ -z "$CI_BUILD_NUMBER" ]; then
-    echo "Fatal: \$CI_BUILD_NUMBER is empty!" >&2
-    exit 1
-fi
+project_options=''
 
 if [ -n "$PROJECT" ]; then
     case "$PROJECT" in
-        squadron|api| scribe)
+        squadron)
+            project_options="-p squadron -r $CI_COMMIT_ID"
+            ;;
+        api)
+            project_options="-p api -r $CI_COMMIT_ID"
+            ;;
+        scribe)
+            project_options="-p scribe -r $CI_COMMIT_ID"
             ;;
         dashboard)
+            project_options="-p dashboard -r $CI_COMMIT_ID"
             skip_integration_tests='true'
             ;;
         metrics-aggregator)
+            project_options="-p metrics-aggregator -r $CI_COMMIT_ID"
             skip_integration_tests='true'
             ;;
         *)
@@ -48,21 +56,6 @@ else
     stack_name="ci-$CI_BUILD_NUMBER"
 fi
 
-
-echo -n > integration_test_results.txt
-rm -f test_failure
 if [ -z "$skip_integration_tests" ]; then
-    ( ./jenkins-integration-tests.sh "$stack_name" 2>&1 || touch test_failure ) \
-        | tee integration_test_results.txt
-    set -x
-fi
-
-if [ -f test_failure ] || grep -q 'java.lang.[A-Za-z0-9_.-]*Exception' integration_test_results.txt; then
-    exit 1
-else
-    if [ -n "$PROJECT" -a "$PROJECT" != 'None' -a -n "$CI_BUILD_NUMBER" ]; then
-        touch empty
-        s3_url="s3://$METADATA_BUCKET/validated-builds/$CI_NAME/$PROJECT/$(printf '%.12d' $CI_BUILD_NUMBER)"
-        aws s3 cp empty "$s3_url/$CI_COMMIT_ID"
-    fi
+    ./super-stack-create.sh -s $stack_name $project_options -e integration -w $(curl -s http://checkip.amazonaws.com/)/32 -d job$CI_BUILD_NUMBER
 fi

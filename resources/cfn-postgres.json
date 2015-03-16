@@ -65,6 +65,10 @@
             "Description" : "VPC default Security Group",
             "Type" : "AWS::EC2::SecurityGroup::Id"
         },
+        "ClientSecurityGroup" : {
+            "Description" : "DB Client Security Group",
+            "Type" : "AWS::EC2::SecurityGroup::Id"
+        },
         "AutoTermMigrator" : {
             "Description" : "Automatically terminate instance after running migrations",
             "Type" : "String",
@@ -109,26 +113,23 @@
             }
         },
 
-        "ClientSecurityGroup": {
-            "Type": "AWS::EC2::SecurityGroup",
-            "Properties": {
-                "VpcId" : { "Ref" : "VpcId" },
-                "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" } },
-                         { "Key" : "Environment", "Value" : { "Ref" : "Environment" }}],
-                "GroupDescription" : { "Fn::Join" : [ " - ", [ { "Ref" : "AWS::StackName" }, "clients" ] ]}
-            }
-        },
-
         "SecurityGroup": {
             "Type": "AWS::EC2::SecurityGroup",
             "Properties": {
+                "GroupDescription" : { "Ref" : "AWS::StackName" },
                 "VpcId" : { "Ref" : "VpcId" },
                 "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" } },
-                         { "Key" : "Environment", "Value" : { "Ref" : "Environment" }}],
-                "GroupDescription" : { "Ref" : "AWS::StackName" },
-                "SecurityGroupIngress" : [
-                    { "IpProtocol" : "tcp", "FromPort" : "5432", "ToPort" : "5432", "SourceSecurityGroupId": { "Ref" : "ClientSecurityGroup" } }
-                ]
+                         { "Key" : "Environment", "Value" : { "Ref" : "Environment" }}]
+            }
+        },
+
+        "PostgresIngress" : {
+            "Type" : "AWS::EC2::SecurityGroupIngress",
+            "Properties" : {
+                "GroupId" : { "Ref" : "SecurityGroup" },
+                "IpProtocol" : "tcp",
+                "SourceSecurityGroupId" : { "Ref" : "ClientSecurityGroup" },
+                "FromPort" : "5432", "ToPort" : "5432"
             }
         },
 
@@ -325,10 +326,6 @@
         "DBPort" : {
             "Description" : "RDS Port",
             "Value" : { "Fn::GetAtt": [ "DBInstance", "Endpoint.Port" ]}
-        },
-        "DBClientSecGrp" : {
-            "Description" : "Security group in which to place RDS clients",
-            "Value" : { "Fn::GetAtt" : [ "ClientSecurityGroup", "GroupId" ]}
         },
         "MigrationsLaunchGroup" : {
             "Description" : "Auto-scaling group for lein migration",
