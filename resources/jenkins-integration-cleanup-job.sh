@@ -129,8 +129,8 @@ for snap in $ec2_snaps ; do
 done
 
 set -x
-echo aws ec2 delete-key-pair --key-name "$ssh_key"
-echo aws s3 rm "s3://$KEY_BUCKET/$ssh_key.pem"
+aws ec2 delete-key-pair --key-name "$ssh_key"
+aws s3 rm "s3://$KEY_BUCKET/$ssh_key.pem"
 
 for ddbtable in $ddb_tables ; do
     aws dynamodb delete-table --table-name $ddbtable
