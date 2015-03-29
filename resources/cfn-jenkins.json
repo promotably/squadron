@@ -62,15 +62,15 @@
     "Mappings" : {
         "config" : {
             "us-east-1" : {
-                "ami" : "ami-ee6e2a86",
+                "ami" : "ami-1ecae776",
                 "az" :  "us-east-1c"
             },
             "us-west-2" : {
-                "ami" : "ami-c1c39af1",
+                "ami" : "ami-e7527ed7",
                 "az" :  "us-west-2a"
             },
             "eu-west-2" : {
-                "ami" : "ami-8723aef0",
+                "ami" : "ami-a10897d6",
                 "az" :  "eu-west-2a"
             },
 

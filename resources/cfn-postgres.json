@@ -84,9 +84,9 @@
 
     "Mappings" : {
         "config" : {
-            "us-east-1" : { "ami" : "ami-ee6e2a86" },
-            "us-west-2" : { "ami" : "ami-c1c39af1" },
-            "eu-west-2" : { "ami" : "ami-8723aef0" },
+            "us-east-1" : { "ami" : "ami-1ecae776" },
+            "us-west-2" : { "ami" : "ami-e7527ed7" },
+            "eu-west-2" : { "ami" : "ami-a10897d6" },
 
             "integration" : {
                 "dbClass" : "db.t2.small",

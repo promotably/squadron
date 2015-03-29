@@ -82,19 +82,19 @@
                 "PrivateSubnetC" : "10.236.32.0/20"
             },
             "us-east-1" : {
-                "ami" : "ami-ee6e2a86",
+                "ami" : "ami-1ecae776",
                 "azA" : "us-east-1a",
                 "azB" : "us-east-1c",
                 "azC" : "us-east-1d"
             },
             "us-west-2" : {
-                "ami" : "ami-c1c39af1",
+                "ami" : "ami-e7527ed7",
                 "azA" : "us-west-2a",
                 "azB" : "us-west-2b",
                 "azC" : "us-west-2c"
             },
             "eu-west-2" : {
-                "ami" : "ami-8723aef0",
+                "ami" : "ami-a10897d6",
                 "azA" : "eu-west-1a",
                 "azB" : "eu-west-1b",
                 "azC" : "eu-west-1c"
