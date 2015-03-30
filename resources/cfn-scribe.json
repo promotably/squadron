@@ -369,7 +369,7 @@
             },
             "Properties" : {
                 "AvailabilityZones" : { "Fn::If" : [ "UseAllAvailabilityZones",
-                    { "Fn::GetAZs": "AWS::Region" },
+                    { "Fn::GetAZs": "" },
                     { "Ref" : "AvailabilityZones" }
                 ] },
                 "LaunchConfigurationName" : { "Ref" : "LaunchConfig" },
