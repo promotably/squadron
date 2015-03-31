@@ -8,6 +8,11 @@
             "Description" : "List of VPC private subnet IDs for the cluster. Note: must match up with the passed AvailabilityZones.",
             "Type" : "List<AWS::EC2::Subnet::Id>"
         },
+        "AvailabilityZones": {
+            "Description" : "(Optional) If passed, only launch nodes in these AZs (e.g., 'us-east-1a,us-east-1b'). Note: these must match up with the passed Subnets.",
+            "Type" : "CommaDelimitedList",
+            "Default" : ""
+        },
         "VpcId" : {
             "Description" : "VPC associated with the provided subnets",
             "Type" : "AWS::EC2::VPC::Id"
@@ -78,6 +83,7 @@
     },
 
     "Conditions" : {
+        "UseAllAvailabilityZones" : { "Fn::Equals" : [{ "Fn::Join" : [ "", { "Ref" : "AvailabilityZones" } ]}, "" ]},
         "DefaultDBClass" : { "Fn::Equals" : [ { "Ref" : "DBClass" }, "default" ]},
         "DbRestore" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "DBSnapshotId" }, "" ] }]}
     },
@@ -300,7 +306,10 @@
         "LaunchGroup" : {
             "Type" : "AWS::AutoScaling::AutoScalingGroup",
             "Properties" : {
-                "AvailabilityZones" : { "Fn::GetAZs": "" },
+                "AvailabilityZones" : { "Fn::If" : [ "UseAllAvailabilityZones",
+                    { "Fn::GetAZs": "" },
+                    { "Ref" : "AvailabilityZones" }
+                ] },
                 "LaunchConfigurationName" : { "Ref" : "LaunchConfig" },
                 "MinSize" : "0",
                 "MaxSize" : "1",
