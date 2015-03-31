@@ -300,6 +300,7 @@
         "LaunchGroup" : {
             "Type" : "AWS::AutoScaling::AutoScalingGroup",
             "Properties" : {
+                "AvailabilityZones" : { "Fn::GetAZs": "" },
                 "LaunchConfigurationName" : { "Ref" : "LaunchConfig" },
                 "MinSize" : "0",
                 "MaxSize" : "1",
