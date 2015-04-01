@@ -610,7 +610,20 @@
                         "Principal" : { "Service" : [ "ec2.amazonaws.com" ] },
                         "Action" : [ "sts:AssumeRole" ]
                     }]
-                }
+                },
+                "Policies" : [{
+                    "PolicyName" : "BastionInstance",
+                    "PolicyDocument" : {
+                        "Version" : "2012-10-17",
+                        "Statement" : [{
+                            "Effect": "Allow",
+                            "Action": [ "s3:Get*" ],
+                            "Resource": [
+                                { "Fn::Join" : [ "", [ "arn:aws:s3:::", { "Ref" : "BastionKeyBucket" }, "/*" ] ] }
+                            ]
+                        }]
+                    }
+                }]
             }
         },
 
