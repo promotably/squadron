@@ -134,40 +134,6 @@
             }
         },
 
-        "RolePolicies" : {
-            "Type" : "AWS::IAM::Policy",
-            "Properties" : {
-                "Roles" : [{ "Ref": "RootRole" }],
-                "PolicyName" : "root",
-                "PolicyDocument" : {
-                    "Version" : "2012-10-17",
-                    "Statement" : [{
-                        "Effect" : "Allow",
-                        "Action" : "kinesis:*",
-                        "Resource" : { "Fn::Join" : [ "", [ "arn:aws:kinesis:", { "Ref" : "AWS::Region" }, ":", { "Ref" : "AWS::AccountId" }, ":stream/", { "Ref" : "KinesisStreamA" } ]]}
-                    },{
-                        "Effect" : "Allow",
-                        "Action" : "kinesis:*",
-                        "Resource" : { "Fn::Join" : [ "", [ "arn:aws:kinesis:", { "Ref" : "AWS::Region" }, ":", { "Ref" : "AWS::AccountId" }, ":stream/", { "Ref" : "KinesisStreamB" } ]]}
-                    },{
-                        "Effect" : "Allow",
-                        "Action" : "cloudwatch:*",
-                        "Resource" : "*"
-                    },{
-                        "Effect": "Allow",
-                        "Action": [ "s3:Get*" ],
-                        "Resource": [
-                            { "Fn::Join" : [ "", [ "arn:aws:s3:::", { "Ref" : "ArtifactBucket" }, "/*" ] ] }
-                        ]
-                    },{
-                        "Effect" : "Allow",
-                        "Action" : "dynamodb:*",
-                        "Resource" : "*"
-                    }]
-                }
-            }
-        },
-
         "RootInstanceProfile" : {
             "Type" : "AWS::IAM::InstanceProfile",
             "Properties" : {

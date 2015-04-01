@@ -627,24 +627,6 @@
             }
         },
 
-        "BastionPolicies" : {
-            "Type" : "AWS::IAM::Policy",
-            "Properties" : {
-                "PolicyName" : "root",
-                "PolicyDocument" : {
-                    "Version" : "2012-10-17",
-                    "Statement" : [{
-                        "Effect": "Allow",
-                        "Action": [ "s3:Get*" ],
-                        "Resource": [
-                            { "Fn::Join" : [ "", [ "arn:aws:s3:::", { "Ref" : "BastionKeyBucket" }, "/*" ] ] }
-                        ]
-                    }]
-                },
-                "Roles" : [ { "Ref": "BastionRole" } ]
-            }
-        },
-
         "BastionInstanceProfile" : {
             "Type" : "AWS::IAM::InstanceProfile",
             "Properties" : {
