@@ -329,7 +329,7 @@
         },
         "WooUrl" : {
             "Description" : "Woo Site URL",
-            "Value" : { "Fn::GetAtt" : [ "Woo", "Outputs.URL" ] }
+            "Value" : { "Fn::If" : [ "BuildWoo", { "Fn::GetAtt" : [ "Woo", "Outputs.URL" ] }, "N/A" ]}
         },
         "ApiStack" : {
             "Description" : "StackId of Api stack",
