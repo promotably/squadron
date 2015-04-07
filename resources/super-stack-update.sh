@@ -229,7 +229,7 @@ fi
 
 $awscmd cloudformation update-stack --stack-name $stack_name $template_option \
     --capabilities CAPABILITY_IAM --parameters \
-    $squadronref_param $apiref_param $scriberef_param $dashboardref_param $metrics_aggregatorref_param\
+    $squadronref_param $apiref_param $scriberef_param $dashboardref_param $metrics_aggregatorref_param \
     $environment_param $ssh_from_param \
     $general_stack_params
 
