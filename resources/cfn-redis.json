@@ -27,6 +27,9 @@
             },
             "staging" : {
                 "nodeType" : "cache.t2.micro"
+            },
+            "production" : {
+                "nodeType" : "cache.t2.micro"
             }
         }
     },

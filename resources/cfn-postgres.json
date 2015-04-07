@@ -103,6 +103,11 @@
                 "dbClass" : "db.t1.micro",
                 "multiAZ" : "false",
                 "backupRetention" : "7"
+            },
+            "production" : {
+                "dbClass" : "db.t2.small",
+                "multiAZ" : "true",
+                "backupRetention" : "14"
             }
         }
     },
