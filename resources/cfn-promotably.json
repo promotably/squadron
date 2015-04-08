@@ -109,7 +109,7 @@
                 "dbSnapshot" : "promotably-base"
             },
             "production" : {
-                "dbSnapshot" : "promotably-base"
+                "dbSnapshot" : ""
             }
         }
     },
