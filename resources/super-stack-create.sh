@@ -23,10 +23,11 @@ Options:
     -s <stack_name>     CloudFormation stack name (Required)
     -p <project>        Which project to override 'known-good' version
     -r <commit_sha>     Commit sha of project (required if -p specified)
-    -d <dns_name>     String to append to DNS names of stacks (eg: api-<dns_name>.promotably.com>)
+    -d <dns_name>       String to append to DNS names of stacks (eg: api-<dns_name>.promotably.com>)
     -w <cidr>           CIDR to pass to SshFrom paramter
     -e <env>            Environment parameter (integration, staging, etc.)
     -i <db_snap>        RDS DB Snapshot ID
+    -n                  Don't auto-terminate database migrator
 _END_
 
     if [ -n "$1" ]; then
@@ -41,7 +42,8 @@ dns_name=''
 ssh_from=''
 environment=''
 db_snap=''
-opts='hs:p:r:d:w:e:'
+auto_term='True'
+opts='hs:p:r:d:w:e:n'
 while getopts "$opts" opt; do
     #echo "OPT: $opt"
     case "$opt" in
@@ -53,6 +55,7 @@ while getopts "$opts" opt; do
         w) ssh_from="$OPTARG" ;;
         e) environment="$OPTARG" ;;
         i) db_snap="$OPTARG" ;;
+        n) auto_term='False' ;;
         \?) print_usage 1;;
         #-) shift; break ;;
     esac
@@ -194,6 +197,7 @@ $awscmd cloudformation create-stack --stack-name $stack_name --disable-rollback 
     ParameterKey=DashboardRef,ParameterValue=$dashboard_ref \
     ParameterKey=MetricsAggregatorRef,ParameterValue=$metrics_aggregator_ref \
     ParameterKey=SshKey,ParameterValue=$ssh_key \
-    ParameterKey=DnsName,ParameterValue=$dns_name
+    ParameterKey=DnsName,ParameterValue=$dns_name \
+    ParameterKey=AutoTermMigrator,ParameterValue=$auto_term
 
 get_stack_status $stack_name
