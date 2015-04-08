@@ -71,8 +71,8 @@
             "Default" : "promotably-keyvault"
         },
 
-        "AutoTermStack" : {
-            "Description" : "Auto-delete stacks after successful test run",
+        "AutoTermMigrator" : {
+            "Description" : "Auto-Terminate migration host in postgres stack",
             "Type" : "String",
             "Default" : "true",
             "AllowedValues" : [ "true", "false" ]
@@ -186,7 +186,7 @@
                     "KeyPair" : { "Ref" : "SshKey" },
                     "VpcDefaultSecurityGroup" : { "Fn::GetAtt" : [ "Network", "Outputs.VpcDefaultSecurityGroup" ] },
                     "ClientSecurityGroup" : { "Fn::GetAtt" : [ "Network", "Outputs.DbClientSecurityGroup" ] },
-                    "AutoTermMigrator" : "true"
+                    "AutoTermMigrator" : { "Ref" : "AutoTermMigrator" }
                 },
                 "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}
             }
