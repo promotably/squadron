@@ -42,7 +42,7 @@ dns_name=''
 ssh_from=''
 environment=''
 db_snap=''
-auto_term='True'
+auto_term='true'
 opts='hs:p:r:d:w:e:n'
 while getopts "$opts" opt; do
     #echo "OPT: $opt"
@@ -55,7 +55,7 @@ while getopts "$opts" opt; do
         w) ssh_from="$OPTARG" ;;
         e) environment="$OPTARG" ;;
         i) db_snap="$OPTARG" ;;
-        n) auto_term='False' ;;
+        n) auto_term='false' ;;
         \?) print_usage 1;;
         #-) shift; break ;;
     esac
