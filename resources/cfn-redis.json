@@ -70,10 +70,22 @@
             }
         },
 
+        "RedisParamGroup" : {
+            "Type" : "AWS::ElastiCache::ParameterGroup",
+            "Properties" : {
+                "Description" : "Promotably Parameter Group for Redis 2.8.x",
+                "CacheParameterGroupFamily" : "redis2.8",
+                "Properties" : {
+                    "notify-keyspace-events" : "KEx"
+                }
+            }
+        },
+
         "RedisCluster": {
             "Type": "AWS::ElastiCache::CacheCluster",
             "Properties": {
                 "AutoMinorVersionUpgrade": "true",
+                "CacheParameterGroupName": { "Ref" : "RedisParamGroup" },
                 "Engine": "redis",
                 "CacheNodeType": { "Fn::FindInMap" : [ "config", { "Ref" : "Environment" }, "nodeType" ]},
                 "NumCacheNodes": "1",
