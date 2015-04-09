@@ -304,6 +304,19 @@
             }
         },
 
+        "InboundHTTP8000PublicNetAclEntry" : {
+            "Type" : "AWS::EC2::NetworkAclEntry",
+            "Properties" : {
+                "NetworkAclId" : { "Ref" : "PublicNetworkAcl" },
+                "RuleNumber" : "110",
+                "Protocol" : "6",
+                "RuleAction" : "allow",
+                "Egress" : "false",
+                "CidrBlock" : "0.0.0.0/0",
+                "PortRange" : { "From" : "8000", "To" : "8000" }
+            }
+        },
+
         "InboundEphemeralTcpPublicNetAclEntry" : {
             "Type" : "AWS::EC2::NetworkAclEntry",
             "Properties" : {

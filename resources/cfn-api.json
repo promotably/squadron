@@ -178,7 +178,8 @@
                 "GroupDescription" : { "Fn::Join" : [ " - ", [ { "Ref" : "AWS::StackName" }, "ELB " ] ]},
                 "VpcId" : { "Ref" : "VpcId" },
                 "SecurityGroupIngress" : [
-                    { "IpProtocol" : "tcp", "FromPort" : "443", "ToPort" : "443", "CidrIp": "0.0.0.0/0" }
+                    { "IpProtocol" : "tcp", "FromPort" : "443", "ToPort" : "443", "CidrIp": "0.0.0.0/0" },
+                    { "IpProtocol" : "tcp", "FromPort" : "8000", "ToPort" : "8000", "CidrIp": "0.0.0.0/0" }
                 ],
                 "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" } },
                          { "Key" : "Environment", "Value" : { "Ref" : "Environment" } }]
@@ -192,6 +193,7 @@
                 "VpcId" : { "Ref" : "VpcId" },
                 "SecurityGroupIngress" : [
                     { "IpProtocol" : "tcp", "FromPort" : "80", "ToPort" : "80", "SourceSecurityGroupId" : { "Ref" : "ELBSecurityGroup" } },
+                    { "IpProtocol" : "tcp", "FromPort" : "8000", "ToPort" : "8000", "SourceSecurityGroupId" : { "Ref" : "ELBSecurityGroup" } },
                     { "IpProtocol" : "tcp", "FromPort" : "3000", "ToPort" : "3000", "SourceSecurityGroupId" : { "Ref" : "ELBSecurityGroup" } }
                 ],
                 "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" } },
@@ -231,9 +233,13 @@
                     "SSLCertificateId" : { "Fn::Join" : [ "", [
                         "arn:aws:iam::", { "Ref" : "AWS::AccountId" },
                         ":server-certificate/", { "Fn::FindInMap" : [ "config", "ssl", "name" ]}
-                        ]]}
-                    }
-                ],
+                    ]]}
+                },{
+                    "LoadBalancerPort" : "8000",
+                    "Protocol" : "HTTP",
+                    "InstancePort" : "8000",
+                    "InstanceProtocol" : "HTTP"
+                }],
                 "HealthCheck": { "Fn::If" : [ "IsIntegration", { "Ref" : "AWS::NoValue" }, {
                     "Target": "HTTP:3000/health-check",
                     "HealthyThreshold": "3",
@@ -302,6 +308,10 @@
                                     "      break;\n",
                                     "    }\n",
                                     "  }\n",
+                                    "}\n",
+                                    "server {\n",
+                                    "  listen [::]:8000;\n",
+                                    "  return 301 https://$host$request_uri;\n",
                                     "}\n"
                                 ] ]},
                                 "mode"   : "000644",
