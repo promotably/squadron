@@ -652,7 +652,7 @@
             "Properties" : {
                 "HostedZoneName" : "promotably.com.",
                 "Name" : { "Fn::Join" : [ "", [
-                    "temp-",
+                    "api-",
                     { "Fn::If" : [ "DnsOverride", { "Ref" : "DnsOverride" }, { "Ref" : "AWS::StackName" } ]},
                     ".promotably.com."
                 ]]},
