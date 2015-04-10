@@ -201,11 +201,13 @@
             }
         },
 
-        "LoadBalancer" : {
+        "ApiELB" : {
             "Type" : "AWS::ElasticLoadBalancing::LoadBalancer",
             "Properties" : {
                 "LoadBalancerName": { "Fn::If" : [ "SetELBNameToDNS",
-                    { "Ref" : "DnsOverride" }, { "Ref" : "AWS::NoValue" } ]},
+                    { "Fn::Join" : [ "-", [ "api", { "Ref" : "DnsOverride" } ]]},
+                    { "Ref" : "AWS::NoValue" }
+                ]},
                 "Subnets": { "Ref": "PublicSubnets" },
                 "SecurityGroups": [{ "Ref": "ELBSecurityGroup" }],
                 "AccessLoggingPolicy" : {
@@ -637,27 +639,28 @@
                 "HealthCheckGracePeriod" : "300",
                 "Cooldown" : "600",
                 "VPCZoneIdentifier" : { "Ref" : "PrivateSubnets" },
-                "LoadBalancerNames" : [ { "Ref" : "LoadBalancer" } ],
+                "LoadBalancerNames" : [ { "Ref" : "ApiELB" } ],
                 "HealthCheckType" : { "Fn::If" : [ "IsIntegration", "EC2", "ELB" ]},
                 "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" }, "PropagateAtLaunch" : "true" },
                          { "Key" : "Environment", "Value" : { "Ref" : "Environment" }, "PropagateAtLaunch" : "true" }]
             }
         },
 
-        "ElbDnsRecord" : {
+        "ApiElbDnsRecord" : {
             "Type" : "AWS::Route53::RecordSet",
             "Condition" : "CreateDns",
             "Properties" : {
                 "HostedZoneName" : "promotably.com.",
                 "Name" : { "Fn::Join" : [ "", [
+                    "temp-",
                     { "Fn::If" : [ "DnsOverride", { "Ref" : "DnsOverride" }, { "Ref" : "AWS::StackName" } ]},
                     ".promotably.com."
                 ]]},
                 "Type" : "A",
                 "AliasTarget" : {
-                    "DNSName" : { "Fn::GetAtt": [ "LoadBalancer", "DNSName" ] },
+                    "DNSName" : { "Fn::GetAtt": [ "ApiELB", "DNSName" ] },
                     "EvaluateTargetHealth" : "true",
-                    "HostedZoneId" : { "Fn::GetAtt": [ "LoadBalancer", "CanonicalHostedZoneNameID" ] }
+                    "HostedZoneId" : { "Fn::GetAtt": [ "ApiELB", "CanonicalHostedZoneNameID" ] }
                 }
             }
         }
@@ -673,13 +676,13 @@
             "Description": "URL for testing",
             "Value": { "Fn::If" : [ "CreateDns",
                 { "Fn::Join" : [ "", [ "https://", { "Ref" : "ElbDnsRecord" } ]]},
-                { "Fn::Join" : [ "", [ "https://", { "Fn::GetAtt": [ "LoadBalancer", "DNSName" ] } ]]}
+                { "Fn::Join" : [ "", [ "https://", { "Fn::GetAtt": [ "ApiELB", "DNSName" ] } ]]}
             ]}
         },
         "Hostname" : {
             "Value": { "Fn::If" : [ "CreateDns",
                 { "Ref" : "ElbDnsRecord" },
-                { "Fn::GetAtt": [ "LoadBalancer", "DNSName" ] }
+                { "Fn::GetAtt": [ "ApiELB", "DNSName" ] }
             ]}
         }
     }

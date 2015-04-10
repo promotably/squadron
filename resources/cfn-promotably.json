@@ -232,10 +232,7 @@
                     "DBClientSecGrp" : { "Fn::GetAtt" : [ "Network", "Outputs.DbClientSecurityGroup" ] },
                     "KinesisStreamA" : { "Fn::GetAtt" : [ "Kinesis", "Outputs.KinesisStreamA" ] },
                     "KinesisStreamB" : { "Fn::GetAtt" : [ "Kinesis", "Outputs.KinesisStreamB" ] },
-                    "DnsOverride" : { "Fn::If" : [ "DnsName",
-                        { "Fn::Join" : [ "-", [ "api", { "Ref" : "DnsName" } ]]},
-                        "default"
-                    ]}
+                    "DnsOverride" : { "Ref" : "DnsName" }
                 },
                 "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}
             }
