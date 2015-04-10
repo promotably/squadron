@@ -675,13 +675,13 @@
         "URL": {
             "Description": "URL for testing",
             "Value": { "Fn::If" : [ "CreateDns",
-                { "Fn::Join" : [ "", [ "https://", { "Ref" : "ElbDnsRecord" } ]]},
+                { "Fn::Join" : [ "", [ "https://", { "Ref" : "ApiElbDnsRecord" } ]]},
                 { "Fn::Join" : [ "", [ "https://", { "Fn::GetAtt": [ "ApiELB", "DNSName" ] } ]]}
             ]}
         },
         "Hostname" : {
             "Value": { "Fn::If" : [ "CreateDns",
-                { "Ref" : "ElbDnsRecord" },
+                { "Ref" : "ApiElbDnsRecord" },
                 { "Fn::GetAtt": [ "ApiELB", "DNSName" ] }
             ]}
         }
