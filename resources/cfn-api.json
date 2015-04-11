@@ -360,7 +360,8 @@
                                     "  }\n",
                                     "}\n",
                                     "server {\n",
-                                    "  listen [::]:8000;\n",
+                                    "  listen 8000;",
+                                    "  listen [::]:8000 ipv6only=on;\n",
                                     "  return 301 https://$host$request_uri;\n",
                                     "}\n"
                                 ] ]},
