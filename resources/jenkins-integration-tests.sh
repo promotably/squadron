@@ -149,12 +149,13 @@ echo "API STACK STATUS AFTER UPDATE TO STAGING: $api_stack_status"
 set -x
 
 # give ELB time to validate health checks
-elb_url="$(aws cloudformation describe-stacks --output=text --stack-name $api_stack --query 'Stacks[0].Outputs[?OutputKey==`URL`].OutputValue[]')"
+api_elb_url="$(aws cloudformation describe-stacks --output=text --stack-name $api_stack --query 'Stacks[0].Outputs[?OutputKey==`URL`].OutputValue[]')"
+db_elb_host="$(aws cloudformation describe-stacks --output=text --stack-name $api_stack --query 'Stacks[0].Outputs[?OutputKey==`DashboardHostname`].OutputValue[]')"
 sleep 30
 echo
-echo "Validating api health-check: $elb_url/health-check"
+echo "Validating api health-check: $api_elb_url/health-check"
 timeout_ts=$((`date +%s` + 1800))
-curl_cmd="curl -v --fail --connect-timeout 10 --max-time 15 $elb_url/health-check"
+curl_cmd="curl -v --fail --connect-timeout 10 --max-time 15 $api_elb_url/health-check"
 while [ $(date +%s) -le $timeout_ts ] && sleep 10; do
     if $curl_cmd | grep -q "I'm here"; then
         break
@@ -163,5 +164,9 @@ done
 $curl_cmd || exit $?
 
 echo
-echo "Validating that /login returns a 200 OK: $elb_url/login"
-curl -v --fail --connect-timeout 10 --max-time 15 $elb_url/login > /dev/null || exit $?
+echo "Validating that /login returns a 200 OK: $api_elb_url/login"
+curl -v --fail --connect-timeout 10 --max-time 15 $api_elb_url/login > /dev/null || exit $?
+
+echo
+echo "Validating dashboard redirect to http://$db_elb_host"
+curl -v "http://$db_elb_host" 2>&1 | fgrep 'Location: https://' || echo $?
