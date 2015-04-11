@@ -254,7 +254,7 @@
             "Type" : "AWS::ElasticLoadBalancing::LoadBalancer",
             "Properties" : {
                 "LoadBalancerName": { "Fn::If" : [ "SetELBNameToDNS",
-                    { "Fn::Join" : [ "-", [ "dashboard-", { "Ref" : "DnsOverride" } ]]},
+                    { "Fn::Join" : [ "-", [ "dashboard", { "Ref" : "DnsOverride" } ]]},
                     { "Ref" : "AWS::NoValue" }
                 ]},
                 "Subnets": { "Ref": "PublicSubnets" },
@@ -286,7 +286,7 @@
                         ":server-certificate/", { "Fn::FindInMap" : [ "config", "ssl", "name" ]}
                     ]]}
                 },{
-                    "LoadBalancerPort" : "8000",
+                    "LoadBalancerPort" : "80",
                     "Protocol" : "HTTP",
                     "InstancePort" : "8000",
                     "InstanceProtocol" : "HTTP"
