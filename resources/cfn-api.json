@@ -236,6 +236,54 @@
                         "arn:aws:iam::", { "Ref" : "AWS::AccountId" },
                         ":server-certificate/", { "Fn::FindInMap" : [ "config", "ssl", "name" ]}
                     ]]}
+                }],
+                "HealthCheck": { "Fn::If" : [ "IsIntegration", { "Ref" : "AWS::NoValue" }, {
+                    "Target": "HTTP:3000/health-check",
+                    "HealthyThreshold": "3",
+                    "UnhealthyThreshold": "3",
+                    "Interval": "10",
+                    "Timeout": "5"
+                } ]},
+                "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" } },
+                         { "Key" : "Environment", "Value" : { "Ref" : "Environment" } }]
+            }
+        },
+
+        "DashboardELB" : {
+            "Type" : "AWS::ElasticLoadBalancing::LoadBalancer",
+            "Properties" : {
+                "LoadBalancerName": { "Fn::If" : [ "SetELBNameToDNS",
+                    { "Fn::Join" : [ "-", [ "dashboard-", { "Ref" : "DnsOverride" } ]]},
+                    { "Ref" : "AWS::NoValue" }
+                ]},
+                "Subnets": { "Ref": "PublicSubnets" },
+                "SecurityGroups": [{ "Ref": "ELBSecurityGroup" }],
+                "AccessLoggingPolicy" : {
+                    "Enabled" : "true",
+                    "EmitInterval" : { "Fn::If" : [ "IsIntegration", "60",  "5" ]},
+                    "S3BucketName" : "promotably-persist",
+                    "S3BucketPrefix" : "logs"
+                },
+                "ConnectionDrainingPolicy" : { "Enabled" : "true", "Timeout" : "15" },
+                "Policies" : [{
+                    "PolicyName" : "EnableProxyProtocol",
+                    "PolicyType" : "ProxyProtocolPolicyType",
+                    "Attributes" : [{
+                        "Name"  : "ProxyProtocol",
+                        "Value" : "true"
+                    }],
+                    "InstancePorts" : ["80"]
+                }],
+                "CrossZone" : "true",
+                "Listeners" : [{
+                    "LoadBalancerPort" : "443",
+                    "Protocol" : "SSL",
+                    "InstancePort" : "80",
+                    "InstanceProtocol" : "TCP",
+                    "SSLCertificateId" : { "Fn::Join" : [ "", [
+                        "arn:aws:iam::", { "Ref" : "AWS::AccountId" },
+                        ":server-certificate/", { "Fn::FindInMap" : [ "config", "ssl", "name" ]}
+                    ]]}
                 },{
                     "LoadBalancerPort" : "8000",
                     "Protocol" : "HTTP",
@@ -639,7 +687,7 @@
                 "HealthCheckGracePeriod" : "300",
                 "Cooldown" : "600",
                 "VPCZoneIdentifier" : { "Ref" : "PrivateSubnets" },
-                "LoadBalancerNames" : [ { "Ref" : "ApiELB" } ],
+                "LoadBalancerNames" : [ { "Ref" : "ApiELB" }, { "Ref" : "DashboardELB" } ],
                 "HealthCheckType" : { "Fn::If" : [ "IsIntegration", "EC2", "ELB" ]},
                 "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" }, "PropagateAtLaunch" : "true" },
                          { "Key" : "Environment", "Value" : { "Ref" : "Environment" }, "PropagateAtLaunch" : "true" }]
@@ -663,6 +711,25 @@
                     "HostedZoneId" : { "Fn::GetAtt": [ "ApiELB", "CanonicalHostedZoneNameID" ] }
                 }
             }
+        },
+
+        "DashboardElbDnsRecord" : {
+            "Type" : "AWS::Route53::RecordSet",
+            "Condition" : "CreateDns",
+            "Properties" : {
+                "HostedZoneName" : "promotably.com.",
+                "Name" : { "Fn::Join" : [ "", [
+                    "dashboard-",
+                    { "Fn::If" : [ "DnsOverride", { "Ref" : "DnsOverride" }, { "Ref" : "AWS::StackName" } ]},
+                    ".promotably.com."
+                ]]},
+                "Type" : "A",
+                "AliasTarget" : {
+                    "DNSName" : { "Fn::GetAtt": [ "DashboardELB", "DNSName" ] },
+                    "EvaluateTargetHealth" : "true",
+                    "HostedZoneId" : { "Fn::GetAtt": [ "DashboardELB", "CanonicalHostedZoneNameID" ] }
+                }
+            }
         }
     },
 
@@ -673,16 +740,31 @@
             "Value" : { "Ref" : "LaunchGroup" }
         },
         "URL": {
-            "Description": "URL for testing",
+            "Description": "API URL",
             "Value": { "Fn::If" : [ "CreateDns",
                 { "Fn::Join" : [ "", [ "https://", { "Ref" : "ApiElbDnsRecord" } ]]},
                 { "Fn::Join" : [ "", [ "https://", { "Fn::GetAtt": [ "ApiELB", "DNSName" ] } ]]}
             ]}
         },
         "Hostname" : {
+            "Description" : "API Hostname",
             "Value": { "Fn::If" : [ "CreateDns",
                 { "Ref" : "ApiElbDnsRecord" },
                 { "Fn::GetAtt": [ "ApiELB", "DNSName" ] }
+            ]}
+        },
+        "DashboardURL": {
+            "Description": "Dashboard URL",
+            "Value": { "Fn::If" : [ "CreateDns",
+                { "Fn::Join" : [ "", [ "https://", { "Ref" : "DashboardElbDnsRecord" } ]]},
+                { "Fn::Join" : [ "", [ "https://", { "Fn::GetAtt": [ "DashboardELB", "DNSName" ] } ]]}
+            ]}
+        },
+        "DashboardHostname" : {
+            "Description": "Dashboard Hostname",
+            "Value": { "Fn::If" : [ "CreateDns",
+                { "Ref" : "ApiElbDnsRecord" },
+                { "Fn::GetAtt": [ "DashboardELB", "DNSName" ] }
             ]}
         }
     }
