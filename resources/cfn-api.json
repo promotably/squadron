@@ -250,6 +250,38 @@
             }
         },
 
+        "UnHealthyHostNotification": {
+            "Type": "AWS::CloudWatch::Alarm",
+            "Properties": {
+                "AlarmDescription": "Alarm if UnHealthyHostCount non-zero for too long.",
+                "Namespace": "AWS/ELB",
+                "MetricName": "UnHealthyHostCount",
+                "Dimensions": [{ "Name": "LoadBalancerName", "Value" : { "Ref" : "ApiELB" } }],
+                "Statistic": "Maximum",
+                "Period": "60",
+                "EvaluationPeriods": "5",
+                "Threshold": "0.5",
+                "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+                "AlarmActions": [{ "Fn::Join" : [ "-", [ { "Fn::Select" : [ "0", { "Ref" : "AWS::NotificationARNs" } ] }, "notification" ] ] }]
+            }
+        },
+
+        "UnHealthyHostAlert": {
+            "Type": "AWS::CloudWatch::Alarm",
+            "Properties": {
+                "AlarmDescription": "Alarm if UnHealthyHostCount non-zero for too long.",
+                "Namespace": "AWS/ELB",
+                "MetricName": "UnHealthyHostCount",
+                "Dimensions": [{ "Name": "LoadBalancerName", "Value" : { "Ref" : "ApiELB" } }],
+                "Statistic": "Maximum",
+                "Period": "60",
+                "EvaluationPeriods": "20",
+                "Threshold": "0",
+                "ComparisonOperator": "GreaterThanThreshold",
+                "AlarmActions": [{ "Fn::Join" : [ "-", [ { "Fn::Select" : [ "0", { "Ref" : "AWS::NotificationARNs" } ] }, "alert" ] ] }]
+            }
+        },
+
         "DashboardELB" : {
             "Type" : "AWS::ElasticLoadBalancing::LoadBalancer",
             "Properties" : {
@@ -686,6 +718,7 @@
                 "MinSize" : "1",
                 "MaxSize" : "2",
                 "DesiredCapacity" : 1,
+                "MetricsCollection" : [{ "Granularity" : "1Minute" }],
                 "HealthCheckGracePeriod" : "300",
                 "Cooldown" : "600",
                 "VPCZoneIdentifier" : { "Ref" : "PrivateSubnets" },

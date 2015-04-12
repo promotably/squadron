@@ -116,6 +116,30 @@
 
     "Resources" : {
 
+        "CfnTopic" : {
+            "Type" : "AWS::SNS::Topic",
+            "Properties" : {
+                "DisplayName" : { "Fn::Join" : [ "", [ { "Ref" : "AWS::StackName" }, " CloudFormation" ]]},
+                "TopicName" : { "Ref" : "AWS::StackName" }
+            }
+        },
+
+        "NotificationTopic" : {
+            "Type" : "AWS::SNS::Topic",
+            "Properties" : {
+                "DisplayName" : { "Fn::Join" : [ "", [ { "Ref" : "AWS::StackName" }, " Notifications" ]]},
+                "TopicName" : { "Fn::Join" : [ "-", [ { "Ref" : "AWS::StackName" }, "notification" ]]}
+            }
+        },
+
+        "AlertTopic" : {
+            "Type" : "AWS::SNS::Topic",
+            "Properties" : {
+                "DisplayName" : { "Fn::Join" : [ "", [ { "Ref" : "AWS::StackName" }, " Alerts" ]]},
+                "TopicName" : { "Fn::Join" : [ "-", [ { "Ref" : "AWS::StackName" }, "alert" ]]}
+            }
+        },
+
         "Jenkins" : {
             "Type" : "AWS::CloudFormation::Stack",
             "Condition" : "BuildJenkins",
@@ -127,7 +151,7 @@
                     "DnsRecord" : { "Fn::Join" : [ "-", [ "ci", { "Ref" : "DnsName" } ]]},
                     "Environment" : { "Ref" : "Environment" }
                 },
-                "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}
+                "NotificationARNs" : [{ "Ref" : "CfnTopic" }]
             }
         },
 
@@ -141,7 +165,7 @@
                     "NATKeyName" : { "Ref" : "SshKey" },
                     "SSHFrom" : { "Ref" : "SSHFrom" }
                 },
-                "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}
+                "NotificationARNs" : [{ "Ref" : "CfnTopic" }]
             }
         },
 
@@ -157,7 +181,7 @@
                     "VpcId" : { "Fn::GetAtt" : [ "Network", "Outputs.VPCId" ] },
                     "Environment" : { "Ref" : "Environment" }
                 },
-                "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}
+                "NotificationARNs" : [{ "Ref" : "CfnTopic" }]
             }
         },
 
@@ -188,7 +212,7 @@
                     "ClientSecurityGroup" : { "Fn::GetAtt" : [ "Network", "Outputs.DbClientSecurityGroup" ] },
                     "AutoTermMigrator" : { "Ref" : "AutoTermMigrator" }
                 },
-                "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}
+                "NotificationARNs" : [{ "Ref" : "CfnTopic" }]
             }
         },
 
@@ -196,7 +220,7 @@
             "Type" : "AWS::CloudFormation::Stack",
             "Properties" : {
                 "TemplateURL" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "CiName" }, "/squadron/", { "Ref" : "SquadronRef" }, "/cfn-kinesis.json" ] ]},
-                "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}
+                "NotificationARNs" : [{ "Ref" : "CfnTopic" }]
             }
         },
 
@@ -234,7 +258,7 @@
                     "KinesisStreamB" : { "Fn::GetAtt" : [ "Kinesis", "Outputs.KinesisStreamB" ] },
                     "DnsOverride" : { "Ref" : "DnsName" }
                 },
-                "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}
+                "NotificationARNs" : [{ "Ref" : "CfnTopic" }]
             }
         },
 
@@ -263,7 +287,7 @@
                     "VpcDefaultSecurityGroup" : { "Fn::GetAtt" : [ "Network", "Outputs.VpcDefaultSecurityGroup" ] },
                     "KeyPair" : { "Ref" : "SshKey" }
                 },
-                "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}
+                "NotificationARNs" : [{ "Ref" : "CfnTopic" }]
             }
         },
 
@@ -290,7 +314,7 @@
                     "VpcDefaultSecurityGroup" : { "Fn::GetAtt" : [ "Network", "Outputs.VpcDefaultSecurityGroup" ] },
                     "KeyPair" : { "Ref" : "SshKey" }
                 },
-                "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}
+                "NotificationARNs" : [{ "Ref" : "CfnTopic" }]
             }
         },
 
@@ -310,7 +334,7 @@
                     "Environment" : { "Ref" : "Environment" },
                     "ApiHost" : { "Fn::GetAtt" : [ "Api", "Outputs.Hostname" ] }
                 },
-                "NotificationARNs" : {"Ref" : "AWS::NotificationARNs"}
+                "NotificationARNs" : [{ "Ref" : "CfnTopic" }]
             }
         }
     },

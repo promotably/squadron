@@ -371,9 +371,25 @@
                 "MinSize" : "1",
                 "MaxSize" : "2",
                 "DesiredCapacity" : 1,
+                "MetricsCollection" : [{ "Granularity" : "1Minute" }],
                 "VPCZoneIdentifier" : { "Ref" : "PublicSubnets" },
                 "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" }, "PropagateAtLaunch" : "true" },
                          { "Key" : "Environment", "Value" : { "Ref" : "Environment" }, "PropagateAtLaunch" : "true" }]
+            }
+        },
+
+        "EventInsertFailedNotification": {
+            "Type": "AWS::CloudWatch::Alarm",
+            "Properties": {
+                "AlarmDescription": "Alarm if too many events failed to insert into DB.",
+                "Namespace": { "Fn::Join" : [ "-", [ "scribe", { "Ref" : "Environment" } ]]},
+                "MetricName": "event-insert-failed",
+                "Statistic": "Sum",
+                "Period": "60",
+                "EvaluationPeriods": "1",
+                "Threshold": "0",
+                "ComparisonOperator": "GreaterThanThreshold",
+                "AlarmActions": [{ "Fn::Join" : [ "-", [ { "Fn::Select" : [ "0", { "Ref" : "AWS::NotificationARNs" } ] }, "notification" ] ] }]
             }
         }
     },

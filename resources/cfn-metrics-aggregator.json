@@ -344,6 +344,7 @@
                 "MinSize" : "1",
                 "MaxSize" : "2",
                 "DesiredCapacity" : 1,
+                "MetricsCollection" : [{ "Granularity" : "1Minute" }],
                 "VPCZoneIdentifier" : { "Ref" : "PrivateSubnets" },
                 "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" }, "PropagateAtLaunch" : "true" },
                          { "Key" : "Environment", "Value" : { "Ref" : "Environment" }, "PropagateAtLaunch" : "true" }]
