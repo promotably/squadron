@@ -15,9 +15,18 @@ set -ex
 cd "$resource_dir/ssl"
 
 umask 0077
-tmp_key=$(mktemp)
-tmp_crt=$(mktemp)
-tmp_bundle=$(mktemp)
+
+if [ "$(uname -s)" = 'Darwin' ]; then
+    sed_cmd='sed -E'
+    tmp_key=$(mktemp /tmp/iam-upload.XXXX)
+    tmp_crt=$(mktemp /tmp/iam-upload.XXXX)
+    tmp_bundle=$(mktemp /tmp/iam-upload.XXXX)
+else
+    sed_cmd='sed -r'
+    tmp_key=$(mktemp)
+    tmp_crt=$(mktemp)
+    tmp_bundle=$(mktemp)
+fi
 
 clean_up() {
     set +ex
@@ -37,7 +46,7 @@ if openssl x509 -in "${cert}.ca-bundle" -noout; then
     cp "${cert}.ca-bundle" "$tmp_bundle"
 fi
 
-cn=$(openssl x509 -in "$tmp_crt" -noout -subject | sed 's,^.*/CN=\([^/]\+\).*$,\1,' | sed 's/^[*][.]/wildcard-/')
+cn=$(openssl x509 -in "$tmp_crt" -noout -subject | $sed_cmd 's,^.*/CN=([^/]+).*$,\1,' | $sed_cmd 's/^[*][.]/wildcard-/')
 
 start_date=$(openssl x509 -in "$tmp_crt" -noout -startdate | cut -d= -f2)
 end_date=$(openssl x509 -in "$tmp_crt" -noout -enddate | cut -d= -f2)
@@ -50,6 +59,12 @@ else
     start_ts=$(date -d "$start_date" +%s)
     date_str=$(date +%Y-%m-%d -d "$end_date")
 fi
+
+aws iam upload-server-certificate --server-certificate-name "cf-$cn-$start_ts-$date_str" \
+    --path /cloudfront/ \
+    --private-key "file://$tmp_key" \
+    --certificate-body "file://$tmp_crt" \
+    --certificate-chain "file://$tmp_bundle"
 
 aws iam upload-server-certificate --server-certificate-name "$cn-$start_ts-$date_str" \
     --private-key "file://$tmp_key" \
