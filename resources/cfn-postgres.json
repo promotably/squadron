@@ -85,7 +85,7 @@
     "Conditions" : {
         "UseAllAvailabilityZones" : { "Fn::Equals" : [{ "Fn::Join" : [ "", { "Ref" : "AvailabilityZones" } ]}, "" ]},
         "DefaultDBClass" : { "Fn::Equals" : [ { "Ref" : "DBClass" }, "default" ]},
-        "DbRestore" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "DBSnapshotId" }, "" ] }]}
+        "DbRestore" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "DBSnapshotId" }, "default" ] }]}
     },
 
     "Mappings" : {
