@@ -96,7 +96,8 @@
             { "Fn::Equals" : [ { "Ref" : "Environment" }, "integration" ]},
             { "Fn::Equals" : [ { "Ref" : "Environment" }, "staging" ]}
         ]},
-        "DnsName" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "DnsName" }, "default" ] }]}
+        "DnsName" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "DnsName" }, "default" ] }]},
+        "DBSnapshotId" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "DBSnapshotId" }, "default" ] }]}
     },
 
     "Resources" : {
@@ -188,7 +189,10 @@
                     "DBUsername" : "promotably",
                     "DBPassword" : "promotably",
                     "DBAllocatedStorage" : "10",
-                    "DBSnapshotId" : { "Ref" : "DBSnapshotId" },
+                    "DBSnapshotId" : { "Fn::If" : [ "DBSnapshotId",
+                        { "Ref" : "DBSnapshotId" },
+                        { "Ref" : "AWS::NoValue" }
+                    ]},
                     "KeyPair" : { "Ref" : "SshKey" },
                     "VpcDefaultSecurityGroup" : { "Fn::GetAtt" : [ "Network", "Outputs.VpcDefaultSecurityGroup" ] },
                     "ClientSecurityGroup" : { "Fn::GetAtt" : [ "Network", "Outputs.DbClientSecurityGroup" ] },
