@@ -59,7 +59,7 @@
         "DBSnapshotId" : {
             "Description" : "DB Snapshot to restore from (empty string for fresh database)",
             "Type" : "String",
-            "Default" : "promotably-base"
+            "Default" : "default"
         },
 
         "KeyPair": {
