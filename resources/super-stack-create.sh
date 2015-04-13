@@ -164,9 +164,9 @@ if [ -n "$environment" ]; then
     environment_param="ParameterKey=Environment,ParameterValue=$environment"
 fi
 
-db_snap=''
+db_snap_param=''
 if [ -n "$db_snap" ]; then
-    db_snap="ParameterKey=DBSnapshotId,ParameterValue=$db_snap"
+    db_snap_param="ParameterKey=DBSnapshotId,ParameterValue=$db_snap"
 fi
 
 ssh_key="$CI_NAME-$stack_name"
@@ -187,7 +187,7 @@ $awscmd cloudformation create-stack --stack-name $stack_name --disable-rollback 
     --capabilities CAPABILITY_IAM --parameters \
     $ssh_from_param \
     $environment_param \
-    $db_snap \
+    $db_snap_param \
     ParameterKey=ArtifactBucket,ParameterValue=$ARTIFACT_BUCKET \
     ParameterKey=MetaDataBucket,ParameterValue=$METADATA_BUCKET \
     ParameterKey=CiName,ParameterValue=$CI_NAME \
