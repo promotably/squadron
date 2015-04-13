@@ -43,7 +43,7 @@ ssh_from=''
 environment=''
 db_snap=''
 auto_term='true'
-opts='hs:p:r:d:w:e:n'
+opts='hs:p:r:d:w:e:i:n'
 while getopts "$opts" opt; do
     #echo "OPT: $opt"
     case "$opt" in
