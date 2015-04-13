@@ -96,22 +96,7 @@
             { "Fn::Equals" : [ { "Ref" : "Environment" }, "integration" ]},
             { "Fn::Equals" : [ { "Ref" : "Environment" }, "staging" ]}
         ]},
-        "DnsName" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "DnsName" }, "default" ] }]},
-        "DBSnapshotId" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "DBSnapshotId" }, "default" ] }]}
-    },
-
-    "Mappings" : {
-        "config" : {
-            "integration" : {
-                "dbSnapshot" : ""
-            },
-            "staging" : {
-                "dbSnapshot" : "promotably-base"
-            },
-            "production" : {
-                "dbSnapshot" : ""
-            }
-        }
+        "DnsName" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "DnsName" }, "default" ] }]}
     },
 
     "Resources" : {
@@ -203,10 +188,7 @@
                     "DBUsername" : "promotably",
                     "DBPassword" : "promotably",
                     "DBAllocatedStorage" : "10",
-                    "DBSnapshotId" : { "Fn::If" : [ "DBSnapshotId",
-                        { "Ref" : "DBSnapshotId" },
-                        { "Fn::FindInMap" : [ "config", { "Ref" : "Environment" }, "dbSnapshot" ]}
-                    ]},
+                    "DBSnapshotId" : { "Ref" : "DBSnapshotId" },
                     "KeyPair" : { "Ref" : "SshKey" },
                     "VpcDefaultSecurityGroup" : { "Fn::GetAtt" : [ "Network", "Outputs.VpcDefaultSecurityGroup" ] },
                     "ClientSecurityGroup" : { "Fn::GetAtt" : [ "Network", "Outputs.DbClientSecurityGroup" ] },
