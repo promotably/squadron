@@ -24,7 +24,7 @@ Options:
     -p <project>        Which project to override 'known-good' version
     -r <commit_sha>     Commit sha of project (required if -p specified)
     -d <dns_name>       String to append to DNS names of stacks (eg: api-<dns_name>.promotably.com>)
-    -w <cidr>           CIDR to pass to SshFrom paramter
+    -w <cidr>           CIDR to pass to SshFrom paramter ('myip' will set to your public ip address)
     -e <env>            Environment parameter (integration, staging, etc.)
     -i <db_snap>        RDS DB Snapshot ID
     -n                  Don't auto-terminate database migrator
@@ -96,6 +96,10 @@ get_stack_status() {
 }
 
 set -ex
+
+if [ "$ssh_from" = 'myip' ]; then
+    ssh_from="$(curl http://icanhazip.com/)/32"
+fi
 
 squadron_ref=$($awscmd s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/squadron/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
 api_ref=$($awscmd s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/api/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)

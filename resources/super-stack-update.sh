@@ -18,7 +18,7 @@ Options:
     -u                  Update to all 'known-good' app versions
     -p <project>        Which project to override 'known-good' version
     -r <commit_sha>     Commit sha of project (required if -p specified)
-    -w <cidr>           CIDR to pass to SshFrom paramter
+    -w <cidr>           CIDR to pass to SshFrom paramter ('myip' will set to your public ip address)
     -e <env>            Environment parameter (integration, staging, etc.)
 _END_
 
@@ -84,6 +84,10 @@ get_stack_status() {
 }
 
 set -ex
+
+if [ "$ssh_from" = 'myip' ]; then
+    ssh_from="$(curl http://icanhazip.com/)/32"
+fi
 
 stack_ci_name=$($awscmd cloudformation describe-stacks --stack-name $stack_name \
     --output=text --query 'Stacks[0].Parameters[?ParameterKey==`CiName`].ParameterValue')
