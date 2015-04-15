@@ -193,22 +193,6 @@
             }
         },
 
-        "UnHealthyHostNotification": {
-            "Type": "AWS::CloudWatch::Alarm",
-            "Properties": {
-                "AlarmDescription": "Alarm if UnHealthyHostCount non-zero for too long.",
-                "Namespace": "AWS/ELB",
-                "MetricName": "UnHealthyHostCount",
-                "Dimensions": [{ "Name": "LoadBalancerName", "Value" : { "Ref" : "LoadBalancer" } }],
-                "Statistic": "Maximum",
-                "Period": "60",
-                "EvaluationPeriods": "15",
-                "Threshold": "0.5",
-                "ComparisonOperator": "GreaterThanOrEqualToThreshold",
-                "AlarmActions": [{ "Fn::Join" : [ "-", [ { "Fn::Select" : [ "0", { "Ref" : "AWS::NotificationARNs" } ] }, "notification" ] ] }]
-            }
-        },
-
         "Volume" : {
             "Type":"AWS::EC2::Volume",
             "DeletionPolicy" : "Snapshot",
