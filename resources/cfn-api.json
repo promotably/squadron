@@ -739,6 +739,21 @@
             }
         },
 
+        "KinesisWriteErrorNotification": {
+            "Type": "AWS::CloudWatch::Alarm",
+            "Properties": {
+                "AlarmDescription": "Alarm if too failed writes to kinesis",
+                "Namespace": { "Fn::Join" : [ "-", [ "scribe", { "Ref" : "Environment" } ]]},
+                "MetricName": "kinesis-write-error",
+                "Statistic": "Sum",
+                "Period": "60",
+                "EvaluationPeriods": "1",
+                "Threshold": "0",
+                "ComparisonOperator": "GreaterThanThreshold",
+                "AlarmActions": [{ "Fn::Join" : [ "-", [ { "Fn::Select" : [ "0", { "Ref" : "AWS::NotificationARNs" } ] }, "notification" ] ] }]
+            }
+        },
+
         "ApiElbDnsRecord" : {
             "Type" : "AWS::Route53::RecordSet",
             "Condition" : "CreateDns",
