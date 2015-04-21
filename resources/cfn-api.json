@@ -637,7 +637,7 @@
                                     "timeout_ts=$((`date +%s` + 600))\n",
                                     "curl_cmd=\"curl -v --connect-timeout 10 --max-time 15 http://localhost:3000/health-check\"\n",
                                     "while [ $(date +%s) -le $timeout_ts ] && sleep 10; do\n",
-                                    "  if $curl_cmd | grep -q \"I'm here\"; then\n",
+                                    "  if $curl_cmd ; then\n",
                                     "    exit 0\n",
                                     "  fi\n",
                                     "done\n",

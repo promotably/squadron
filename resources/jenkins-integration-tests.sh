@@ -157,7 +157,7 @@ echo "Validating api health-check: $api_elb_url/health-check"
 timeout_ts=$((`date +%s` + 1800))
 curl_cmd="curl -v --fail --connect-timeout 10 --max-time 15 $api_elb_url/health-check"
 while [ $(date +%s) -le $timeout_ts ] && sleep 10; do
-    if $curl_cmd | grep -q "I'm here"; then
+    if $curl_cmd; then
         break
     fi
 done
