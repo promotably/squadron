@@ -93,8 +93,7 @@
     "Conditions" : {
         "BuildJenkins" : { "Fn::Equals" : [ { "Ref" : "Environment" }, "integration" ]},
         "BuildWoo" : { "Fn::Or" : [
-            { "Fn::Equals" : [ { "Ref" : "Environment" }, "integration" ]},
-            { "Fn::Equals" : [ { "Ref" : "Environment" }, "staging" ]}
+            { "Fn::Equals" : [ { "Ref" : "Environment" }, "integration" ]}
         ]},
         "DnsName" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "DnsName" }, "default" ] }]},
         "DBSnapshotId" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "DBSnapshotId" }, "default" ] }]}
