@@ -2,6 +2,19 @@
     "AWSTemplateFormatVersion" : "2010-09-09",
     "Description" : "Kinesis Streams",
 
+    "Parameters" : {
+        "Environment" : {
+            "Description" : "Environment tag",
+            "Type" : "String",
+            "Default" : "integration",
+            "AllowedValues" : [ "integration", "staging", "production" ]
+        }
+    },
+
+    "Conditions" : {
+        "IsProd" : { "Fn::Equals" : [ { "Ref" : "Environment" }, "production" ]}
+    },
+
     "Resources" : {
 
         "KinesisStreamA" : {
@@ -15,6 +28,40 @@
             "Type" : "AWS::Kinesis::Stream",
             "Properties" : {
                 "ShardCount" : "2"
+            }
+        },
+
+        "NoPutRecordsAlarm": {
+            "Type": "AWS::CloudWatch::Alarm",
+            "Condition": "IsProd",
+            "Properties": {
+                "AlarmDescription": "Alarm is no successful PutRecords for 2 hours",
+                "Namespace": "AWS/Kinesis",
+                "MetricName": "PutRecord.Success",
+                "Dimensions": [{ "Name": "StreamName" }, { "Value": { "Ref" : "KinesisStreamA" }}],
+                "Statistic": "Sum",
+                "Period": "3600",
+                "EvaluationPeriods": "2",
+                "Threshold": "0",
+                "ComparisonOperator": "EqualToThreshold",
+                "AlarmActions": [{ "Fn::Join" : [ "-", [ { "Fn::Select" : [ "0", { "Ref" : "AWS::NotificationARNs" } ] }, "notification" ] ] }]
+            }
+        },
+
+        "NoGetRecordsAlarm": {
+            "Type": "AWS::CloudWatch::Alarm",
+            "Condition": "IsProd",
+            "Properties": {
+                "AlarmDescription": "Alarm is no successful GetRecords for 2 hours",
+                "Namespace": "AWS/Kinesis",
+                "MetricName": "GetRecord.Success",
+                "Dimensions": [{ "Name": "StreamName" }, { "Value": { "Ref" : "KinesisStreamA" }}],
+                "Statistic": "Sum",
+                "Period": "3600",
+                "EvaluationPeriods": "2",
+                "Threshold": "0",
+                "ComparisonOperator": "EqualToThreshold",
+                "AlarmActions": [{ "Fn::Join" : [ "-", [ { "Fn::Select" : [ "0", { "Ref" : "AWS::NotificationARNs" } ] }, "notification" ] ] }]
             }
         }
     },

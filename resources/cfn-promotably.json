@@ -204,6 +204,9 @@
             "Type" : "AWS::CloudFormation::Stack",
             "Properties" : {
                 "TemplateURL" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "CiName" }, "/squadron/", { "Ref" : "SquadronRef" }, "/cfn-kinesis.json" ] ]},
+                "Parameters" : {
+                    "Environment" : { "Ref" : "Environment" }
+                },
                 "NotificationARNs" : [{ "Ref" : "CfnTopic" }]
             }
         },
