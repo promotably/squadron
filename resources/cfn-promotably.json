@@ -186,6 +186,7 @@
                     "DBUsername" : "promotably",
                     "DBPassword" : "promotably",
                     "DBAllocatedStorage" : "10",
+                    "DBStorageThreshold" : "3000000",
                     "DBSnapshotId" : { "Fn::If" : [ "DBSnapshotId",
                         { "Ref" : "DBSnapshotId" },
                         { "Ref" : "AWS::NoValue" }

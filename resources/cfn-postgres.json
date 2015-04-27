@@ -53,7 +53,11 @@
             "Default" : "default"
         },
         "DBAllocatedStorage" : {
-            "Description" : "Database allocated storage",
+            "Description" : "Database allocated storage (GB)",
+            "Type" : "String"
+        },
+        "DBStorageThreshold" : {
+            "Description" : "Threshold for CloudWatch free storage alarm (Bytes)",
             "Type" : "String"
         },
         "DBSnapshotId" : {
@@ -164,6 +168,70 @@
                 "DBSnapshotIdentifier" : { "Fn::If" : [ "DbRestore", { "Ref" : "DBSnapshotId" }, { "Ref" : "AWS::NoValue" } ]},
                 "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" } },
                          { "Key" : "Environment", "Value" : { "Ref" : "Environment" }}]
+            }
+        },
+
+        "DiskSpaceAlarm": {
+            "Type": "AWS::CloudWatch::Alarm",
+            "Properties": {
+                "AlarmDescription": "Alarm if diskspace is too low",
+                "Namespace": "RDS",
+                "MetricName": "FreeStorageSpace",
+                "Dimensions": [{ "Name": "DBInstanceIdentifier" }, { "Value": { "Ref" : "DBInstance" }}],
+                "Statistic": "Average",
+                "Period": "3600",
+                "EvaluationPeriods": "3",
+                "Threshold": { "Ref" : "DBStorageThreshold" },
+                "ComparisonOperator": "LessThanOrEqualToThreshold",
+                "AlarmActions": [{ "Fn::Join" : [ "-", [ { "Fn::Select" : [ "0", { "Ref" : "AWS::NotificationARNs" } ] }, "notification" ] ] }]
+            }
+        },
+
+        "CPUUsageAlarm": {
+            "Type": "AWS::CloudWatch::Alarm",
+            "Properties": {
+                "AlarmDescription": "Alarm if CPU is utilized at 50% or more for 10min",
+                "Namespace": "RDS",
+                "MetricName": "CPUUtilization",
+                "Dimensions": [{ "Name": "DBInstanceIdentifier" }, { "Value": { "Ref" : "DBInstance" }}],
+                "Statistic": "Average",
+                "Period": "60",
+                "EvaluationPeriods": "10",
+                "Threshold": "50",
+                "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+                "AlarmActions": [{ "Fn::Join" : [ "-", [ { "Fn::Select" : [ "0", { "Ref" : "AWS::NotificationARNs" } ] }, "notification" ] ] }]
+            }
+        },
+
+        "ReadLatencyAlarm": {
+            "Type": "AWS::CloudWatch::Alarm",
+            "Properties": {
+                "AlarmDescription": "Alarm if ReadLatency is 100ms or more for 5min",
+                "Namespace": "RDS",
+                "MetricName": "ReadLatency",
+                "Dimensions": [{ "Name": "DBInstanceIdentifier" }, { "Value": { "Ref" : "DBInstance" }}],
+                "Statistic": "Average",
+                "Period": "60",
+                "EvaluationPeriods": "5",
+                "Threshold": "0.100",
+                "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+                "AlarmActions": [{ "Fn::Join" : [ "-", [ { "Fn::Select" : [ "0", { "Ref" : "AWS::NotificationARNs" } ] }, "notification" ] ] }]
+            }
+        },
+
+        "WriteLatencyAlarm": {
+            "Type": "AWS::CloudWatch::Alarm",
+            "Properties": {
+                "AlarmDescription": "Alarm if WriteLatency is 100ms or more for 5min",
+                "Namespace": "RDS",
+                "MetricName": "WriteLatency",
+                "Dimensions": [{ "Name": "DBInstanceIdentifier" }, { "Value": { "Ref" : "DBInstance" }}],
+                "Statistic": "Average",
+                "Period": "60",
+                "EvaluationPeriods": "5",
+                "Threshold": "0.100",
+                "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+                "AlarmActions": [{ "Fn::Join" : [ "-", [ { "Fn::Select" : [ "0", { "Ref" : "AWS::NotificationARNs" } ] }, "notification" ] ] }]
             }
         },
 
