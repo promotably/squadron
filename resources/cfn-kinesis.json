@@ -12,7 +12,8 @@
     },
 
     "Conditions" : {
-        "IsProd" : { "Fn::Equals" : [ { "Ref" : "Environment" }, "production" ]}
+        "CreateAlarm" : { "Fn::Or" : [{ "Fn::Equals" : [ { "Ref" : "Environment" }, "production" ]},
+                                      { "Fn::Equals" : [ { "Ref" : "Environment" }, "integration" ]}]}
     },
 
     "Resources" : {
@@ -33,7 +34,7 @@
 
         "NoPutRecordsAlarm": {
             "Type": "AWS::CloudWatch::Alarm",
-            "Condition": "IsProd",
+            "Condition": "CreateAlarm",
             "Properties": {
                 "AlarmDescription": "Alarm is no successful PutRecords for 2 hours",
                 "Namespace": "AWS/Kinesis",
@@ -43,14 +44,14 @@
                 "Period": "3600",
                 "EvaluationPeriods": "2",
                 "Threshold": "0",
-                "ComparisonOperator": "EqualToThreshold",
+                "ComparisonOperator": "LessThanOrEqualToThreshold",
                 "AlarmActions": [{ "Fn::Join" : [ "-", [ { "Fn::Select" : [ "0", { "Ref" : "AWS::NotificationARNs" } ] }, "notification" ] ] }]
             }
         },
 
         "NoGetRecordsAlarm": {
             "Type": "AWS::CloudWatch::Alarm",
-            "Condition": "IsProd",
+            "Condition": "CreateAlarm",
             "Properties": {
                 "AlarmDescription": "Alarm is no successful GetRecords for 2 hours",
                 "Namespace": "AWS/Kinesis",
@@ -60,7 +61,7 @@
                 "Period": "3600",
                 "EvaluationPeriods": "2",
                 "Threshold": "0",
-                "ComparisonOperator": "EqualToThreshold",
+                "ComparisonOperator": "LessThanOrEqualToThreshold",
                 "AlarmActions": [{ "Fn::Join" : [ "-", [ { "Fn::Select" : [ "0", { "Ref" : "AWS::NotificationARNs" } ] }, "notification" ] ] }]
             }
         }
