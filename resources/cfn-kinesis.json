@@ -55,7 +55,7 @@
             "Properties": {
                 "AlarmDescription": "Alarm is no successful GetRecords for 2 hours",
                 "Namespace": "AWS/Kinesis",
-                "MetricName": "GetRecord.Success",
+                "MetricName": "GetRecords.Success",
                 "Dimensions": [{ "Name": "StreamName", "Value": { "Ref" : "KinesisStreamA" }}],
                 "Statistic": "Sum",
                 "Period": "3600",
