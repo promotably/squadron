@@ -175,7 +175,7 @@
             "Type": "AWS::CloudWatch::Alarm",
             "Properties": {
                 "AlarmDescription": "Alarm if diskspace is too low",
-                "Namespace": "RDS",
+                "Namespace": "AWS/RDS",
                 "MetricName": "FreeStorageSpace",
                 "Dimensions": [{ "Name": "DBInstanceIdentifier", "Value": { "Ref" : "DBInstance" }}],
                 "Statistic": "Average",
@@ -191,7 +191,7 @@
             "Type": "AWS::CloudWatch::Alarm",
             "Properties": {
                 "AlarmDescription": "Alarm if CPU is utilized at 50% or more for 10min",
-                "Namespace": "RDS",
+                "Namespace": "AWS/RDS",
                 "MetricName": "CPUUtilization",
                 "Dimensions": [{ "Name": "DBInstanceIdentifier", "Value": { "Ref" : "DBInstance" }}],
                 "Statistic": "Average",
@@ -207,7 +207,7 @@
             "Type": "AWS::CloudWatch::Alarm",
             "Properties": {
                 "AlarmDescription": "Alarm if ReadLatency is 100ms or more for 5min",
-                "Namespace": "RDS",
+                "Namespace": "AWS/RDS",
                 "MetricName": "ReadLatency",
                 "Dimensions": [{ "Name": "DBInstanceIdentifier", "Value": { "Ref" : "DBInstance" }}],
                 "Statistic": "Average",
@@ -223,7 +223,7 @@
             "Type": "AWS::CloudWatch::Alarm",
             "Properties": {
                 "AlarmDescription": "Alarm if WriteLatency is 100ms or more for 5min",
-                "Namespace": "RDS",
+                "Namespace": "AWS/RDS",
                 "MetricName": "WriteLatency",
                 "Dimensions": [{ "Name": "DBInstanceIdentifier", "Value": { "Ref" : "DBInstance" }}],
                 "Statistic": "Average",
