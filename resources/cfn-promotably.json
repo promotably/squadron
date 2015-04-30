@@ -354,6 +354,22 @@
         "RdsStack" : {
             "Description" : "StackId of Rds stack",
             "Value" : { "Ref" : "Rds" }
+        },
+        "RedisStack" : {
+            "Description" : "StackId of Redis stack",
+            "Value" : { "Ref" : "Redis" }
+        },
+        "KinesisStack" : {
+            "Description" : "StackId of Kinesis stack",
+            "Value" : { "Ref" : "Kinesis" }
+        },
+        "NetworkStack" : {
+            "Description" : "StackId of Network stack",
+            "Value" : { "Ref" : "Network" }
+        },
+        "JenkinsStack" : {
+            "Description" : "StackId of Jenkins stack",
+            "Value" : { "Fn::If" : [ "BuildJenkins", { "Ref" : "Jenkins" }, "N/A" ]}
         }
     }
 }
