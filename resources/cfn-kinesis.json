@@ -16,6 +16,20 @@
                                       { "Fn::Equals" : [ { "Ref" : "Environment" }, "integration" ]}]}
     },
 
+    "Mappings" : {
+        "config" : {
+            "integration" : {
+                "archiveBucket" : "promotably-kinesis-archive-nonprod"
+            },
+            "staging" : {
+                "archiveBucket" : "promotably-kinesis-archive-nonprod"
+            },
+            "production" : {
+                "archiveBucket" : "promotably-kinesis-archive-prod"
+            }
+        }
+    },
+
     "Resources" : {
 
         "KinesisStreamA" : {
@@ -64,11 +78,64 @@
                 "ComparisonOperator": "LessThanOrEqualToThreshold",
                 "AlarmActions": [{ "Fn::Join" : [ "-", [ { "Fn::Select" : [ "0", { "Ref" : "AWS::NotificationARNs" } ] }, "notification" ] ] }]
             }
+        },
+
+        "LambdaRole": {
+            "Type" : "AWS::IAM::Role",
+            "Properties" : {
+                "Path" : "/",
+                "AssumeRolePolicyDocument": {
+                    "Version" : "2012-10-17",
+                    "Statement" : [{
+                        "Effect" : "Allow",
+                        "Principal" : {
+                            "Service" : [ "lambda.amazonaws.com" ]
+                        },
+                        "Action" : [ "sts:AssumeRole" ]
+                    }]
+                },
+                "Policies" : [{
+                    "PolicyName" : "AWSLambdaKinesisExecution",
+                    "PolicyDocument" : {
+                        "Version" : "2012-10-17",
+                        "Statement" : [{
+                            "Effect": "Allow",
+                            "Action": [
+                                "kinesis:DescribeStream",
+                                "kinesis:GetRecords",
+                                "kinesis:GetShardIterator",
+                                "kinesis:ListStreams",
+                                "logs:CreateLogGroup",
+                                "logs:CreateLogStream",
+                                "logs:PutLogEvents"
+                            ],
+                            "Resource": "*"
+                        }]
+                    }
+                },{
+                    "PolicyName" : "Archive",
+                    "PolicyDocument" : {
+                        "Version" : "2012-10-17",
+                        "Statement" : [{
+                            "Effect" : "Allow",
+                            "Action" : "cloudwatch:*",
+                            "Resource" : "*"
+                        },{
+                            "Effect": "Allow",
+                            "Action": [ "s3:PutObject" ],
+                            "Resource": [ { "Fn::Join" : [ "", [
+                                "arn:aws:s3:::",
+                                { "Fn::FindInMap" : [ "config", { "Ref" : "Environment" }, "archiveBucket" ]},
+                                "/*" ]]
+                            }]
+                        }]
+                    }
+                }]
+            }
         }
     },
 
     "Outputs" : {
-
         "KinesisStreamA" : {
             "Description" : "Kinesis Stream A",
             "Value" : { "Ref" : "KinesisStreamA" }
@@ -76,6 +143,14 @@
         "KinesisStreamB" : {
             "Description" : "Kinesis Stream B",
             "Value" : { "Ref" : "KinesisStreamB" }
+        },
+        "LambdaRole" : {
+            "Description" : "IAM Role for Lambda S3 Archival",
+            "Value" : { "Ref" : "LambdaRole" }
+        },
+        "ArchiveBucket" : {
+            "Description " : "S3 Bucket for event archival via Lambda",
+            "Value" : { "Fn::FindInMap" : [ "config", { "Ref" : "Environment" }, "archiveBucket" ]}
         }
     }
 }
