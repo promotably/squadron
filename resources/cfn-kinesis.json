@@ -149,7 +149,7 @@
             "Value" : { "Ref" : "LambdaRole" }
         },
         "ArchiveBucket" : {
-            "Description " : "S3 Bucket for event archival via Lambda",
+            "Description" : "S3 Bucket for event archival via Lambda",
             "Value" : { "Fn::FindInMap" : [ "config", { "Ref" : "Environment" }, "archiveBucket" ]}
         }
     }
