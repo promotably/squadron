@@ -148,6 +148,10 @@
             "Description" : "IAM Role for Lambda S3 Archival",
             "Value" : { "Ref" : "LambdaRole" }
         },
+        "LambdaRoleArn" : {
+            "Description" : "IAM Role for Lambda S3 Archival",
+            "Value" : { "Fn::GetAtt" : [ "LambdaRole", "Arn" ] }
+        },
         "ArchiveBucket" : {
             "Description" : "S3 Bucket for event archival via Lambda",
             "Value" : { "Fn::FindInMap" : [ "config", { "Ref" : "Environment" }, "archiveBucket" ]}
