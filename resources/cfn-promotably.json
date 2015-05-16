@@ -242,7 +242,6 @@
                     "DBPassword" : "promotably",
                     "DBClientSecGrp" : { "Fn::GetAtt" : [ "Network", "Outputs.DbClientSecurityGroup" ] },
                     "KinesisStreamA" : { "Fn::GetAtt" : [ "Kinesis", "Outputs.KinesisStreamA" ] },
-                    "KinesisStreamB" : { "Fn::GetAtt" : [ "Kinesis", "Outputs.KinesisStreamB" ] },
                     "DnsOverride" : { "Ref" : "DnsName" }
                 },
                 "NotificationARNs" : [{ "Ref" : "CfnTopic" }]
@@ -263,7 +262,6 @@
                     "DBPassword" : "promotably",
                     "DBClientSecGrp" : { "Fn::GetAtt" : [ "Network", "Outputs.DbClientSecurityGroup" ] },
                     "KinesisStreamA" : { "Fn::GetAtt" : [ "Kinesis", "Outputs.KinesisStreamA" ] },
-                    "KinesisStreamB" : { "Fn::GetAtt" : [ "Kinesis", "Outputs.KinesisStreamB" ] },
                     "PublicSubnets" : { "Fn::Join" : [ ",", [
                         { "Fn::GetAtt" : [ "Network", "Outputs.PublicSubnetA" ] },
                         { "Fn::GetAtt" : [ "Network", "Outputs.PublicSubnetB" ] },

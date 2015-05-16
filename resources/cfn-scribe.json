@@ -41,10 +41,6 @@
             "Description" : "The name of the Kinesis Stream A",
             "Type" : "String"
         },
-        "KinesisStreamB" : {
-            "Description" : "The name of the Kinesis Stream B",
-            "Type" : "String"
-        },
         "PublicSubnets" : {
             "Description" : "List of VPC public subnet IDs for the cluster. Note: must match up with the passed AvailabilityZones.",
             "Type" : "List<AWS::EC2::Subnet::Id>"
@@ -110,10 +106,6 @@
                             "Effect" : "Allow",
                             "Action" : "kinesis:*",
                             "Resource" : { "Fn::Join" : [ "", [ "arn:aws:kinesis:", { "Ref" : "AWS::Region" }, ":", { "Ref" : "AWS::AccountId" }, ":stream/", { "Ref" : "KinesisStreamA" } ]]}
-                        },{
-                            "Effect" : "Allow",
-                            "Action" : "kinesis:*",
-                            "Resource" : { "Fn::Join" : [ "", [ "arn:aws:kinesis:", { "Ref" : "AWS::Region" }, ":", { "Ref" : "AWS::AccountId" }, ":stream/", { "Ref" : "KinesisStreamB" } ]]}
                         },{
                             "Effect" : "Allow",
                             "Action" : "cloudwatch:*",
@@ -195,7 +187,6 @@
                                     "{\n",
                                     "\"ARTIFACT_BUCKET\" \"{{ARTIFACT_BUCKET}}\"\n",
                                     "\"KINESIS_A\" \"{{KINESIS_A}}\"\n",
-                                    "\"KINESIS_B\" \"{{KINESIS_B}}\"\n",
                                     "\"RDS_HOST\" \"{{RDS_HOST}}\"\n",
                                     "\"RDS_PORT\" \"{{RDS_PORT}}\"\n",
                                     "\"RDS_USER\" \"{{RDS_USER}}\"\n",
@@ -211,7 +202,6 @@
                                 "context" : {
                                     "ARTIFACT_BUCKET" : { "Ref": "ArtifactBucket" },
                                     "KINESIS_A" : { "Ref": "KinesisStreamA" },
-                                    "KINESIS_B" : { "Ref": "KinesisStreamB" },
                                     "RDS_HOST" : { "Ref" : "DBHost" },
                                     "RDS_PORT" : { "Ref" : "DBPort" },
                                     "RDS_USER" : { "Ref": "DBUsername" },

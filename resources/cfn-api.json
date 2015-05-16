@@ -88,10 +88,6 @@
             "Description" : "The name of the Kinesis Stream A",
             "Type" : "String"
         },
-        "KinesisStreamB" : {
-            "Description" : "The name of the Kinesis Stream B",
-            "Type" : "String"
-        },
         "DnsOverride" : {
             "Description" : "Override the Route53 record created for the ELB ('disable' for no record creation)",
             "Type" : "String",
@@ -140,10 +136,6 @@
                             "Effect" : "Allow",
                             "Action" : "kinesis:*",
                             "Resource" : { "Fn::Join" : [ "", [ "arn:aws:kinesis:", { "Ref" : "AWS::Region" }, ":", { "Ref" : "AWS::AccountId" }, ":stream/", { "Ref" : "KinesisStreamA" } ]]}
-                        },{
-                            "Effect" : "Allow",
-                            "Action" : "kinesis:*",
-                            "Resource" : { "Fn::Join" : [ "", [ "arn:aws:kinesis:", { "Ref" : "AWS::Region" }, ":", { "Ref" : "AWS::AccountId" }, ":stream/", { "Ref" : "KinesisStreamB" } ]]}
                         },{
                             "Effect": "Allow",
                             "Action": [ "s3:Get*" ],
@@ -431,7 +423,6 @@
                                     "\"DASHBOARD_HTML_PATH\" \"{{DASHBOARD_PATH}}\"\n",
                                     "\"DASHBOARD_INDEX_PATH\" \"{{DASHBOARD_PATH}}/index.html\"\n",
                                     "\"KINESIS_A\" \"{{KINESIS_A}}\"\n",
-                                    "\"KINESIS_B\" \"{{KINESIS_B}}\"\n",
                                     "\"REDIS_HOST\" \"localhost\"\n",
                                     "\"REDIS_PORT\" \"6379\"\n",
                                     "\"RDS_HOST\" \"{{RDS_HOST}}\"\n",
@@ -450,7 +441,6 @@
                                     "ARTIFACT_BUCKET" : { "Ref": "ArtifactBucket" },
                                     "DASHBOARD_PATH" : { "Ref": "DashboardPath" },
                                     "KINESIS_A" : { "Ref": "KinesisStreamA" },
-                                    "KINESIS_B" : { "Ref": "KinesisStreamB" },
                                     "RDS_HOST" : { "Ref" : "DBHost" },
                                     "RDS_PORT" : { "Ref" : "DBPort" },
                                     "RDS_USER" : { "Ref": "DBUsername" },
@@ -568,7 +558,6 @@
                                     "ARTIFACT_BUCKET" : { "Ref": "ArtifactBucket" },
                                     "DASHBOARD_PATH" : { "Ref": "DashboardPath" },
                                     "KINESIS_A" : { "Ref": "KinesisStreamA" },
-                                    "KINESIS_B" : { "Ref": "KinesisStreamB" },
                                     "RDS_HOST" : { "Ref" : "DBHost" },
                                     "RDS_PORT" : { "Ref" : "DBPort" },
                                     "RDS_USER" : { "Ref": "DBUsername" },
