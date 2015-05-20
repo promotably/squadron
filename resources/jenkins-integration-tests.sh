@@ -121,6 +121,7 @@ aws cloudformation update-stack --stack-name $api_stack \
     ParameterKey=ArtifactBucket,UsePreviousValue=true \
     ParameterKey=ArtifactPath,UsePreviousValue=true \
     ParameterKey=DashboardPath,UsePreviousValue=true \
+    ParameterKey=PublicBucket,UsePreviousValue=true \
     ParameterKey=KeyPair,UsePreviousValue=true \
     ParameterKey=RedisCluster,UsePreviousValue=true \
     ParameterKey=RedisClientSecGrp,UsePreviousValue=true \

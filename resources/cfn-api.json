@@ -17,6 +17,11 @@
             "Description" : "Git ref of dashboard to refer to",
             "Type" : "String"
         },
+        "PublicBucket" : {
+            "Description" : "Public S3 Bucket where plugins are served",
+            "Type" : "String",
+            "Default" : "promotably-public"
+        },
         "PublicSubnets" : {
             "Description" : "List of VPC public subnet IDs for the cluster. Note: must match up with the passed AvailabilityZones.",
             "Type" : "List<AWS::EC2::Subnet::Id>"
@@ -141,6 +146,13 @@
                             "Action": [ "s3:Get*" ],
                             "Resource": [
                                 { "Fn::Join" : [ "", [ "arn:aws:s3:::", { "Ref" : "ArtifactBucket" }, "/*" ] ] }
+                            ]
+                        },{
+                            "Effect": "Allow",
+                            "Action": [ "s3:List*" ],
+                            "Resource": [
+                                { "Fn::Join" : [ "", [ "arn:aws:s3:::", { "Ref" : "PublicBucket" }, "woocommerce" ] ] }
+                                { "Fn::Join" : [ "", [ "arn:aws:s3:::", { "Ref" : "PublicBucket" }, "woocommerce/*" ] ] }
                             ]
                         },{
                             "Effect" : "Allow",
