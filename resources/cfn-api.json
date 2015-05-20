@@ -151,7 +151,7 @@
                             "Effect": "Allow",
                             "Action": [ "s3:List*" ],
                             "Resource": [
-                                { "Fn::Join" : [ "", [ "arn:aws:s3:::", { "Ref" : "PublicBucket" }, "woocommerce" ] ] }
+                                { "Fn::Join" : [ "", [ "arn:aws:s3:::", { "Ref" : "PublicBucket" }, "woocommerce" ] ] },
                                 { "Fn::Join" : [ "", [ "arn:aws:s3:::", { "Ref" : "PublicBucket" }, "woocommerce/*" ] ] }
                             ]
                         },{
