@@ -242,13 +242,13 @@
                         ":server-certificate/", { "Fn::FindInMap" : [ "config", "ssl", "name" ]}
                     ]]}
                 }],
-                "HealthCheck": { "Fn::If" : [ "IsIntegration", { "Ref" : "AWS::NoValue" }, {
+                "HealthCheck": {
                     "Target": "HTTP:3000/health-check",
                     "HealthyThreshold": "3",
                     "UnhealthyThreshold": "3",
                     "Interval": "10",
                     "Timeout": "5"
-                } ]},
+                },
                 "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" } },
                          { "Key" : "Environment", "Value" : { "Ref" : "Environment" } }]
             }
@@ -327,13 +327,13 @@
                     "InstancePort" : "8000",
                     "InstanceProtocol" : "HTTP"
                 }],
-                "HealthCheck": { "Fn::If" : [ "IsIntegration", { "Ref" : "AWS::NoValue" }, {
+                "HealthCheck": {
                     "Target": "HTTP:3000/health-check",
                     "HealthyThreshold": "3",
                     "UnhealthyThreshold": "3",
                     "Interval": "10",
                     "Timeout": "5"
-                } ]},
+                },
                 "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" } },
                          { "Key" : "Environment", "Value" : { "Ref" : "Environment" } }]
             }
@@ -355,7 +355,6 @@
                         "base" : [ "base" ],
                         "boot" : [ "boot" ],
                         "waitForHealthcheck" : [ "waitForHealthcheck" ],
-                        "integration" : [ "integration" ],
                         "default" : [ { "ConfigSet" : "base" }]
                     },
                     "base" : {
@@ -515,90 +514,6 @@
                             "02-apidchkconfig" : { "command" : "chkconfig --add apid" }
                         }
                     },
-                    "integration" : {
-                        "packages" : {
-                            "yum" : {
-                                "git" : []
-                            }
-                        },
-                        "files" : {
-                            "/opt/promotably/api.zip" : {
-                                "source" : { "Fn::Join" : [ "", [ "https://", { "Ref" : "ArtifactBucket" }, ".s3.amazonaws.com/", { "Ref" : "ArtifactPath" }, "/source.zip" ]]},
-                                "mode"    : "000644",
-                                "owner"   : "root",
-                                "group"   : "root"
-                            },
-                            "/opt/promotably/api-integration-test.sh" : {
-                                "content" : { "Fn::Join" : [ "", [
-                                    "#!/bin/bash -ex\n",
-                                    "\n",
-                                    "export ARTIFACT_BUCKET=\"{{ARTIFACT_BUCKET}}\"\n",
-                                    "export DASHBOARD_HTML_PATH=\"{{DASHBOARD_PATH}}\"\n",
-                                    "export DASHBOARD_INDEX_PATH=\"{{DASHBOARD_PATH}}/index.html\"\n",
-                                    "export KINESIS_A=\"{{KINESIS_A}}\"\n",
-                                    "export KINESIS_B=\"{{KINESIS_B}}\"\n",
-                                    "export REDIS_HOST=\"localhost\"\n",
-                                    "export REDIS_PORT=\"6379\"\n",
-                                    "export RDS_HOST=\"{{RDS_HOST}}\"\n",
-                                    "export RDS_PORT=\"{{RDS_PORT}}\"\n",
-                                    "export RDS_USER=\"{{RDS_USER}}\"\n",
-                                    "export RDS_PW=\"{{RDS_PW}}\"\n",
-                                    "export RDS_DB_NAME=\"{{RDS_DB_NAME}}\"\n",
-                                    "export ENV=\"{{ENV}}\"\n",
-                                    "export LEIN_ROOT=\"yes\"\n",
-                                    "export MIDJE_COLORIZE=\"false\"\n",
-                                    "export STACKNAME=\"{{STACKNAME}}\"\n",
-                                    "export LOGGLY_URL=\"http://logs-01.loggly.com/inputs/2032adee-6213-469d-ba58-74993611570a/tag/{{ENV}},api/\"\n",
-                                    "export LOG_DIR=\"/var/log/api\"\n",
-                                    "export REDIS_HOST=\"$(aws elasticache describe-cache-clusters ",
-                                      " --output=text",
-                                      " --cache-cluster-id ", { "Ref" : "RedisCluster" },
-                                      " --show-cache-node-info --region ", { "Ref" : "AWS::Region" },
-                                      " --query 'CacheClusters[0].CacheNodes[0].Endpoint.Address'",
-                                      ")\"\n",
-                                    "export REDIS_PORT=\"$(aws elasticache describe-cache-clusters ",
-                                      " --output=text",
-                                      " --cache-cluster-id ", { "Ref" : "RedisCluster" },
-                                      " --show-cache-node-info --region ", { "Ref" : "AWS::Region" },
-                                      " --query 'CacheClusters[0].CacheNodes[0].Endpoint.Port'",
-                                      ")\"\n",
-                                    "\n",
-                                    "/usr/local/bin/lein deps > /dev/null 2>&1\n",
-                                    "/usr/local/bin/lein midje api.integration.*\n"
-                                ]]},
-                                "context" : {
-                                    "ARTIFACT_BUCKET" : { "Ref": "ArtifactBucket" },
-                                    "DASHBOARD_PATH" : { "Ref": "DashboardPath" },
-                                    "KINESIS_A" : { "Ref": "KinesisStreamA" },
-                                    "RDS_HOST" : { "Ref" : "DBHost" },
-                                    "RDS_PORT" : { "Ref" : "DBPort" },
-                                    "RDS_USER" : { "Ref": "DBUsername" },
-                                    "RDS_PW" : { "Ref": "DBPassword" },
-                                    "RDS_DB_NAME" : { "Ref": "DBName" },
-                                    "ENV" : { "Ref": "Environment" },
-                                    "STACKNAME" : { "Ref": "AWS::StackName" }
-                                },
-                                "mode"    : "000755",
-                                "owner"   : "root",
-                                "group"   : "root"
-                            }
-                        },
-                        "commands" : {
-                            "00-integration-prep" :{
-                                "cwd" : "/opt/promotably",
-                                "ignoreErrors" : "false",
-                                "command" : { "Fn::Join" : [ "", [
-                                    "\n",
-                                    "curl https://raw.githubusercontent.com/technomancy/leiningen/stable/bin/lein > /usr/local/bin/lein\n",
-                                    "chmod 0755 /usr/local/bin/lein\n",
-                                    "rm -rf api\n",
-                                    "mkdir api\n",
-                                    "cd api\n",
-                                    "unzip ../api.zip\n"
-                                ]]}
-                            }
-                        }
-                    },
                     "boot" : {
                         "services" : {
                             "sysvinit" : {
@@ -694,13 +609,8 @@
                     "((\n",
                     "  cfn_init -c default || error_exit 'Failed to run cfn-init - default'\n",
                     "\n",
-                    "  if [ '", { "Ref": "Environment" }, "' = 'integration' ]; then\n",
-                    "    cfn_init -c integration || error_exit 'Failed to run cfn-init - integration'\n",
-                    "  else\n",
-                    "\n",
-                    "    cfn_init -c boot || error_exit 'Failed to run cfn-init - boot'\n",
-                    "    cfn_init -c waitForHealthcheck || error_exit 'Failed to run cfn-init - waitForHealthcheck'\n",
-                    "  fi\n",
+                    "  cfn_init -c boot || error_exit 'Failed to run cfn-init - boot'\n",
+                    "  cfn_init -c waitForHealthcheck || error_exit 'Failed to run cfn-init - waitForHealthcheck'\n",
                     "  cfn_signal_ok\n",
                     ") > /tmp/cloud-init-bg.out 2>&1 ) &\n"
                 ] ]} }
@@ -734,7 +644,7 @@
                 "Cooldown" : "600",
                 "VPCZoneIdentifier" : { "Ref" : "PrivateSubnets" },
                 "LoadBalancerNames" : [ { "Ref" : "ApiELB" }, { "Ref" : "DashboardELB" } ],
-                "HealthCheckType" : { "Fn::If" : [ "IsIntegration", "EC2", "ELB" ]},
+                "HealthCheckType" : "ELB",
                 "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" }, "PropagateAtLaunch" : "true" },
                          { "Key" : "Environment", "Value" : { "Ref" : "Environment" }, "PropagateAtLaunch" : "true" }]
             }

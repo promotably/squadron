@@ -37,6 +37,12 @@ get_stack_status() {
     return 1
 }
 
+if [ "$(uname -s)" = 'Darwin' ]; then
+    sed_cmd='sed -E'
+else
+    sed_cmd='sed -r'
+fi
+
 stack_name="$1"
 ssh_key=$(aws cloudformation describe-stacks --stack-name "$stack_name" \
     --output=text --query 'Stacks[0].Parameters[?ParameterKey==`SshKey`].ParameterValue')
@@ -49,13 +55,19 @@ set -x
 bastion_ip="$(aws cloudformation describe-stacks --output=text --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`BastionIp`].OutputValue[]')"
 ci_url="$(aws cloudformation describe-stacks --output=text --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`CiUrl`].OutputValue[]')"
 woo_url="$(aws cloudformation describe-stacks --output=text --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`WooUrl`].OutputValue[]')"
+rds_stack="$(aws cloudformation describe-stacks --output=text --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`RdsStack`].OutputValue[]')"
 api_stack="$(aws cloudformation describe-stacks --output=text --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`ApiStack`].OutputValue[]')"
 scribe_stack="$(aws cloudformation describe-stacks --output=text --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`ScribeStack`].OutputValue[]')"
 metricsag_stack="$(aws cloudformation describe-stacks --output=text --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`MetricsAggregatorStack`].OutputValue[]')"
 
 api_asg="$(aws cloudformation describe-stacks --output=text --stack-name $api_stack --query 'Stacks[0].Outputs[?OutputKey==`APIInstanceGroup`].OutputValue[]')"
+api_elb_url="$(aws cloudformation describe-stacks --output=text --stack-name $api_stack --query 'Stacks[0].Outputs[?OutputKey==`URL`].OutputValue[]')"
+db_elb_host="$(aws cloudformation describe-stacks --output=text --stack-name $api_stack --query 'Stacks[0].Outputs[?OutputKey==`DashboardHostname`].OutputValue[]')"
 scribe_asg="$(aws cloudformation describe-stacks --output=text --stack-name $scribe_stack --query 'Stacks[0].Outputs[?OutputKey==`ScribeInstanceGroup`].OutputValue[]')"
 metricsag_asg="$(aws cloudformation describe-stacks --output=text --stack-name $metricsag_stack --query 'Stacks[0].Outputs[?OutputKey==`LaunchGroup`].OutputValue[]')"
+db_name="$(aws cloudformation describe-stacks --output=text --stack-name $rds_stack --query 'Stacks[0].Outputs[?OutputKey==`DBName`].OutputValue[]')"
+db_host="$(aws cloudformation describe-stacks --output=text --stack-name $rds_stack --query 'Stacks[0].Outputs[?OutputKey==`DBHost`].OutputValue[]')"
+db_port="$(aws cloudformation describe-stacks --output=text --stack-name $rds_stack --query 'Stacks[0].Outputs[?OutputKey==`DBPort`].OutputValue[]')"
 
 api_instance_id="$(aws autoscaling describe-auto-scaling-groups --output=text --auto-scaling-group-names $api_asg --query 'AutoScalingGroups[0].Instances[0].InstanceId')"
 scribe_instance_id="$(aws autoscaling describe-auto-scaling-groups --output=text --auto-scaling-group-names $scribe_asg --query 'AutoScalingGroups[0].Instances[0].InstanceId')"
@@ -89,6 +101,12 @@ for priv_ip in $api_ip $scribe_ip $metricsag_ip ; do
     echo
 done
 
+echo
+echo "Setting up ssh tunnel to database"
+local_db_port=$(($RANDOM % 10000 + 20000))
+$ssh_cmd -i $ssh_key_pem -f -N -o ExitOnForwardFailure=yes -L $local_db_port:$db_host:$db_port ec2-user@$bastion_ip
+set -x
+
 # give Jenkins times to come online
 sleep 30
 echo 
@@ -102,55 +120,8 @@ while [ $(date +%s) -le $timeout_ts ] && sleep 10; do
 done
 $curl_cmd > /dev/null || exit $?
 echo
-echo
-
-echo 'API TEST RESULTS'
-echo '------------------------------------------------------------------------------'
-$ssh_cmd -i $ssh_key_pem ec2-user@$bastion_ip "$ssh_cmd $api_ip \"cd /opt/promotably/api && sudo ../api-integration-test.sh\"" || exit $?
-
-echo
-echo
-
-echo '------------------------------------------------------------------------------'
-
-api_dns="$(aws cloudformation describe-stacks --output=text --stack-name $api_stack --query 'Stacks[0].Parameters[?ParameterKey==`DnsOverride`].ParameterValue[]')"
-
-aws cloudformation update-stack --stack-name $api_stack \
-    --use-previous-template --capabilities CAPABILITY_IAM --parameters \
-    ParameterKey=Environment,ParameterValue=staging \
-    ParameterKey=ArtifactBucket,UsePreviousValue=true \
-    ParameterKey=ArtifactPath,UsePreviousValue=true \
-    ParameterKey=DashboardPath,UsePreviousValue=true \
-    ParameterKey=PublicBucket,UsePreviousValue=true \
-    ParameterKey=KeyPair,UsePreviousValue=true \
-    ParameterKey=RedisCluster,UsePreviousValue=true \
-    ParameterKey=RedisClientSecGrp,UsePreviousValue=true \
-    ParameterKey=DBName,UsePreviousValue=true \
-    ParameterKey=DBHost,UsePreviousValue=true \
-    ParameterKey=DBPort,UsePreviousValue=true \
-    ParameterKey=DBUsername,UsePreviousValue=true \
-    ParameterKey=DBPassword,UsePreviousValue=true \
-    ParameterKey=DBClientSecGrp,UsePreviousValue=true \
-    ParameterKey=KinesisStreamA,UsePreviousValue=true \
-    ParameterKey=VpcId,UsePreviousValue=true \
-    ParameterKey=VpcDefaultSecurityGroup,UsePreviousValue=true \
-    ParameterKey=NATSecurityGroup,UsePreviousValue=true \
-    ParameterKey=AvailabilityZones,UsePreviousValue=true \
-    ParameterKey=PublicSubnets,UsePreviousValue=true \
-    ParameterKey=PrivateSubnets,UsePreviousValue=true \
-    ParameterKey=DnsOverride,ParameterValue=${api_dns}X || exit $?
-
-api_stack_status=$(get_stack_status $api_stack update)
-rc=$?
-
-echo
-echo "API STACK STATUS AFTER UPDATE TO STAGING: $api_stack_status"
-[ $rc = 0 ] || exit $rc
-set -x
 
 # give ELB time to validate health checks
-api_elb_url="$(aws cloudformation describe-stacks --output=text --stack-name $api_stack --query 'Stacks[0].Outputs[?OutputKey==`URL`].OutputValue[]')"
-db_elb_host="$(aws cloudformation describe-stacks --output=text --stack-name $api_stack --query 'Stacks[0].Outputs[?OutputKey==`DashboardHostname`].OutputValue[]')"
 sleep 30
 echo
 echo "Validating api health-check: $api_elb_url/health-check"
@@ -170,3 +141,37 @@ curl -v --fail --connect-timeout 10 --max-time 15 $api_elb_url/login > /dev/null
 echo
 echo "Validating dashboard redirect to http://$db_elb_host"
 curl -v "http://$db_elb_host" 2>&1 | fgrep 'Location: https://' || echo $?
+
+echo
+echo 'API TEST RESULTS'
+echo '------------------------------------------------------------------------------'
+#$ssh_cmd -i $ssh_key_pem ec2-user@$bastion_ip "$ssh_cmd $api_ip \"cd /opt/promotably/api && sudo ../api-integration-test.sh\"" || exit $?
+
+#export ARTIFACT_BUCKET=
+#export DASHBOARD_HTML_PATH=
+#export DASHBOARD_INDEX_PATH=
+#export KINESIS_A=
+#export REDIS_HOST=
+#export REDIS_PORT=
+export RDS_DB_NAME=$db_name
+export RDS_HOST=127.0.0.1
+export RDS_PORT=$local_db_port
+export RDS_USER=promotably
+export RDS_PW=promotably
+export ENV=integration
+export MIDJE_COLORIZE=false
+#export STACKNAME=
+export LOGGLY_URL="http://logs-01.loggly.com/inputs/2032adee-6213-469d-ba58-74993611570a/tag/integration,testrunner/"
+#export LOG_DIR=
+export TARGET_HOST=$(echo $api_elb_url | $sed_cmd 's,^(http|https)://,,')
+TARGET_PORT=443
+if echo $api_elb_url | grep -q '^http://'; then
+    TARGET_PORT=80
+fi
+export TARGET_PORT
+
+lein deps > /dev/null 2>&1
+lein midje api.integration.*
+
+echo
+ps -ef | grep ssh | grep "$local_db_port:$db_host:$db_port" | awk '{print $2}' | xargs kill
