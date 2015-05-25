@@ -145,7 +145,6 @@ curl -v "http://$db_elb_host" 2>&1 | fgrep 'Location: https://' || echo $?
 echo
 echo 'API TEST RESULTS'
 echo '------------------------------------------------------------------------------'
-#$ssh_cmd -i $ssh_key_pem ec2-user@$bastion_ip "$ssh_cmd $api_ip \"cd /opt/promotably/api && sudo ../api-integration-test.sh\"" || exit $?
 
 #export ARTIFACT_BUCKET=
 #export DASHBOARD_HTML_PATH=
@@ -163,12 +162,7 @@ export MIDJE_COLORIZE=false
 #export STACKNAME=
 export LOGGLY_URL="http://logs-01.loggly.com/inputs/2032adee-6213-469d-ba58-74993611570a/tag/integration,testrunner/"
 #export LOG_DIR=
-export TARGET_HOST=$(echo $api_elb_url | $sed_cmd 's,^(http|https)://,,')
-TARGET_PORT=443
-if echo $api_elb_url | grep -q '^http://'; then
-    TARGET_PORT=80
-fi
-export TARGET_PORT
+export TARGET_URL=$api_elb_url
 
 lein deps > /dev/null 2>&1
 lein midje api.integration.*
