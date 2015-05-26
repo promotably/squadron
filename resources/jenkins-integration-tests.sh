@@ -146,7 +146,8 @@ echo
 echo 'API TEST RESULTS'
 echo '------------------------------------------------------------------------------'
 
-## integration tests should need these
+cat > integration-test-env.sh << _END_
+## integration tests should not need these
 #export ARTIFACT_BUCKET=
 #export DASHBOARD_HTML_PATH=
 #export DASHBOARD_INDEX_PATH=
@@ -163,10 +164,13 @@ export MIDJE_COLORIZE=false
 export LOGGLY_URL="http://logs-01.loggly.com/inputs/2032adee-6213-469d-ba58-74993611570a/tag/integration,testrunner/"
 #export LOG_DIR=
 export TARGET_URL=$api_elb_url
+_END_
+
+. integration-test-env.sh
 
 lein deps > /dev/null 2>&1
-lein midje api.integration.*
+lein midje api.integration.* || exit $?
 
 echo
 ps -ef | grep ssh | grep "$local_db_port:$db_host:$db_port" | awk '{print $2}' | xargs kill
-rm -f $ssh_key_pem
+rm -f $ssh_key_pem integration-test-env.sh
