@@ -2,12 +2,20 @@
 
 : ${KEY_BUCKET:=promotably-keyvault}
 
+# Attempt to detect if we're on a dev's system
+[ -n "$AWS_DEFAULT_REGION" ] || export AWS_DEFAULT_REGION=us-east-1
+awscmd='aws'
+if [ -f ~/.aws/credentials -a "$CI_NAME" != 'jenkins' ]; then
+    awscmd="aws --profile promotably"
+    unset AWS_ACCOUNT_ID AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SECRET_KEY
+fi
+
 # helper function to wait for stack creation/update
 get_stack_status() {
     set +x
     timeout_ts=$((`date +%s` + 1800))
     while [ $(date +%s) -le $timeout_ts ]; do
-        stack_status=$(aws cloudformation describe-stacks --output=text --stack-name "$1" --query 'Stacks[0].StackStatus')
+        stack_status=$($awscmd cloudformation describe-stacks --output=text --stack-name "$1" --query 'Stacks[0].StackStatus')
         if [ "$2" = 'update' ]; then
             case "$stack_status" in 
                 UPDATE_COMPLETE)
@@ -33,7 +41,7 @@ get_stack_status() {
         fi
         sleep 20
     done
-    aws cloudformation describe-stacks --output=text --stack-name "$1" --query 'Stacks[0].StackStatus'
+    $awscmd cloudformation describe-stacks --output=text --stack-name "$1" --query 'Stacks[0].StackStatus'
     return 1
 }
 
@@ -44,38 +52,38 @@ else
 fi
 
 stack_name="$1"
-ssh_key=$(aws cloudformation describe-stacks --stack-name "$stack_name" \
+ssh_key=$($awscmd cloudformation describe-stacks --stack-name "$stack_name" \
     --output=text --query 'Stacks[0].Parameters[?ParameterKey==`SshKey`].ParameterValue')
 ssh_key_pem="$ssh_key.pem"
-aws s3 cp "s3://$KEY_BUCKET/$ssh_key_pem" ./
+$awscmd s3 cp "s3://$KEY_BUCKET/$ssh_key_pem" ./
 chmod 600 "$ssh_key_pem" || exit $?
 
 set -x
 
-bastion_ip="$(aws cloudformation describe-stacks --output=text --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`BastionIp`].OutputValue[]')"
-ci_url="$(aws cloudformation describe-stacks --output=text --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`CiUrl`].OutputValue[]')"
-woo_url="$(aws cloudformation describe-stacks --output=text --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`WooUrl`].OutputValue[]')"
-rds_stack="$(aws cloudformation describe-stacks --output=text --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`RdsStack`].OutputValue[]')"
-api_stack="$(aws cloudformation describe-stacks --output=text --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`ApiStack`].OutputValue[]')"
-scribe_stack="$(aws cloudformation describe-stacks --output=text --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`ScribeStack`].OutputValue[]')"
-metricsag_stack="$(aws cloudformation describe-stacks --output=text --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`MetricsAggregatorStack`].OutputValue[]')"
+bastion_ip="$($awscmd cloudformation describe-stacks --output=text --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`BastionIp`].OutputValue[]')"
+ci_url="$($awscmd cloudformation describe-stacks --output=text --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`CiUrl`].OutputValue[]')"
+woo_url="$($awscmd cloudformation describe-stacks --output=text --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`WooUrl`].OutputValue[]')"
+rds_stack="$($awscmd cloudformation describe-stacks --output=text --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`RdsStack`].OutputValue[]')"
+api_stack="$($awscmd cloudformation describe-stacks --output=text --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`ApiStack`].OutputValue[]')"
+scribe_stack="$($awscmd cloudformation describe-stacks --output=text --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`ScribeStack`].OutputValue[]')"
+metricsag_stack="$($awscmd cloudformation describe-stacks --output=text --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`MetricsAggregatorStack`].OutputValue[]')"
 
-api_asg="$(aws cloudformation describe-stacks --output=text --stack-name $api_stack --query 'Stacks[0].Outputs[?OutputKey==`APIInstanceGroup`].OutputValue[]')"
-api_elb_url="$(aws cloudformation describe-stacks --output=text --stack-name $api_stack --query 'Stacks[0].Outputs[?OutputKey==`URL`].OutputValue[]')"
-db_elb_host="$(aws cloudformation describe-stacks --output=text --stack-name $api_stack --query 'Stacks[0].Outputs[?OutputKey==`DashboardHostname`].OutputValue[]')"
-scribe_asg="$(aws cloudformation describe-stacks --output=text --stack-name $scribe_stack --query 'Stacks[0].Outputs[?OutputKey==`ScribeInstanceGroup`].OutputValue[]')"
-metricsag_asg="$(aws cloudformation describe-stacks --output=text --stack-name $metricsag_stack --query 'Stacks[0].Outputs[?OutputKey==`LaunchGroup`].OutputValue[]')"
-db_name="$(aws cloudformation describe-stacks --output=text --stack-name $rds_stack --query 'Stacks[0].Outputs[?OutputKey==`DBName`].OutputValue[]')"
-db_host="$(aws cloudformation describe-stacks --output=text --stack-name $rds_stack --query 'Stacks[0].Outputs[?OutputKey==`DBHost`].OutputValue[]')"
-db_port="$(aws cloudformation describe-stacks --output=text --stack-name $rds_stack --query 'Stacks[0].Outputs[?OutputKey==`DBPort`].OutputValue[]')"
+api_asg="$($awscmd cloudformation describe-stacks --output=text --stack-name $api_stack --query 'Stacks[0].Outputs[?OutputKey==`APIInstanceGroup`].OutputValue[]')"
+api_elb_url="$($awscmd cloudformation describe-stacks --output=text --stack-name $api_stack --query 'Stacks[0].Outputs[?OutputKey==`URL`].OutputValue[]')"
+db_elb_host="$($awscmd cloudformation describe-stacks --output=text --stack-name $api_stack --query 'Stacks[0].Outputs[?OutputKey==`DashboardHostname`].OutputValue[]')"
+scribe_asg="$($awscmd cloudformation describe-stacks --output=text --stack-name $scribe_stack --query 'Stacks[0].Outputs[?OutputKey==`ScribeInstanceGroup`].OutputValue[]')"
+metricsag_asg="$($awscmd cloudformation describe-stacks --output=text --stack-name $metricsag_stack --query 'Stacks[0].Outputs[?OutputKey==`LaunchGroup`].OutputValue[]')"
+db_name="$($awscmd cloudformation describe-stacks --output=text --stack-name $rds_stack --query 'Stacks[0].Outputs[?OutputKey==`DBName`].OutputValue[]')"
+db_host="$($awscmd cloudformation describe-stacks --output=text --stack-name $rds_stack --query 'Stacks[0].Outputs[?OutputKey==`DBHost`].OutputValue[]')"
+db_port="$($awscmd cloudformation describe-stacks --output=text --stack-name $rds_stack --query 'Stacks[0].Outputs[?OutputKey==`DBPort`].OutputValue[]')"
 
-api_instance_id="$(aws autoscaling describe-auto-scaling-groups --output=text --auto-scaling-group-names $api_asg --query 'AutoScalingGroups[0].Instances[0].InstanceId')"
-scribe_instance_id="$(aws autoscaling describe-auto-scaling-groups --output=text --auto-scaling-group-names $scribe_asg --query 'AutoScalingGroups[0].Instances[0].InstanceId')"
-metricsag_instance_id="$(aws autoscaling describe-auto-scaling-groups --output=text --auto-scaling-group-names $metricsag_asg --query 'AutoScalingGroups[0].Instances[0].InstanceId')"
+api_instance_id="$($awscmd autoscaling describe-auto-scaling-groups --output=text --auto-scaling-group-names $api_asg --query 'AutoScalingGroups[0].Instances[0].InstanceId')"
+scribe_instance_id="$($awscmd autoscaling describe-auto-scaling-groups --output=text --auto-scaling-group-names $scribe_asg --query 'AutoScalingGroups[0].Instances[0].InstanceId')"
+metricsag_instance_id="$($awscmd autoscaling describe-auto-scaling-groups --output=text --auto-scaling-group-names $metricsag_asg --query 'AutoScalingGroups[0].Instances[0].InstanceId')"
 
-api_ip="$(aws ec2 describe-instances --output=text --instance-ids $api_instance_id --query 'Reservations[0].Instances[0].PrivateIpAddress')"
-scribe_ip="$(aws ec2 describe-instances --output=text --instance-ids $scribe_instance_id --query 'Reservations[0].Instances[0].PrivateIpAddress')"
-metricsag_ip="$(aws ec2 describe-instances --output=text --instance-ids $metricsag_instance_id --query 'Reservations[0].Instances[0].PrivateIpAddress')"
+api_ip="$($awscmd ec2 describe-instances --output=text --instance-ids $api_instance_id --query 'Reservations[0].Instances[0].PrivateIpAddress')"
+scribe_ip="$($awscmd ec2 describe-instances --output=text --instance-ids $scribe_instance_id --query 'Reservations[0].Instances[0].PrivateIpAddress')"
+metricsag_ip="$($awscmd ec2 describe-instances --output=text --instance-ids $metricsag_instance_id --query 'Reservations[0].Instances[0].PrivateIpAddress')"
 
 [ -z "$api_ip" -o -z "$scribe_ip" -o -z "$metricsag_ip" ] && exit 1
 
