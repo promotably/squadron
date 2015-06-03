@@ -155,6 +155,9 @@ echo 'API TEST RESULTS'
 echo '------------------------------------------------------------------------------'
 
 cat > integration-test-env.sh << _END_
+##### Environment if you want to re-run lein midje api.integration.*:"
+# TUNNEL CMD: $ssh_cmd -i $ssh_key_pem -f -N -o ExitOnForwardFailure=yes -L $local_db_port:$db_host:$db_port ec2-user@$bastion_ip
+#
 ## integration tests should not need these
 #export ARTIFACT_BUCKET=
 #export DASHBOARD_HTML_PATH=
@@ -162,6 +165,7 @@ cat > integration-test-env.sh << _END_
 #export KINESIS_A=
 #export REDIS_HOST=
 #export REDIS_PORT=
+##
 export RDS_DB_NAME=$db_name
 export RDS_HOST=127.0.0.1
 export RDS_PORT=$local_db_port
@@ -177,8 +181,10 @@ _END_
 . integration-test-env.sh
 
 lein deps > /dev/null 2>&1
-lein midje api.integration.* || exit $?
+lein midje api.integration.*
 
 echo
 ps -ef | grep ssh | grep "$local_db_port:$db_host:$db_port" | awk '{print $2}' | xargs kill
+cat integration-test-env.sh
+echo
 rm -f $ssh_key_pem integration-test-env.sh
