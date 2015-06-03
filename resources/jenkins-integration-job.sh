@@ -29,12 +29,18 @@ fi
 
 if [ -n "$PROJECT" ]; then
     case "$PROJECT" in
-        squadron|api| scribe)
+        api)
+            api_ref=$CI_COMMIT_ID
+            ;;
+        squadron|scribe)
+            api_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/api/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
             ;;
         dashboard)
+            api_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/api/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
             skip_integration_tests='true'
             ;;
         metrics-aggregator)
+            api_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/api/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
             skip_integration_tests='true'
             ;;
         *)
@@ -48,6 +54,9 @@ else
     stack_name="ci-$CI_BUILD_NUMBER"
 fi
 
+# pull down api source and unzip locally
+aws s3 cp "s3://$ARTIFACT_BUCKET/$CI_NAME/api/$api_ref/source.zip" api-source.zip
+unzip api-source.zip
 
 echo -n > integration_test_results.txt
 rm -f test_failure
