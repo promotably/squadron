@@ -83,13 +83,21 @@
             "Type" : "String",
             "Default" : "true",
             "AllowedValues" : [ "true", "false" ]
+        },
+        "AutoTermDumper" : {
+            "Description" : "Automatically terminate instance after running pg_dump",
+            "Type" : "String",
+            "Default" : "true",
+            "AllowedValues" : [ "true", "false" ]
         }
     },
 
     "Conditions" : {
         "UseAllAvailabilityZones" : { "Fn::Equals" : [{ "Fn::Join" : [ "", { "Ref" : "AvailabilityZones" } ]}, "" ]},
         "DefaultDBClass" : { "Fn::Equals" : [ { "Ref" : "DBClass" }, "default" ]},
-        "DbRestore" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "DBSnapshotId" }, "default" ] }]}
+        "DbRestore" : { "Fn::Not" : [{ "Fn::Equals" : [ { "Ref" : "DBSnapshotId" }, "default" ] }]},
+        "DoDump" : { "Fn::Or" : [{ "Fn::Equals": [{ "Ref": "Environment" }, "staging" ]},
+                                 { "Fn::Equals": [{ "Ref": "Environment" }, "production" ]} ]}
     },
 
     "Mappings" : {
@@ -97,6 +105,11 @@
             "us-east-1" : { "ami" : "ami-1ecae776" },
             "us-west-2" : { "ami" : "ami-e7527ed7" },
             "eu-west-2" : { "ami" : "ami-a10897d6" },
+
+            "dumper" : {
+                "bucket": "promotably-persist",
+                "prefix": "dbdumps"
+            },
 
             "integration" : {
                 "dbClass" : "db.t2.small",
@@ -273,7 +286,6 @@
             }
         },
 
-
         "LaunchConfig" : {
             "Type" : "AWS::AutoScaling::LaunchConfiguration",
             "Metadata" : {
@@ -392,6 +404,142 @@
                 "VPCZoneIdentifier" : { "Ref" : "PrivateSubnets" },
                 "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" }, "PropagateAtLaunch" : "true" },
                          { "Key" : "Environment", "Value" : { "Ref" : "Environment" }, "PropagateAtLaunch" : "true" }]
+            }
+        },
+
+        "DumperRole": {
+            "Type" : "AWS::IAM::Role",
+            "Properties" : {
+                "Path" : "/",
+                "AssumeRolePolicyDocument": {
+                    "Version" : "2012-10-17",
+                    "Statement" : [{
+                        "Effect" : "Allow",
+                        "Principal" : { "Service" : [ "ec2.amazonaws.com" ] },
+                        "Action" : [ "sts:AssumeRole" ]
+                    }]
+                },
+                "Policies" : [{
+                    "PolicyName" : "root",
+                    "PolicyDocument" : {
+                        "Version" : "2012-10-17",
+                        "Statement" : [{
+                            "Effect": "Allow",
+                            "Action": [ "s3:PutObject" ],
+                            "Resource": [{ "Fn::Join" : [ "", [ "arn:aws:s3:::",
+                                { "Fn::FindInMap": [ "config", "dumper", "bucket" ] }, "/",
+                                { "Fn::FindInMap": [ "config", "dumper", "prefix" ] }, "/*"
+                            ]]}]
+                        },{
+                            "Effect": "Allow",
+                            "Action": [ "autoscaling:TerminateInstanceInAutoScalingGroup" ],
+                            "Resource": "*"
+                        }]
+                    }
+                }]
+            }
+        },
+
+        "DumperInstanceProfile" : {
+            "Type" : "AWS::IAM::InstanceProfile",
+            "Properties" : {
+                "Path" : "/",
+                "Roles" : [ { "Ref": "DumperRole" } ]
+            }
+        },
+
+        "DumperLaunchConfig" : {
+            "Type" : "AWS::AutoScaling::LaunchConfiguration",
+            "Metadata" : {
+                "AWS::CloudFormation::Init" : {
+                    "config" : {
+                        "packages" : {
+                            "yum" : {
+                                "postgresql94" : []
+                            }
+                        },
+                        "files" : {
+                            "/dumpit.sh" : {
+                                "content" : { "Fn::Join" : [ "", [
+                                    "export PGPASSWORD={{DBPASS}}\n",
+                                    "pg_dump -d {{DBNAME}} -U {{DBUSER}} -c -C -h {{DBHOST}} -p {{DBPORT}} -Z 6 -f /tmp/dbdump.gz\n",
+                                    "aws s3 cp /tmp/dbdump.gz s3://{{BUCKET}}/{{STACKNAME}}/$(date +%Y/%m/%d-%b-%T).gz\n"
+                                ] ]},
+                                "context" : {
+                                    "DBNAME": { "Ref": "DBName" },
+                                    "DBUSER": { "Ref": "DBUsername" },
+                                    "DBPASS": { "Ref": "DBPassword" },
+                                    "DBHOST": { "Fn::GetAtt" : [ "DBInstance", "Endpoint.Address" ]},
+                                    "DBPORT": { "Fn::GetAtt" : [ "DBInstance", "Endpoint.Port" ]},
+                                    "BUCKET": { "Fn::Join": [ "/", [
+                                        { "Fn::FindInMap": [ "config", "dumper", "bucket" ] },
+                                        { "Fn::FindInMap": [ "config", "dumper", "prefix" ] }
+                                    ]]},
+                                    "STACKNAME": { "Ref": "AWS::StackName" }
+                                },
+                                "mode"    : "000755",
+                                "owner"   : "root",
+                                "group"   : "root"
+                            }
+                        }
+                    }
+                }
+            },
+            "Properties" : {
+                "ImageId" : { "Fn::FindInMap" : [ "config", { "Ref" : "AWS::Region" }, "ami" ]},
+                "SecurityGroups" : [{ "Ref" : "ClientSecurityGroup" }, { "Ref" : "VpcDefaultSecurityGroup" }],
+                "InstanceType" : "t2.micro",
+                "KeyName": { "Ref": "KeyPair" },
+                "IamInstanceProfile": { "Ref": "DumperInstanceProfile" },
+                "UserData": { "Fn::Base64": { "Fn::Join": [ "", [
+                    "#!/bin/bash -ex\n",
+                    "\n",
+                    ". /etc/profile.d/aws-apitools-common.sh\n",
+                    "\n",
+                    "yum install -y http://yum.postgresql.org/9.4/redhat/rhel-6-x86_64/pgdg-redhat94-9.4-1.noarch.rpm\n",
+                    "\n",
+                    "cfn-init -v -s ", { "Ref": "AWS::StackId" },
+                      " -r DumperLaunchConfig --region ", { "Ref": "AWS::Region" }, "\n",
+                    "\n",
+                    "((\n",
+                    "  /dumpit.sh\n",
+                    "  [ '", { "Ref" : "AutoTermDumper" }, "' = 'true' ] || exit 0\n",
+                    "  instance_id=$(ec2-metadata -i | awk '{print $2}')\n",
+                    "  aws autoscaling terminate-instance-in-auto-scaling-group ",
+                      "--instance-id $instance_id --should-decrement-desired-capacity ",
+                      "--region ", { "Ref" : "AWS::Region" }, "\n",
+                    ") > /dumpit.out 2>&1 & )\n",
+                    "\n"
+                ] ]} }
+            }
+        },
+
+        "DumperGroup" : {
+            "Type" : "AWS::AutoScaling::AutoScalingGroup",
+            "Properties" : {
+                "AvailabilityZones" : { "Fn::If" : [ "UseAllAvailabilityZones",
+                    { "Fn::GetAZs": "" },
+                    { "Ref" : "AvailabilityZones" }
+                ] },
+                "LaunchConfigurationName" : { "Ref" : "DumperLaunchConfig" },
+                "MinSize" : "0",
+                "MaxSize" : "1",
+                "DesiredCapacity" : 0,
+                "HealthCheckGracePeriod" : "300",
+                "Cooldown" : "600",
+                "VPCZoneIdentifier" : { "Ref" : "PrivateSubnets" },
+                "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" }, "PropagateAtLaunch" : "true" },
+                         { "Key" : "Environment", "Value" : { "Ref" : "Environment" }, "PropagateAtLaunch" : "true" }]
+            }
+        },
+
+        "DumperScaleUp" : {
+            "Type" : "AWS::AutoScaling::ScheduledAction",
+            "Condition" : "DoDump",
+            "Properties" : {
+                "AutoScalingGroupName" : { "Ref" : "DumperGroup" },
+                "DesiredCapacity" : "1",
+                "Recurrence" : "19 */6 * * *"
             }
         }
     },
