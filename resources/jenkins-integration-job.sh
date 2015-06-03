@@ -61,8 +61,8 @@ if [ -f test_failure ] || grep -q 'java.lang.[A-Za-z0-9_.-]*Exception' integrati
     exit 1
 else
     if [ -n "$PROJECT" -a "$PROJECT" != 'None' -a -n "$CI_BUILD_NUMBER" ]; then
-        touch empty
+        touch integration_test_results.txt
         s3_url="s3://$METADATA_BUCKET/validated-builds/$CI_NAME/$PROJECT/$(printf '%.12d' $CI_BUILD_NUMBER)"
-        aws s3 cp empty "$s3_url/$CI_COMMIT_ID"
+        aws s3 cp integration_test_results.txt "$s3_url/$CI_COMMIT_ID"
     fi
 fi
