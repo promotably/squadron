@@ -58,7 +58,7 @@ fi
 aws s3 cp "s3://$ARTIFACT_BUCKET/$CI_NAME/api/$api_ref/source.zip" api-source.zip
 mkdir api
 cd api
-unzip api-source.zip
+unzip ../api-source.zip
 
 integration_test_results=$(mktemp)
 echo -n > $integration_test_results
