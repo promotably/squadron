@@ -56,22 +56,25 @@ fi
 
 # pull down api source and unzip locally
 aws s3 cp "s3://$ARTIFACT_BUCKET/$CI_NAME/api/$api_ref/source.zip" api-source.zip
+mkdir api
+cd api
 unzip api-source.zip
 
-echo -n > integration_test_results.txt
+integration_test_results=$(mktemp)
+echo -n > $integration_test_results
 rm -f test_failure
 if [ -z "$skip_integration_tests" ]; then
-    ( ./jenkins-integration-tests.sh "$stack_name" 2>&1 || touch test_failure ) \
-        | tee integration_test_results.txt
+    ( ../jenkins-integration-tests.sh "$stack_name" 2>&1 || touch test_failure ) \
+        | tee $integration_test_results
     set -x
 fi
 
-if [ -f test_failure ] || grep -q 'java.lang.[A-Za-z0-9_.-]*Exception' integration_test_results.txt; then
+if [ -f test_failure ] || grep -q 'java.lang.[A-Za-z0-9_.-]*Exception' $integration_test_results; then
     exit 1
 else
     if [ -n "$PROJECT" -a "$PROJECT" != 'None' -a -n "$CI_BUILD_NUMBER" ]; then
-        touch integration_test_results.txt
+        touch $integration_test_results
         s3_url="s3://$METADATA_BUCKET/validated-builds/$CI_NAME/$PROJECT/$(printf '%.12d' $CI_BUILD_NUMBER)"
-        aws s3 cp integration_test_results.txt "$s3_url/$CI_COMMIT_ID"
+        aws s3 cp $integration_test_results "$s3_url/$CI_COMMIT_ID"
     fi
 fi
