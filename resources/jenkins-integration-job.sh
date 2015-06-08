@@ -65,7 +65,7 @@ rm -f test_failure
 if [ -z "$skip_integration_tests" ]; then
     # pull down api & dashboard sources
     aws s3 cp "s3://$ARTIFACT_BUCKET/$CI_NAME/api/$api_ref/source.zip" api-source.zip
-    aws s3 cp "s3://$ARTIFACT_BUCKET/$CI_NAME/dashboard/$api_ref/source.zip" dashboard-source.zip
+    aws s3 cp "s3://$ARTIFACT_BUCKET/$CI_NAME/dashboard/$dashboard_ref/source.zip" dashboard-source.zip
 
     # api integration tests
     mkdir api
