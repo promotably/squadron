@@ -6,6 +6,14 @@
 : ${KEY_BUCKET:=promotably-keyvault}
 : ${AUTO_TERM_STACK:=true}
 
+# Attempt to detect if we're on a dev's system
+[ -n "$AWS_DEFAULT_REGION" ] || export AWS_DEFAULT_REGION=us-east-1
+awscmd='aws'
+if [ -f ~/.aws/credentials -a "$CI_NAME" != 'jenkins' ]; then
+    awscmd="aws --profile promotably"
+    unset AWS_ACCOUNT_ID AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SECRET_KEY
+fi
+
 # variables consumed by script
 PROJECT="$1"
 : ${CI_NAME:=localdev}
