@@ -31,16 +31,20 @@ if [ -n "$PROJECT" ]; then
     case "$PROJECT" in
         api)
             api_ref=$CI_COMMIT_ID
+            dashboard_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/dashboard/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
             ;;
         squadron|scribe)
             api_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/api/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
+            dashboard_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/dashboard/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
             ;;
         dashboard)
             api_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/api/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
+            dashboard_ref=$CI_COMMIT_ID
             skip_integration_tests='true'
             ;;
         metrics-aggregator)
             api_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/api/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
+            dashboard_ref=$(aws s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/dashboard/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
             skip_integration_tests='true'
             ;;
         *)
@@ -54,20 +58,38 @@ else
     stack_name="ci-$CI_BUILD_NUMBER"
 fi
 
-# pull down api source and unzip locally
-aws s3 cp "s3://$ARTIFACT_BUCKET/$CI_NAME/api/$api_ref/source.zip" api-source.zip
-mkdir api
-cd api
-unzip ../api-source.zip
-
 integration_test_results=$(mktemp)
 echo -n > $integration_test_results
 rm -f test_failure
+
 if [ -z "$skip_integration_tests" ]; then
+    # pull down api & dashboard sources
+    aws s3 cp "s3://$ARTIFACT_BUCKET/$CI_NAME/api/$api_ref/source.zip" api-source.zip
+    aws s3 cp "s3://$ARTIFACT_BUCKET/$CI_NAME/dashboard/$api_ref/source.zip" dashboard-source.zip
+
+    # api integration tests
+    mkdir api
+    cd api
+    unzip ../api-source.zip
     ( ../jenkins-integration-tests.sh "$stack_name" 2>&1 || touch test_failure ) \
         | tee $integration_test_results
+    cd ..
     set -x
+
+    # dashboard integration tests
+    # TODO maybe do this in jenkins-integration-tests.sh?
+    mkdir dashboard
+    cd dashboard
+    unzip ../dashboard-source.zip
+    npm install
+    bower install
+    api_stack="$($awscmd cloudformation describe-stacks --output=text --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`ApiStack`].OutputValue[]')"
+    db_elb_url="$($awscmd cloudformation describe-stacks --output=text --stack-name $api_stack --query 'Stacks[0].Outputs[?OutputKey==`DashboardURL`].OutputValue[]')"
+    # TODO save output in $integration_test_results
+    gulp test:integration --urlroot=$db_elb_url || touch test_failure
+    cd ..
 fi
+
 
 if [ -f test_failure ] || grep -q 'java.lang.[A-Za-z0-9_.-]*Exception' $integration_test_results; then
     exit 1
