@@ -79,7 +79,7 @@ if [ -z "$skip_integration_tests" ]; then
     mkdir api
     cd api
     unzip ../api-source.zip
-    ( ../jenkins-integration-tests.sh "$stack_name" 2>&1 || touch test_failure ) \
+    ( ../jenkins-integration-tests.sh "$stack_name" 2>&1 || touch ../test_failure ) \
         | tee $integration_test_results
     cd ..
     set -x
@@ -94,7 +94,7 @@ if [ -z "$skip_integration_tests" ]; then
     api_stack="$($awscmd cloudformation describe-stacks --output=text --stack-name $stack_name --query 'Stacks[0].Outputs[?OutputKey==`ApiStack`].OutputValue[]')"
     db_elb_url="$($awscmd cloudformation describe-stacks --output=text --stack-name $api_stack --query 'Stacks[0].Outputs[?OutputKey==`DashboardURL`].OutputValue[]')"
     # TODO save output in $integration_test_results
-    gulp test:integration --urlroot=$db_elb_url || touch test_failure
+    gulp test:integration --urlroot=$db_elb_url || touch ../test_failure
     cd ..
 fi
 
