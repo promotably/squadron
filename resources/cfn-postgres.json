@@ -399,11 +399,28 @@
                 "MinSize" : "0",
                 "MaxSize" : "1",
                 "DesiredCapacity" : 1,
+                "MetricsCollection" : [{ "Granularity" : "1Minute" }],
                 "HealthCheckGracePeriod" : "300",
                 "Cooldown" : "600",
                 "VPCZoneIdentifier" : { "Ref" : "PrivateSubnets" },
                 "Tags": [{ "Key" : "Name", "Value" : { "Ref" : "AWS::StackName" }, "PropagateAtLaunch" : "true" },
                          { "Key" : "Environment", "Value" : { "Ref" : "Environment" }, "PropagateAtLaunch" : "true" }]
+            }
+        },
+
+        "MigratorOnline": {
+            "Type": "AWS::CloudWatch::Alarm",
+            "Properties": {
+                "AlarmDescription": "Alarm if there is a migration instance online for too long (migration failed?)",
+                "Namespace": "AWS/AutoScaling",
+                "MetricName": "GroupInServiceInstances",
+                "Dimensions": [{ "Name": "AutoScalingGroupName", "Value": { "Ref" : "LaunchGroup" }}],
+                "Statistic": "Average",
+                "Period": "300",
+                "EvaluationPeriods": "4",
+                "Threshold": "1",
+                "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+                "AlarmActions": [{ "Fn::Join" : [ "-", [ { "Fn::Select" : [ "0", { "Ref" : "AWS::NotificationARNs" } ] }, "notification" ] ] }]
             }
         },
 
@@ -525,6 +542,7 @@
                 "MinSize" : "0",
                 "MaxSize" : "1",
                 "DesiredCapacity" : 0,
+                "MetricsCollection" : [{ "Granularity" : "1Minute" }],
                 "HealthCheckGracePeriod" : "300",
                 "Cooldown" : "600",
                 "VPCZoneIdentifier" : { "Ref" : "PrivateSubnets" },
@@ -540,6 +558,38 @@
                 "AutoScalingGroupName" : { "Ref" : "DumperGroup" },
                 "DesiredCapacity" : "1",
                 "Recurrence" : "19 */6 * * *"
+            }
+        },
+
+        "DumperOnline": {
+            "Type": "AWS::CloudWatch::Alarm",
+            "Properties": {
+                "AlarmDescription": "Alarm if there is a dumper instance online for too long (dump failed?)",
+                "Namespace": "AWS/AutoScaling",
+                "MetricName": "GroupInServiceInstances",
+                "Dimensions": [{ "Name": "AutoScalingGroupName", "Value": { "Ref" : "DumperGroup" }}],
+                "Statistic": "Average",
+                "Period": "300",
+                "EvaluationPeriods": "4",
+                "Threshold": "1",
+                "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+                "AlarmActions": [{ "Fn::Join" : [ "-", [ { "Fn::Select" : [ "0", { "Ref" : "AWS::NotificationARNs" } ] }, "notification" ] ] }]
+            }
+        },
+
+        "DumperOnffline": {
+            "Type": "AWS::CloudWatch::Alarm",
+            "Properties": {
+                "AlarmDescription": "Alarm if there is there is no dumper instance for too long (dump not scheduled?)",
+                "Namespace": "AWS/AutoScaling",
+                "MetricName": "GroupInServiceInstances",
+                "Dimensions": [{ "Name": "AutoScalingGroupName", "Value": { "Ref" : "DumperGroup" }}],
+                "Statistic": "Average",
+                "Period": "3600",
+                "EvaluationPeriods": "8",
+                "Threshold": "0",
+                "ComparisonOperator": "LessThanOrEqualToThreshold",
+                "AlarmActions": [{ "Fn::Join" : [ "-", [ { "Fn::Select" : [ "0", { "Ref" : "AWS::NotificationARNs" } ] }, "notification" ] ] }]
             }
         }
     },
