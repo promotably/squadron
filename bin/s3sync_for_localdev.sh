@@ -1,5 +1,8 @@
 #!/bin/bash
 
+SRC_CI=jenkins
+: ${CI_NAME:=localdev}
+
 destbucket="$1"
 
 if [ -z "$destbucket" ]; then
@@ -11,9 +14,8 @@ fi
 
 set -ex
 
-SRC_CI=jenkins
-aws s3 sync --delete s3://promotably-build-artifacts/$SRC_CI/ s3://$destbucket/localdev/
-aws s3 sync --delete s3://promotably-build-metadata/validated-builds/$SRC_CI/ s3://$destbucket/validated-builds/localdev/
+aws s3 sync --delete s3://promotably-build-artifacts/$SRC_CI/ s3://$destbucket/$CI_NAME/
+aws s3 sync --delete s3://promotably-build-metadata/validated-builds/$SRC_CI/ s3://$destbucket/validated-builds/$CI_NAME/
 
 cd "$(dirname $0)/../resources/"
-aws s3 sync --delete --exclude "ssl/*" --exclude "*.swp" ./ s3://$destbucket/localdev/squadron/dev/
+aws s3 sync --delete --exclude "ssl/*" --exclude "*.swp" ./ s3://$destbucket/$CI_NAME/squadron/dev/
