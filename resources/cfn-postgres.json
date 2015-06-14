@@ -380,7 +380,13 @@
                       " -r LaunchConfig --region ", { "Ref": "AWS::Region" }, "\n",
                     "\n",
                     "[ '", { "Ref" : "AutoTermMigrator" }, "' = 'true' ] || exit 0\n",
-                    "sleep 60\n",
+                    "\n",
+                    "# hack to ensure instance is online for 5min\n",
+                    "# used to prevent MigratorOnline false negative\n",
+                    "uptime_ts=$(date -d \"$(uptime -s)\" +%s)\n",
+                    "while [ $(( $(date +%s) - $uptime_ts )) -lt 300 ]; do\n",
+                    "  sleep 10\n",
+                    "done\n",
                     "instance_id=$(ec2-metadata -i | awk '{print $2}')\n",
                     "aws autoscaling terminate-instance-in-auto-scaling-group ",
                       "--instance-id $instance_id --should-decrement-desired-capacity ",
@@ -522,7 +528,12 @@
                     "((\n",
                     "  /dumpit.sh\n",
                     "  [ '", { "Ref" : "AutoTermDumper" }, "' = 'true' ] || exit 0\n",
-                    "  sleep 60\n",
+                    "  # hack to ensure instance is online for 5min\n",
+                    "  # used to prevent DumperOffline false positive\n",
+                    "  uptime_ts=$(date -d \"$(uptime -s)\" +%s)\n",
+                    "  while [ $(( $(date +%s) - $uptime_ts )) -lt 300 ]; do\n",
+                    "    sleep 10\n",
+                    "  done\n",
                     "  instance_id=$(ec2-metadata -i | awk '{print $2}')\n",
                     "  aws autoscaling terminate-instance-in-auto-scaling-group ",
                       "--instance-id $instance_id --should-decrement-desired-capacity ",
@@ -579,7 +590,7 @@
             }
         },
 
-        "DumperOnffline": {
+        "DumperOffline": {
             "Type": "AWS::CloudWatch::Alarm",
             "Properties": {
                 "AlarmDescription": "Alarm if there is there is no dumper instance for too long (dump not scheduled?)",
