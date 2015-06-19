@@ -37,9 +37,9 @@ done
 
 no_stack=''
 case "$project" in
-    squadron|api|scribe)
+    squadron|api|dashboard|scribe)
         ;;
-    dashboard|metrics-aggregator)
+    metrics-aggregator)
         echo "$project shouldn't have a stack ... exiting quietly"
         exit 0
         ;;

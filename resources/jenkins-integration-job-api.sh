@@ -48,7 +48,6 @@ if [ -n "$PROJECT" ]; then
         dashboard)
             api_ref=$($awscmd s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/api/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
             dashboard_ref=$CI_COMMIT_ID
-            skip_integration_tests='true'
             ;;
         metrics-aggregator)
             api_ref=$($awscmd s3 ls --output=text --recursive s3://$METADATA_BUCKET/validated-builds/$CI_NAME/api/ | tail -n 1 | awk '{print $4}' | cut -f 5 -d /)
